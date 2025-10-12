@@ -1,39 +1,45 @@
 package com.luispuchol.selfbill.selfbill_api.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "articles")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Article {
+
     @Id
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    private int code;
 
     private String name;
 
-    public Article() {
-    }
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
-    public Article(Long id, String name) {
-        this.id = id;
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    private LocalDateTime deletedAt;
+
+    public Article(int code, String name) {
+        this.code = code;
         this.name = name;
     }
 
-    public Long getId() {
-        return id;
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
     }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
 }
