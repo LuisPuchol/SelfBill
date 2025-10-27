@@ -1,6 +1,4 @@
-package com.luispuchol.selfbill.selfbill_api.dto;
-
-import java.time.LocalDateTime;
+package com.luispuchol.selfbill.selfbill_api.dto.articleDTO;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -11,16 +9,10 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ArticleDTO {
-    private int id;
-
+public class ArticleRequest {
     @Positive(message = "Code must be positive")
-    private int code;
+    private Integer code;
 
     @NotBlank(message = "Name cannot be blank")
     private String name;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private LocalDateTime deletedAt;
 }

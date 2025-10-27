@@ -7,7 +7,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 
-import com.luispuchol.selfbill.selfbill_api.dto.ArticleDTO;
+import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.Article;
 import com.luispuchol.selfbill.selfbill_api.mapper.ArticleMapper;
 import com.luispuchol.selfbill.selfbill_api.repository.ArticleRepository;
@@ -20,85 +21,60 @@ public class ArticleService {
     private final ArticleRepository articleRepository;
     private final ArticleMapper articleMapper;
 
-    public List<ArticleDTO> getAllArticles() {
+    public List<ArticleResponse> getAllArticles() {
         return articleRepository.findAll().stream()
-                .filter(article -> article.getDeletedAt() == null)
-                .map(articleMapper::toDTO)
+                .map(articleMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
-    public ArticleDTO getArticleById(Integer id) {
+    public ArticleResponse getArticleById(Integer id) {
         Article article = articleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Article not found: " + id));
-
-        // article soft delete check?
-
-        return articleMapper.toDTO(article);
+        return articleMapper.toResponse(article);
     }
 
-    public ArticleDTO getArticleByName(String name) {
+    public ArticleResponse getArticleByCode(Integer code) {
+        Article article = articleRepository.findByCode(code)
+                .orElseThrow(() -> new BusinessException("Article not found with code: " + code));
+        return articleMapper.toResponse(article);
+    }
+
+    public ArticleResponse getArticleByName(String name) {
         Article article = articleRepository.findByNameIgnoreCase(name)
-                .orElseThrow(() -> new BusinessException("Article not found" + name));
-
-        // article soft delete check?
-
-        return articleMapper.toDTO(article);
+                .orElseThrow(() -> new BusinessException("Article not found: " + name));
+        return articleMapper.toResponse(article);
     }
 
-    public ArticleDTO createArticle(ArticleDTO articleDTO) {
-        Optional<Article> existingByCode = articleRepository.findByCode(articleDTO.getCode());
-        if (existingByCode.isPresent() && existingByCode.get().getDeletedAt() == null) {
-            throw new BusinessException("Already exists article with code: " + articleDTO.getCode());
+    public ArticleResponse createArticle(ArticleRequest articleRequest) {
+        Optional<Article> existingByCode = articleRepository.findByCode(articleRequest.getCode());
+        if (existingByCode.isPresent()) {
+            throw new BusinessException("Already exists article with code: " + articleRequest.getCode());
         }
 
-        Optional<Article> existingByName = articleRepository.findByNameIgnoreCase(articleDTO.getName());
-        if (existingByName.isPresent() && existingByName.get().getDeletedAt() == null) {
-            throw new BusinessException("Already exists article with name: " + articleDTO.getName());
-        }
-
-        Article article = articleMapper.toEntity(articleDTO);
+        Article article = articleMapper.toEntity(articleRequest);
         Article saved = articleRepository.save(article);
-        return articleMapper.toDTO(saved);
+        return articleMapper.toResponse(saved);
     }
 
-    public ArticleDTO updateArticle(Integer id, ArticleDTO articleDTO) {
+    public ArticleResponse updateArticle(Integer id, ArticleRequest articleRequest) {
         Article existingArticle = articleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Article not found with ID: " + id));
 
-        if (existingArticle.getDeletedAt() != null) { // 🆕
-            throw new BusinessException("Cannot update deleted article");
-        }
-
-        Optional<Article> articleWithSameCode = articleRepository.findByCode(articleDTO.getCode());
+        Optional<Article> articleWithSameCode = articleRepository.findByCode(articleRequest.getCode());
         if (articleWithSameCode.isPresent() &&
-                articleWithSameCode.get().getId() != existingArticle.getId() &&
-                articleWithSameCode.get().getDeletedAt() == null) {
-            throw new BusinessException("Already exists another article with code: " + articleDTO.getCode());
+                !articleWithSameCode.get().getId().equals(existingArticle.getId())) {
+            throw new BusinessException("Already exists another article with code: " + articleRequest.getCode());
         }
 
-        Optional<Article> articleWithSameName = articleRepository.findByNameIgnoreCase(articleDTO.getName());
-        if (articleWithSameName.isPresent() &&
-                articleWithSameName.get().getId() != existingArticle.getId() &&
-                articleWithSameName.get().getDeletedAt() == null) {
-            throw new BusinessException("Already exists another article with name: " + articleDTO.getName());
-        }
-
-        existingArticle.setCode(articleDTO.getCode());
-        existingArticle.setName(articleDTO.getName());
-
+        articleMapper.updateEntity(existingArticle, articleRequest);
         Article saved = articleRepository.save(existingArticle);
-        return articleMapper.toDTO(saved);
+        return articleMapper.toResponse(saved);
     }
 
     public void deleteArticle(Integer id) {
         Article article = articleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Article not found with ID: " + id));
 
-        if (article.getDeletedAt() != null) {
-            throw new BusinessException("Article already deleted");
-        }
-
-        article.softDelete();
-        articleRepository.save(article);
+        articleRepository.delete(article);
     }
 }
