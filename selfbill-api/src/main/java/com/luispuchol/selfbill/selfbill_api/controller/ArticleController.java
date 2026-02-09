@@ -19,7 +19,7 @@ import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/articles")
+@RequestMapping("/api/articles")
 @Tag(name = "Articles", description = "Article management endpoints")
 @Validated
 @RequiredArgsConstructor

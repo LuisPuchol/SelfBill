@@ -2,6 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @SQLDelete(sql = "UPDATE articles SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
 public class Article {
@@ -41,9 +43,4 @@ public class Article {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
-
-    public Article(Integer code, String name) {
-        this.code = code;
-        this.name = name;
-    }
 }

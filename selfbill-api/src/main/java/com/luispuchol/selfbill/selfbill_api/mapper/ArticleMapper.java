@@ -10,24 +10,26 @@ import com.luispuchol.selfbill.selfbill_api.entity.Article;
 public class ArticleMapper {
 
     public ArticleResponse toResponse(Article article) {
-        if (article == null) {
+        if (article == null)
             return null;
-        }
-        return new ArticleResponse(
-                article.getId(),
-                article.getCode(),
-                article.getName(),
-                article.getCreatedAt(),
-                article.getUpdatedAt());
+
+        return ArticleResponse.builder()
+                .id(article.getId())
+                .code(article.getCode())
+                .name(article.getName())
+                .createdAt(article.getCreatedAt())
+                .updatedAt(article.getUpdatedAt())
+                .build();
     }
 
     public Article toEntity(ArticleRequest request) {
         if (request == null) {
             return null;
         }
-        return new Article(
-                request.getCode(),
-                request.getName());
+        return Article.builder()
+                .code(request.getCode())
+                .name(request.getName())
+                .build();
     }
 
     public void updateEntity(Article article, ArticleRequest request) {
