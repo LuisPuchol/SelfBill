@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -8,10 +9,17 @@ import lombok.NoArgsConstructor;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceMode;
+import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
+import com.luispuchol.selfbill.selfbill_api.enums.VatType;
+
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "clients")
@@ -27,7 +35,7 @@ public class Client {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private Integer code;
 
     // Business and personal details
@@ -42,6 +50,7 @@ public class Client {
 
     // Contact details
     @Column(length = 50)
+    @Email
     private String email;
 
     @Column(length = 500)
@@ -63,14 +72,22 @@ public class Client {
     private String phone2;
 
     // Client options
-    @Column(name = "customer_type", nullable = false)
-    private Boolean customerType = false;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vat_type", nullable = false)
+    @Builder.Default
+    private VatType vatType = VatType.WITH_VAT;
 
-    @Column(name = "equivalence_surcharge", nullable = false)
-    private Boolean equivalenceSurcharge = false;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "surcharge_type", nullable = false)
+    @Builder.Default
+    private SurchargeType surchargeType = SurchargeType.WITHOUT_SURCHARGE;
 
-    @Column(name = "invoice_per_delivery_note", nullable = false)
-    private Boolean invoicePerDeliveryNote = false;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "invoice_mode", nullable = false)
+    @Builder.Default
+    private InvoiceMode invoiceMode = InvoiceMode.GROUPED;
+
+    // Relations
 
     // Timestamps
     @CreationTimestamp

@@ -11,17 +11,20 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "articles")
+@Table(name = "delivery_notes")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@SQLDelete(sql = "UPDATE articles SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLDelete(sql = "UPDATE delivery_notes SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
-public class Article {
+public class DeliveryNote {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,10 +33,22 @@ public class Article {
     @Column(nullable = false, unique = true)
     private Integer code;
 
-    @Column(nullable = false, length = 255)
-    private String name;
+    @Column(nullable = false)
+    private LocalDateTime date;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal total;
 
     // Relations
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id", nullable = false)
+    private Client client;
+
+    @OneToMany(mappedBy = "deliveryNote", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<DeliveryNoteArticles> deliveryNoteArticles = new ArrayList<>();
+
+    // Business config ? relation
 
     // Timestamps
     @CreationTimestamp
