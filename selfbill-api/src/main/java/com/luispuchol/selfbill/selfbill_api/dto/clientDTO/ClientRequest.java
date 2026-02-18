@@ -57,14 +57,17 @@ public class ClientRequest {
     private String phone2;
 
     // Client options
-    @NotNull(message = "Customer type cannot be null")
-    private Boolean customerType;
+    @NotNull(message = "VAT type cannot be null")
+    @Pattern(regexp = "WITH_VAT|WITHOUT_VAT", message = "VAT type must be WITH_VAT or WITHOUT_VAT")
+    private String vatType;
 
-    @NotNull(message = "Equivalence surcharge cannot be null")
-    private Boolean equivalenceSurcharge;
+    @NotNull(message = "Surcharge type cannot be null")
+    @Pattern(regexp = "WITH_SURCHARGE|WITHOUT_SURCHARGE", message = "Surcharge type must be WITH_SURCHARGE or WITHOUT_SURCHARGE")
+    private String surchargeType;
 
-    @NotNull(message = "Invoice per delivery note cannot be null")
-    private Boolean invoicePerDeliveryNote;
+    @NotNull(message = "Invoice mode cannot be null")
+    @Pattern(regexp = "PER_DELIVERY_NOTE|GROUPED", message = "Invoice mode must be PER_DELIVERY_NOTE or GROUPED")
+    private String invoiceMode;
 
     // Validation group interface for conditional validations
     public interface ValidationGroup {

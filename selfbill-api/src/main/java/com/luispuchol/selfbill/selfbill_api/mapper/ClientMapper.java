@@ -5,6 +5,9 @@ import org.springframework.stereotype.Component;
 import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.Client;
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceMode;
+import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
+import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 
 @Component
 public class ClientMapper {
@@ -26,9 +29,9 @@ public class ClientMapper {
                 .postalCode(client.getPostalCode())
                 .phone(client.getPhone())
                 .phone2(client.getPhone2())
-                .customerType(client.getCustomerType())
-                .equivalenceSurcharge(client.getEquivalenceSurcharge())
-                .invoicePerDeliveryNote(client.getInvoicePerDeliveryNote())
+                .vatType(client.getVatType().name())
+                .surchargeType(client.getSurchargeType().name())
+                .invoiceMode(client.getInvoiceMode().name())
                 .createdAt(client.getCreatedAt())
                 .updatedAt(client.getUpdatedAt())
                 .build();
@@ -49,9 +52,9 @@ public class ClientMapper {
                 .postalCode(request.getPostalCode())
                 .phone(request.getPhone())
                 .phone2(request.getPhone2())
-                .customerType(request.getCustomerType())
-                .equivalenceSurcharge(request.getEquivalenceSurcharge())
-                .invoicePerDeliveryNote(request.getInvoicePerDeliveryNote())
+                .vatType(VatType.valueOf(request.getVatType()))
+                .surchargeType(SurchargeType.valueOf(request.getSurchargeType()))
+                .invoiceMode(InvoiceMode.valueOf(request.getInvoiceMode()))
                 .build();
     }
 
@@ -67,9 +70,9 @@ public class ClientMapper {
             client.setPostalCode(request.getPostalCode());
             client.setPhone(request.getPhone());
             client.setPhone2(request.getPhone2());
-            client.setCustomerType(request.getCustomerType());
-            client.setEquivalenceSurcharge(request.getEquivalenceSurcharge());
-            client.setInvoicePerDeliveryNote(request.getInvoicePerDeliveryNote());
+            client.setVatType(VatType.valueOf(request.getVatType()));
+            client.setSurchargeType(SurchargeType.valueOf(request.getSurchargeType()));
+            client.setInvoiceMode(InvoiceMode.valueOf(request.getInvoiceMode()));
         }
     }
 }

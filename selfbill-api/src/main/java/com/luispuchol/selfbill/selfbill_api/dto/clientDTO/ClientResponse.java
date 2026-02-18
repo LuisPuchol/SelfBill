@@ -30,9 +30,9 @@ public class ClientResponse {
     private String phone2;
 
     // Client options
-    private Boolean customerType;
-    private Boolean equivalenceSurcharge;
-    private Boolean invoicePerDeliveryNote;
+    private String vatType;
+    private String surchargeType;
+    private String invoiceMode;
 
     // Timestamps
     private LocalDateTime createdAt;
