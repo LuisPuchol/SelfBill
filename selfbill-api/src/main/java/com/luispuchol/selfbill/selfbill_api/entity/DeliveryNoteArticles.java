@@ -1,7 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.entity;
 
 import jakarta.persistence.*;
-import jakarta.persistence.criteria.CriteriaBuilder.In;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -40,9 +39,7 @@ public class DeliveryNoteArticles {
 
     @Column(nullable = false)
     private Integer trazabilityCode1;
-    @Column(nullable = false)
     private Integer trazabilityCode2;
-    @Column(nullable = false)
     private Integer trazabilityCode3;
 
     @Column(precision = 10, scale = 2)

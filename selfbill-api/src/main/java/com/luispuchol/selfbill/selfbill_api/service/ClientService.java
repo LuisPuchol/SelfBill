@@ -50,7 +50,7 @@ public class ClientService implements IClientService {
     @Transactional
     @Override
     public ClientResponse getClientByName(String name) {
-        Client client = clientRepository.findByName(name)
+        Client client = clientRepository.findByNameIgnoreCase(name)
                 .orElseThrow(() -> new BusinessException("Client not found with name: " + name));
         return clientMapper.toResponse(client);
     }

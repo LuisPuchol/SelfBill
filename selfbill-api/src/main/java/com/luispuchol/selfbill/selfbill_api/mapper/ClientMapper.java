@@ -44,6 +44,7 @@ public class ClientMapper {
         return Client.builder()
                 .code(request.getCode())
                 .name(request.getName())
+                .businessName(request.getBusinessName())
                 .nif(request.getNif())
                 .email(request.getEmail())
                 .address(request.getAddress())
@@ -59,20 +60,22 @@ public class ClientMapper {
     }
 
     public void updateEntity(Client client, ClientRequest request) {
-        if (client != null && request != null) {
-            client.setCode(request.getCode());
-            client.setName(request.getName());
-            client.setNif(request.getNif());
-            client.setEmail(request.getEmail());
-            client.setAddress(request.getAddress());
-            client.setCity(request.getCity());
-            client.setProvince(request.getProvince());
-            client.setPostalCode(request.getPostalCode());
-            client.setPhone(request.getPhone());
-            client.setPhone2(request.getPhone2());
-            client.setVatType(VatType.valueOf(request.getVatType()));
-            client.setSurchargeType(SurchargeType.valueOf(request.getSurchargeType()));
-            client.setInvoiceMode(InvoiceMode.valueOf(request.getInvoiceMode()));
+        if (client == null || request == null) {
+            return;
         }
+        client.setCode(request.getCode());
+        client.setBusinessName(request.getBusinessName());
+        client.setName(request.getName());
+        client.setNif(request.getNif());
+        client.setEmail(request.getEmail());
+        client.setAddress(request.getAddress());
+        client.setCity(request.getCity());
+        client.setProvince(request.getProvince());
+        client.setPostalCode(request.getPostalCode());
+        client.setPhone(request.getPhone());
+        client.setPhone2(request.getPhone2());
+        client.setVatType(VatType.valueOf(request.getVatType()));
+        client.setSurchargeType(SurchargeType.valueOf(request.getSurchargeType()));
+        client.setInvoiceMode(InvoiceMode.valueOf(request.getInvoiceMode()));
     }
 }

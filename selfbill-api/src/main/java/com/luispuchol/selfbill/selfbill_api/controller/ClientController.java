@@ -2,7 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.controller;
 
 import java.util.List;
 
-import com.luispuchol.selfbill.selfbill_api.service.ClientService;
+import com.luispuchol.selfbill.selfbill_api.service.IClientService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
 
 import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
@@ -26,7 +25,7 @@ import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
 @RequiredArgsConstructor
 public class ClientController {
 
-    private final ClientService clientService;
+    private final IClientService clientService;
 
     @Operation(summary = "Get all clients", description = "Returns list of all non-deleted clients")
     @ApiResponse(responseCode = "200", description = "Successful operation")
@@ -51,6 +50,12 @@ public class ClientController {
     public ResponseEntity<ClientResponse> getClientByName(
             @PathVariable @NotBlank String name) {
         return ResponseEntity.ok(clientService.getClientByName(name));
+    }
+
+    @GetMapping("/by-nif/{nif}")
+    public ResponseEntity<ClientResponse> getClientByNif(
+            @PathVariable @NotBlank String nif) {
+        return ResponseEntity.ok(clientService.getClientByNif(nif));
     }
 
     @PostMapping

@@ -25,6 +25,7 @@ public class DeliveryNoteArticlesResponse {
 
     private BigDecimal quantity;
     private BigDecimal price;
+    private BigDecimal total;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -9,7 +9,7 @@ import org.springframework.validation.annotation.Validated;
 
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleResponse;
-import com.luispuchol.selfbill.selfbill_api.service.ArticleService;
+import com.luispuchol.selfbill.selfbill_api.service.IArticleService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -25,7 +25,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ArticleController {
 
-    private final ArticleService articleService;
+    private final IArticleService articleService;
 
     @Operation(summary = "Get all articles", description = "Returns list of all non-deleted articles")
     @ApiResponse(responseCode = "200", description = "Successful operation")
