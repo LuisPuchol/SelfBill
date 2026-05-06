@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Luis\\\\Documents\\\\Proyectos\\\\SelfBill\\\\selfbill-api\\\\src\\\\main\\\\java\\\\com\\\\luispuchol\\\\selfbill\\\\selfbill_api\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Luis\\\\Documents\\\\Proyectos\\\\SelfBill\\\\selfbill-api\\\\src\\\\main\\\\java\\\\com\\\\luispuchol\\\\selfbill\\\\selfbill_api\" -Recurse | Where-Object {$_.PSIsContainer -or $_.Extension -eq \".java\" -or $_.Name -eq \"pom.xml\"} | Select-Object -ExpandProperty FullName | Sort-Object)"
+    ]
+  }
+}

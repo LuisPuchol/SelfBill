@@ -55,9 +55,9 @@ class ClientControllerTest {
                                 .city("Madrid")
                                 .province("Madrid")
                                 .postalCode("28001")
-                                .customerType(true)
-                                .equivalenceSurcharge(false)
-                                .invoicePerDeliveryNote(true)
+                                .vatType("WITH_VAT")
+                                .surchargeType("WITHOUT_SURCHARGE")
+                                .invoiceMode("PER_DELIVERY_NOTE")
                                 .build();
 
                 clientResponse2 = ClientResponse.builder()
@@ -72,9 +72,9 @@ class ClientControllerTest {
                                 .city("Barcelona")
                                 .province("Barcelona")
                                 .postalCode("08001")
-                                .customerType(false)
-                                .equivalenceSurcharge(true)
-                                .invoicePerDeliveryNote(false)
+                                .vatType("WITHOUT_VAT")
+                                .surchargeType("WITH_SURCHARGE")
+                                .invoiceMode("GROUPED")
                                 .build();
 
                 clientRequest = ClientRequest.builder()
@@ -88,9 +88,9 @@ class ClientControllerTest {
                                 .city("Valencia")
                                 .province("Valencia")
                                 .postalCode("46001")
-                                .customerType(true)
-                                .equivalenceSurcharge(false)
-                                .invoicePerDeliveryNote(true)
+                                .vatType("WITH_VAT")
+                                .surchargeType("WITHOUT_SURCHARGE")
+                                .invoiceMode("PER_DELIVERY_NOTE")
                                 .build();
         }
 
@@ -204,9 +204,9 @@ class ClientControllerTest {
                                 .city("Valencia")
                                 .province("Valencia")
                                 .postalCode("46001")
-                                .customerType(true)
-                                .equivalenceSurcharge(false)
-                                .invoicePerDeliveryNote(true)
+                                .vatType("WITH_VAT")
+                                .surchargeType("WITHOUT_SURCHARGE")
+                                .invoiceMode("PER_DELIVERY_NOTE")
                                 .build();
 
                 when(clientService.createClient(any(ClientRequest.class))).thenReturn(createdResponse);
