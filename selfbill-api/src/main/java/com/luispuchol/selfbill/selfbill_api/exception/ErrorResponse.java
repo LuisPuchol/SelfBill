@@ -13,6 +13,7 @@ import java.util.Map;
 public class ErrorResponse {
     private LocalDateTime timestamp;
     private Integer status;
+    private String errorCode;
     private String message;
     private Map<String, String> errors;
 }

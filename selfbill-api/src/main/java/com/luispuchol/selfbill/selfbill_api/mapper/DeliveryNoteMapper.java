@@ -14,6 +14,7 @@ import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNoteArticles;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
+import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.repository.ArticleRepository;
 import com.luispuchol.selfbill.selfbill_api.repository.ClientRepository;
 
@@ -67,7 +68,7 @@ public class DeliveryNoteMapper {
         }
 
         Client client = clientRepository.findById(request.getClientId())
-                .orElseThrow(() -> new BusinessException("Client not found: " + request.getClientId()));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, request.getClientId()));
 
         DeliveryNote deliveryNote = DeliveryNote.builder()
                 .code(request.getCode())
@@ -93,7 +94,7 @@ public class DeliveryNoteMapper {
         }
 
         Client client = clientRepository.findById(request.getClientId())
-                .orElseThrow(() -> new BusinessException("Client not found: " + request.getClientId()));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, request.getClientId()));
 
         deliveryNote.setCode(request.getCode());
         deliveryNote.setDate(request.getDate());
@@ -110,7 +111,7 @@ public class DeliveryNoteMapper {
 
     private DeliveryNoteArticles mapLineToEntity(DeliveryNoteArticlesRequest lineRequest, DeliveryNote deliveryNote) {
         Article article = articleRepository.findById(lineRequest.getArticleId())
-                .orElseThrow(() -> new BusinessException("Article not found: " + lineRequest.getArticleId()));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, lineRequest.getArticleId()));
 
         return DeliveryNoteArticles.builder()
                 .article(article)

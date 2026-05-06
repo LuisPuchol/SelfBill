@@ -9,12 +9,12 @@ import lombok.RequiredArgsConstructor;
 
 import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.*;
 import com.luispuchol.selfbill.selfbill_api.entity.Client;
+import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
+import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.ClientMapper;
 import com.luispuchol.selfbill.selfbill_api.repository.ClientRepository;
 
 import jakarta.transaction.Transactional;
-
-import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +35,7 @@ public class ClientService implements IClientService {
     @Override
     public ClientResponse getClientById(Integer id) {
         Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Client not found: " + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
         return clientMapper.toResponse(client);
     }
 
@@ -43,7 +43,7 @@ public class ClientService implements IClientService {
     @Override
     public ClientResponse getClientByCode(Integer code) {
         Client client = clientRepository.findByCode(code)
-                .orElseThrow(() -> new BusinessException("Client not found with code: " + code));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, code));
         return clientMapper.toResponse(client);
     }
 
@@ -51,7 +51,7 @@ public class ClientService implements IClientService {
     @Override
     public ClientResponse getClientByName(String name) {
         Client client = clientRepository.findByNameIgnoreCase(name)
-                .orElseThrow(() -> new BusinessException("Client not found with name: " + name));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, name));
         return clientMapper.toResponse(client);
     }
 
@@ -59,7 +59,7 @@ public class ClientService implements IClientService {
     @Override
     public ClientResponse getClientByNif(String nif) {
         Client client = clientRepository.findByNif(nif)
-                .orElseThrow(() -> new BusinessException("Client not found with NIF: " + nif));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, nif));
         return clientMapper.toResponse(client);
     }
 
@@ -68,7 +68,7 @@ public class ClientService implements IClientService {
     public ClientResponse createClient(ClientRequest clientRequest) {
         Optional<Client> existingByCode = clientRepository.findByCode(clientRequest.getCode());
         if (existingByCode.isPresent()) {
-            throw new BusinessException("Already exists client with code: " + clientRequest.getCode());
+            throw new BusinessException(ErrorCode.CLIENT_DUPLICATE_CODE, clientRequest.getCode());
         }
 
         Client client = clientMapper.toEntity(clientRequest);
@@ -80,12 +80,12 @@ public class ClientService implements IClientService {
     @Override
     public ClientResponse updateClient(Integer id, ClientRequest clientRequest) {
         Client existingClient = clientRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Client not found: " + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
 
         if (!existingClient.getCode().equals(clientRequest.getCode())) {
             Optional<Client> existingByCode = clientRepository.findByCode(clientRequest.getCode());
             if (existingByCode.isPresent()) {
-                throw new BusinessException("Already exists client with code: " + clientRequest.getCode());
+                throw new BusinessException(ErrorCode.CLIENT_DUPLICATE_CODE, clientRequest.getCode());
             }
         }
 
@@ -98,7 +98,7 @@ public class ClientService implements IClientService {
     @Override
     public void deleteClient(Integer id) {
         Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Client not found: " + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
 
         clientRepository.delete(client);
     }

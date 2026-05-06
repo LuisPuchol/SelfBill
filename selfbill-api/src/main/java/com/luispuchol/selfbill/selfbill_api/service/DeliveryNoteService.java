@@ -8,6 +8,7 @@ import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteRequ
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
+import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.DeliveryNoteMapper;
 import com.luispuchol.selfbill.selfbill_api.repository.DeliveryNoteRepository;
 
@@ -17,8 +18,6 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class DeliveryNoteService implements IDeliveryNoteService {
-
-    private static final String NOT_FOUND_MSG = "Delivery note not found: ";
 
     private final DeliveryNoteRepository deliveryNoteRepository;
     private final DeliveryNoteMapper deliveryNoteMapper;
@@ -35,7 +34,7 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     @Override
     public DeliveryNoteResponse getDeliveryNoteById(Integer id) {
         DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND_MSG + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
         return deliveryNoteMapper.toResponse(deliveryNote);
     }
 
@@ -43,7 +42,7 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     @Override
     public DeliveryNoteResponse createDeliveryNote(DeliveryNoteRequest deliveryNoteRequest) {
         if (deliveryNoteRepository.findByCode(deliveryNoteRequest.getCode()).isPresent()) {
-            throw new BusinessException("Already exists delivery note with code: " + deliveryNoteRequest.getCode());
+            throw new BusinessException(ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE, deliveryNoteRequest.getCode());
         }
         DeliveryNote deliveryNote = deliveryNoteMapper.toEntity(deliveryNoteRequest);
         DeliveryNote saved = deliveryNoteRepository.save(deliveryNote);
@@ -54,7 +53,7 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     @Override
     public DeliveryNoteResponse updateDeliveryNote(Integer id, DeliveryNoteRequest deliveryNoteRequest) {
         DeliveryNote existing = deliveryNoteRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND_MSG + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
         deliveryNoteMapper.updateEntity(deliveryNoteRequest, existing);
         DeliveryNote updated = deliveryNoteRepository.save(existing);
         return deliveryNoteMapper.toResponse(updated);
@@ -64,7 +63,7 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     @Override
     public void deleteDeliveryNote(Integer id) {
         DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND_MSG + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
         deliveryNoteRepository.delete(deliveryNote);
     }
 }

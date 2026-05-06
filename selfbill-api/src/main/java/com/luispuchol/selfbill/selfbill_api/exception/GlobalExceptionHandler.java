@@ -22,9 +22,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
+        log.warn("[{}] {}", ex.getErrorCode(), ex.getMessage());
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
+                ex.getErrorCode().name(),
                 ex.getMessage(),
                 null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
@@ -38,11 +40,12 @@ public class GlobalExceptionHandler {
             String errorMessage = violation.getMessage();
             errors.put(fieldName, errorMessage);
         });
-
+        log.warn("[{}] {}", ErrorCode.VALIDATION_ERROR, errors);
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
-                "Error de validación",
+                ErrorCode.VALIDATION_ERROR.name(),
+                ErrorCode.VALIDATION_ERROR.format(),
                 errors);
         return ResponseEntity.badRequest().body(errorResponse);
     }
@@ -53,21 +56,24 @@ public class GlobalExceptionHandler {
         ex.getBindingResult().getFieldErrors().forEach(error -> {
             errors.put(error.getField(), error.getDefaultMessage());
         });
-
+        log.warn("[{}] {}", ErrorCode.VALIDATION_ERROR, errors);
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
-                "Error de validación",
+                ErrorCode.VALIDATION_ERROR.name(),
+                ErrorCode.VALIDATION_ERROR.format(),
                 errors);
         return ResponseEntity.badRequest().body(errorResponse);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex) {
+        log.warn("[{}] {}", ErrorCode.RESOURCE_NOT_FOUND, ex.getMessage());
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.NOT_FOUND.value(),
-                "Recurso no encontrado",
+                ErrorCode.RESOURCE_NOT_FOUND.name(),
+                ErrorCode.RESOURCE_NOT_FOUND.format(),
                 null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
@@ -87,7 +93,8 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Error interno del servidor",
+                ErrorCode.INTERNAL_ERROR.name(),
+                ErrorCode.INTERNAL_ERROR.format(),
                 null);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }

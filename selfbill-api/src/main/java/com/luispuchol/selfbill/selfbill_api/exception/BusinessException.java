@@ -2,11 +2,14 @@ package com.luispuchol.selfbill.selfbill_api.exception;
 
 public class BusinessException extends RuntimeException {
 
-    public BusinessException(String message) {
-        super(message);
+    private final ErrorCode errorCode;
+
+    public BusinessException(ErrorCode errorCode, Object... params) {
+        super(errorCode.format(params));
+        this.errorCode = errorCode;
     }
 
-    public BusinessException(String message, Throwable cause) {
-        super(message, cause);
+    public ErrorCode getErrorCode() {
+        return errorCode;
     }
 }

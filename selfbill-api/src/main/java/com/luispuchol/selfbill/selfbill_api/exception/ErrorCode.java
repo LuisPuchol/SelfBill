@@ -17,7 +17,8 @@ public enum ErrorCode {
     // Generic
     VALIDATION_ERROR("Validation error"),
     MALFORMED_REQUEST("Malformed request body"),
-    RESOURCE_NOT_FOUND("Resource not found");
+    RESOURCE_NOT_FOUND("Resource not found"),
+    INTERNAL_ERROR("Internal server error");
 
     private final String messageTemplate;
 
