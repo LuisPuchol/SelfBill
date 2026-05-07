@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
@@ -12,7 +13,7 @@ import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.DeliveryNoteMapper;
 import com.luispuchol.selfbill.selfbill_api.repository.DeliveryNoteRepository;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -22,7 +23,7 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     private final DeliveryNoteRepository deliveryNoteRepository;
     private final DeliveryNoteMapper deliveryNoteMapper;
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<DeliveryNoteResponse> getAllDeliveryNotes() {
         return deliveryNoteRepository.findAll().stream()
@@ -30,7 +31,7 @@ public class DeliveryNoteService implements IDeliveryNoteService {
                 .toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public DeliveryNoteResponse getDeliveryNoteById(Integer id) {
         DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
@@ -54,6 +55,14 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     public DeliveryNoteResponse updateDeliveryNote(Integer id, DeliveryNoteRequest deliveryNoteRequest) {
         DeliveryNote existing = deliveryNoteRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
+
+        if (!existing.getCode().equals(deliveryNoteRequest.getCode())) {
+            Optional<DeliveryNote> noteWithSameCode = deliveryNoteRepository.findByCode(deliveryNoteRequest.getCode());
+            if (noteWithSameCode.isPresent()) {
+                throw new BusinessException(ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE, deliveryNoteRequest.getCode());
+            }
+        }
+
         deliveryNoteMapper.updateEntity(deliveryNoteRequest, existing);
         DeliveryNote updated = deliveryNoteRepository.save(existing);
         return deliveryNoteMapper.toResponse(updated);

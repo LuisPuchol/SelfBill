@@ -14,7 +14,7 @@ import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.ClientMapper;
 import com.luispuchol.selfbill.selfbill_api.repository.ClientRepository;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +23,7 @@ public class ClientService implements IClientService {
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<ClientResponse> getAllClients() {
         return clientRepository.findAll().stream()
@@ -31,7 +31,7 @@ public class ClientService implements IClientService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public ClientResponse getClientById(Integer id) {
         Client client = clientRepository.findById(id)
@@ -39,7 +39,7 @@ public class ClientService implements IClientService {
         return clientMapper.toResponse(client);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public ClientResponse getClientByCode(Integer code) {
         Client client = clientRepository.findByCode(code)
@@ -47,7 +47,7 @@ public class ClientService implements IClientService {
         return clientMapper.toResponse(client);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public ClientResponse getClientByName(String name) {
         Client client = clientRepository.findByNameIgnoreCase(name)
@@ -55,7 +55,7 @@ public class ClientService implements IClientService {
         return clientMapper.toResponse(client);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public ClientResponse getClientByNif(String nif) {
         Client client = clientRepository.findByNif(nif)

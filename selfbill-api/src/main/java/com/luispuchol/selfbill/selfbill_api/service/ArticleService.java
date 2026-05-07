@@ -14,7 +14,7 @@ import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.ArticleMapper;
 import com.luispuchol.selfbill.selfbill_api.repository.ArticleRepository;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +23,7 @@ public class ArticleService implements IArticleService {
     private final ArticleRepository articleRepository;
     private final ArticleMapper articleMapper;
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public List<ArticleResponse> getAllArticles() {
         return articleRepository.findAll().stream()
@@ -31,7 +31,7 @@ public class ArticleService implements IArticleService {
                 .toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public ArticleResponse getArticleById(Integer id) {
         Article article = articleRepository.findById(id)
@@ -39,7 +39,7 @@ public class ArticleService implements IArticleService {
         return articleMapper.toResponse(article);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public ArticleResponse getArticleByCode(Integer code) {
         Article article = articleRepository.findByCode(code)
@@ -47,7 +47,7 @@ public class ArticleService implements IArticleService {
         return articleMapper.toResponse(article);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
     public ArticleResponse getArticleByName(String name) {
         Article article = articleRepository.findByNameIgnoreCase(name)

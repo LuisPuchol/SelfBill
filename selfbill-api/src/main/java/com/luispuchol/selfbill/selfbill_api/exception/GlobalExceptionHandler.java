@@ -23,13 +23,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
         log.warn("[{}] {}", ex.getErrorCode(), ex.getMessage());
+        HttpStatus status = ex.getErrorCode().getHttpStatus();
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
+                status.value(),
                 ex.getErrorCode().name(),
                 ex.getMessage(),
                 null);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        return ResponseEntity.status(status).body(errorResponse);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -81,12 +82,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex, HttpServletRequest request) {
         String path = request.getRequestURI();
-
-        if (path.startsWith("/v3/api-docs") ||
-                path.startsWith("/swagger-ui") ||
-                path.startsWith("/actuator")) {
-            return null;
-        }
 
         log.error("Unexpected error at {}: {}", path, ex.getMessage(), ex);
 

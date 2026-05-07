@@ -34,7 +34,7 @@ public class ClientRequest {
 
     // Contact details
     @Size(max = 50, message = "Email must not exceed 50 characters")
-    @Pattern(regexp = "^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,6}$", message = "Email format is invalid", groups = ValidationGroup.class)
+    @Pattern(regexp = "^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,6}$", message = "Email format is invalid")
     private String email;
 
     @Size(max = 500, message = "Address must not exceed 500 characters")
@@ -47,7 +47,7 @@ public class ClientRequest {
     private String province;
 
     @Size(max = 10, message = "Postal code must not exceed 10 characters")
-    @Pattern(regexp = "^[0-9]{5}$", message = "Postal code must be 5 digits", groups = ValidationGroup.class)
+    @Pattern(regexp = "^[0-9]{5}$", message = "Postal code must be 5 digits")
     private String postalCode;
 
     @Size(max = 20, message = "Phone must not exceed 20 characters")
@@ -69,7 +69,4 @@ public class ClientRequest {
     @Pattern(regexp = "PER_DELIVERY_NOTE|GROUPED", message = "Invoice mode must be PER_DELIVERY_NOTE or GROUPED")
     private String invoiceMode;
 
-    // Validation group interface for conditional validations
-    public interface ValidationGroup {
-    }
 }
