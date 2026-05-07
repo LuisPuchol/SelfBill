@@ -4,16 +4,21 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteArticlesRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteResponse;
+import com.luispuchol.selfbill.selfbill_api.entity.Article;
+import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.DeliveryNoteMapper;
+import com.luispuchol.selfbill.selfbill_api.repository.ArticleRepository;
+import com.luispuchol.selfbill.selfbill_api.repository.ClientRepository;
 import com.luispuchol.selfbill.selfbill_api.repository.DeliveryNoteRepository;
 
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -21,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 public class DeliveryNoteService implements IDeliveryNoteService {
 
     private final DeliveryNoteRepository deliveryNoteRepository;
+    private final ClientRepository clientRepository;
+    private final ArticleRepository articleRepository;
     private final DeliveryNoteMapper deliveryNoteMapper;
 
     @Transactional(readOnly = true)
@@ -41,31 +48,41 @@ public class DeliveryNoteService implements IDeliveryNoteService {
 
     @Transactional
     @Override
-    public DeliveryNoteResponse createDeliveryNote(DeliveryNoteRequest deliveryNoteRequest) {
-        if (deliveryNoteRepository.findByCode(deliveryNoteRequest.getCode()).isPresent()) {
-            throw new BusinessException(ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE, deliveryNoteRequest.getCode());
+    public DeliveryNoteResponse createDeliveryNote(DeliveryNoteRequest request) {
+        if (deliveryNoteRepository.findByCode(request.getCode()).isPresent()) {
+            throw new BusinessException(ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE, request.getCode());
         }
-        DeliveryNote deliveryNote = deliveryNoteMapper.toEntity(deliveryNoteRequest);
-        DeliveryNote saved = deliveryNoteRepository.save(deliveryNote);
-        return deliveryNoteMapper.toResponse(saved);
+
+        Client client = clientRepository.findById(request.getClientId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, request.getClientId()));
+
+        DeliveryNote note = deliveryNoteMapper.toEntity(request, client);
+        addLines(request, note);
+
+        return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(note));
     }
 
     @Transactional
     @Override
-    public DeliveryNoteResponse updateDeliveryNote(Integer id, DeliveryNoteRequest deliveryNoteRequest) {
+    public DeliveryNoteResponse updateDeliveryNote(Integer id, DeliveryNoteRequest request) {
         DeliveryNote existing = deliveryNoteRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
 
-        if (!existing.getCode().equals(deliveryNoteRequest.getCode())) {
-            Optional<DeliveryNote> noteWithSameCode = deliveryNoteRepository.findByCode(deliveryNoteRequest.getCode());
+        if (!existing.getCode().equals(request.getCode())) {
+            Optional<DeliveryNote> noteWithSameCode = deliveryNoteRepository.findByCode(request.getCode());
             if (noteWithSameCode.isPresent()) {
-                throw new BusinessException(ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE, deliveryNoteRequest.getCode());
+                throw new BusinessException(ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE, request.getCode());
             }
         }
 
-        deliveryNoteMapper.updateEntity(deliveryNoteRequest, existing);
-        DeliveryNote updated = deliveryNoteRepository.save(existing);
-        return deliveryNoteMapper.toResponse(updated);
+        Client client = clientRepository.findById(request.getClientId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, request.getClientId()));
+
+        deliveryNoteMapper.updateEntity(existing, request, client);
+        existing.getDeliveryNoteArticles().clear();
+        addLines(request, existing);
+
+        return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(existing));
     }
 
     @Transactional
@@ -74,5 +91,14 @@ public class DeliveryNoteService implements IDeliveryNoteService {
         DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
         deliveryNoteRepository.delete(deliveryNote);
+    }
+
+    private void addLines(DeliveryNoteRequest request, DeliveryNote note) {
+        if (request.getLines() == null) return;
+        for (DeliveryNoteArticlesRequest lineReq : request.getLines()) {
+            Article article = articleRepository.findById(lineReq.getArticleId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, lineReq.getArticleId()));
+            note.getDeliveryNoteArticles().add(deliveryNoteMapper.lineToEntity(lineReq, article, note));
+        }
     }
 }

@@ -1,41 +1,28 @@
 package com.luispuchol.selfbill.selfbill_api.mapper;
 
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.ReportingPolicy;
 
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.Article;
 
-@Component
-public class ArticleMapper {
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface ArticleMapper {
 
-    public ArticleResponse toResponse(Article article) {
-        if (article == null)
-            return null;
+    ArticleResponse toResponse(Article article);
 
-        return ArticleResponse.builder()
-                .id(article.getId())
-                .code(article.getCode())
-                .name(article.getName())
-                .createdAt(article.getCreatedAt())
-                .updatedAt(article.getUpdatedAt())
-                .build();
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    Article toEntity(ArticleRequest request);
 
-    public Article toEntity(ArticleRequest request) {
-        if (request == null) {
-            return null;
-        }
-        return Article.builder()
-                .code(request.getCode())
-                .name(request.getName())
-                .build();
-    }
-
-    public void updateEntity(Article article, ArticleRequest request) {
-        if (article != null && request != null) {
-            article.setCode(request.getCode());
-            article.setName(request.getName());
-        }
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    void updateEntity(@MappingTarget Article article, ArticleRequest request);
 }
