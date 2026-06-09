@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleResponse;
 import com.luispuchol.selfbill.selfbill_api.service.ArticleService;
@@ -10,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -62,23 +66,25 @@ class ArticleControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/articles - Debe retornar todos los artículos")
-    void getAllArticles_ShouldReturnListOfArticles() throws Exception {
+    @DisplayName("GET /api/articles - Debe retornar todos los artículos paginados")
+    void getAllArticles_ShouldReturnPageOfArticles() throws Exception {
         // Given
         List<ArticleResponse> articles = Arrays.asList(articleResponse1, articleResponse2);
-        when(articleService.getAllArticles()).thenReturn(articles);
+        Page<ArticleResponse> page = new PageImpl<>(articles);
+        when(articleService.getAllArticles(any(ArticleFilter.class), any(Pageable.class))).thenReturn(page);
 
         // When & Then
         mockMvc.perform(get("/api/articles")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].id", is(1)))
-                .andExpect(jsonPath("$[0].name", is("Laptop Dell XPS")))
-                .andExpect(jsonPath("$[1].id", is(2)))
-                .andExpect(jsonPath("$[1].name", is("Mouse Logitech")));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].id", is(1)))
+                .andExpect(jsonPath("$.content[0].name", is("Laptop Dell XPS")))
+                .andExpect(jsonPath("$.content[1].id", is(2)))
+                .andExpect(jsonPath("$.content[1].name", is("Mouse Logitech")))
+                .andExpect(jsonPath("$.totalElements", is(2)));
 
-        verify(articleService, times(1)).getAllArticles();
+        verify(articleService, times(1)).getAllArticles(any(ArticleFilter.class), any(Pageable.class));
     }
 
     @Test

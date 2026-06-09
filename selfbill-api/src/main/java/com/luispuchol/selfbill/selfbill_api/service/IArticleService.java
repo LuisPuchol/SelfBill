@@ -1,12 +1,14 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleResponse;
 
 public interface IArticleService {
-    List<ArticleResponse> getAllArticles();
+    Page<ArticleResponse> getAllArticles(ArticleFilter filter, Pageable pageable);
 
     ArticleResponse getArticleById(Integer id);
 

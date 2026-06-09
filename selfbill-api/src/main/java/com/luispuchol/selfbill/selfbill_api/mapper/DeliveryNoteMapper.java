@@ -27,6 +27,10 @@ public interface DeliveryNoteMapper {
     @Mapping(source = "deliveryNote.id", target = "deliveryNoteId")
     DeliveryNoteArticlesResponse toArticleLineResponse(DeliveryNoteArticles item);
 
+    @Mapping(source = "request.code", target = "code")
+    @Mapping(source = "request.date", target = "date")
+    @Mapping(source = "request.total", target = "total")
+    @Mapping(source = "client", target = "client")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "deliveryNoteArticles", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
@@ -34,12 +38,24 @@ public interface DeliveryNoteMapper {
     @Mapping(target = "deletedAt", ignore = true)
     DeliveryNote toEntity(DeliveryNoteRequest request, Client client);
 
+    @Mapping(source = "request.trazabilityCode1", target = "trazabilityCode1")
+    @Mapping(source = "request.trazabilityCode2", target = "trazabilityCode2")
+    @Mapping(source = "request.trazabilityCode3", target = "trazabilityCode3")
+    @Mapping(source = "request.quantity", target = "quantity")
+    @Mapping(source = "request.price", target = "price")
+    @Mapping(source = "request.total", target = "total")
+    @Mapping(source = "article", target = "article")
+    @Mapping(source = "deliveryNote", target = "deliveryNote")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     DeliveryNoteArticles lineToEntity(DeliveryNoteArticlesRequest request, Article article, DeliveryNote deliveryNote);
 
+    @Mapping(source = "request.code", target = "code")
+    @Mapping(source = "request.date", target = "date")
+    @Mapping(source = "request.total", target = "total")
+    @Mapping(source = "client", target = "client")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "deliveryNoteArticles", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

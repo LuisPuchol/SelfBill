@@ -1,12 +1,14 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 
+import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleResponse;
 import com.luispuchol.selfbill.selfbill_api.service.IArticleService;
@@ -17,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 
 @RestController
 @RequestMapping("/api/articles")
@@ -27,11 +30,13 @@ public class ArticleController {
 
     private final IArticleService articleService;
 
-    @Operation(summary = "Get all articles", description = "Returns list of all non-deleted articles")
+    @Operation(summary = "Get all articles", description = "Returns paginated and filtered list of non-deleted articles")
     @ApiResponse(responseCode = "200", description = "Successful operation")
-    @GetMapping()
-    public ResponseEntity<List<ArticleResponse>> getAllArticles() {
-        return ResponseEntity.ok(articleService.getAllArticles());
+    @GetMapping
+    public ResponseEntity<Page<ArticleResponse>> getAllArticles(
+            @ParameterObject @ModelAttribute ArticleFilter filter,
+            @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return ResponseEntity.ok(articleService.getAllArticles(filter, pageable));
     }
 
     @GetMapping("/{id}")

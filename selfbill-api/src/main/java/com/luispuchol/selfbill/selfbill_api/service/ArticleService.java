@@ -1,13 +1,16 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
-import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 
+import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleResponse;
+import com.luispuchol.selfbill.selfbill_api.specification.ArticleSpecification;
 import com.luispuchol.selfbill.selfbill_api.entity.Article;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
@@ -25,10 +28,9 @@ public class ArticleService implements IArticleService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<ArticleResponse> getAllArticles() {
-        return articleRepository.findAll().stream()
-                .map(articleMapper::toResponse)
-                .toList();
+    public Page<ArticleResponse> getAllArticles(ArticleFilter filter, Pageable pageable) {
+        return articleRepository.findAll(ArticleSpecification.withFilter(filter), pageable)
+                .map(articleMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
