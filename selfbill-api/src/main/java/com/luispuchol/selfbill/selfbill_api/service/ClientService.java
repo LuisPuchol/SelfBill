@@ -1,13 +1,16 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 
-import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.*;
+import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
+import com.luispuchol.selfbill.selfbill_api.specification.ClientSpecification;
 import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
@@ -25,10 +28,9 @@ public class ClientService implements IClientService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<ClientResponse> getAllClients() {
-        return clientRepository.findAll().stream()
-                .map(clientMapper::toResponse)
-                .collect(Collectors.toList());
+    public Page<ClientResponse> getAllClients(ClientFilter filter, Pageable pageable) {
+        return clientRepository.findAll(ClientSpecification.withFilter(filter), pageable)
+                .map(clientMapper::toResponse);
     }
 
     @Transactional(readOnly = true)

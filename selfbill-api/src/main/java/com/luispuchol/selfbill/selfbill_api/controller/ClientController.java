@@ -1,12 +1,17 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
-import java.util.List;
-
-import com.luispuchol.selfbill.selfbill_api.service.IClientService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+
+import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
+import com.luispuchol.selfbill.selfbill_api.service.IClientService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,9 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
-
-import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
+import org.springdoc.core.annotations.ParameterObject;
 
 @RestController
 @RequestMapping("/api/clients")
@@ -27,11 +30,13 @@ public class ClientController {
 
     private final IClientService clientService;
 
-    @Operation(summary = "Get all clients", description = "Returns list of all non-deleted clients")
+    @Operation(summary = "Get all clients", description = "Returns paginated and filtered list of non-deleted clients")
     @ApiResponse(responseCode = "200", description = "Successful operation")
-    @GetMapping()
-    public ResponseEntity<List<ClientResponse>> getAllClients() {
-        return ResponseEntity.ok(clientService.getAllClients());
+    @GetMapping
+    public ResponseEntity<Page<ClientResponse>> getAllClients(
+            @ParameterObject @ModelAttribute ClientFilter filter,
+            @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return ResponseEntity.ok(clientService.getAllClients(filter, pageable));
     }
 
     @GetMapping("/{id}")

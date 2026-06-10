@@ -1,12 +1,14 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
 
 public interface IClientService {
-    List<ClientResponse> getAllClients();
+    Page<ClientResponse> getAllClients(ClientFilter filter, Pageable pageable);
 
     ClientResponse getClientById(Integer id);
 
@@ -21,5 +23,4 @@ public interface IClientService {
     ClientResponse updateClient(Integer id, ClientRequest clientRequest);
 
     void deleteClient(Integer id);
-
 }

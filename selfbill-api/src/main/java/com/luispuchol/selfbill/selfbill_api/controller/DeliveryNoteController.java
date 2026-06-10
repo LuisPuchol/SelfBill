@@ -1,12 +1,14 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteResponse;
 import com.luispuchol.selfbill.selfbill_api.service.IDeliveryNoteService;
@@ -18,6 +20,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 
 @RestController
 @RequestMapping("/api/deliveryNotes")
@@ -28,11 +31,13 @@ public class DeliveryNoteController {
 
     private final IDeliveryNoteService deliveryNoteService;
 
-    @Operation(summary = "Get all delivery notes", description = "Returns list of all non-deleted delivery notes")
+    @Operation(summary = "Get all delivery notes", description = "Returns paginated and filtered list of non-deleted delivery notes")
     @ApiResponse(responseCode = "200", description = "Successful operation")
     @GetMapping
-    public ResponseEntity<List<DeliveryNoteResponse>> getAllDeliveryNotes() {
-        return ResponseEntity.ok(deliveryNoteService.getAllDeliveryNotes());
+    public ResponseEntity<Page<DeliveryNoteResponse>> getAllDeliveryNotes(
+            @ParameterObject @ModelAttribute DeliveryNoteFilter filter,
+            @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return ResponseEntity.ok(deliveryNoteService.getAllDeliveryNotes(filter, pageable));
     }
 
     @GetMapping("/{id}")

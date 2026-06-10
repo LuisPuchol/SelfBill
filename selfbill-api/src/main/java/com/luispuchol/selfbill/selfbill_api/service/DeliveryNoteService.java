@@ -1,12 +1,14 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
-import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteArticlesRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.Article;
@@ -18,6 +20,7 @@ import com.luispuchol.selfbill.selfbill_api.mapper.DeliveryNoteMapper;
 import com.luispuchol.selfbill.selfbill_api.repository.ArticleRepository;
 import com.luispuchol.selfbill.selfbill_api.repository.ClientRepository;
 import com.luispuchol.selfbill.selfbill_api.repository.DeliveryNoteRepository;
+import com.luispuchol.selfbill.selfbill_api.specification.DeliveryNoteSpecification;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,10 +35,9 @@ public class DeliveryNoteService implements IDeliveryNoteService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<DeliveryNoteResponse> getAllDeliveryNotes() {
-        return deliveryNoteRepository.findAll().stream()
-                .map(deliveryNoteMapper::toResponse)
-                .toList();
+    public Page<DeliveryNoteResponse> getAllDeliveryNotes(DeliveryNoteFilter filter, Pageable pageable) {
+        return deliveryNoteRepository.findAll(DeliveryNoteSpecification.withFilter(filter), pageable)
+                .map(deliveryNoteMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
