@@ -30,6 +30,8 @@ public class DeliveryNoteArticlesRequest {
     @Positive(message = "Quantity must be positive")
     private BigDecimal quantity;
 
+    @NotNull(message = "price cannot be null")
     private BigDecimal price;
+
     private BigDecimal total;
 }

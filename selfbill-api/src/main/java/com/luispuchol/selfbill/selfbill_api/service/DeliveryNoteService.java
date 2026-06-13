@@ -1,5 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -61,6 +62,8 @@ public class DeliveryNoteService implements IDeliveryNoteService {
         DeliveryNote note = deliveryNoteMapper.toEntity(request, client);
         addLines(request, note);
 
+        recalculateTotals(note);
+
         return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(note));
     }
 
@@ -84,6 +87,8 @@ public class DeliveryNoteService implements IDeliveryNoteService {
         existing.getDeliveryNoteArticles().clear();
         addLines(request, existing);
 
+        recalculateTotals(existing);
+
         return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(existing));
     }
 
@@ -96,11 +101,23 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     }
 
     private void addLines(DeliveryNoteRequest request, DeliveryNote note) {
-        if (request.getLines() == null) return;
+        if (request.getLines() == null)
+            return;
         for (DeliveryNoteArticlesRequest lineReq : request.getLines()) {
             Article article = articleRepository.findById(lineReq.getArticleId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, lineReq.getArticleId()));
             note.getDeliveryNoteArticles().add(deliveryNoteMapper.lineToEntity(lineReq, article, note));
         }
+    }
+
+    private void recalculateTotals(DeliveryNote note) {
+        BigDecimal total = note.getDeliveryNoteArticles().stream()
+                .map(line -> {
+                    BigDecimal totalLine = line.getQuantity().multiply(line.getPrice());
+                    line.setTotal(totalLine);
+                    return totalLine;
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        note.setTotal(total);
     }
 }
