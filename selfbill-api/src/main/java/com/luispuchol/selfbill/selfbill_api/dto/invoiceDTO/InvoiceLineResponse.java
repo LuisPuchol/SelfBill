@@ -1,0 +1,33 @@
+package com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class InvoiceLineResponse {
+
+    private Integer id;
+
+    private Integer articleId;
+    private String articleName;
+    private Integer articleCode;
+
+    private Integer trazabilityCode1;
+    private Integer trazabilityCode2;
+    private Integer trazabilityCode3;
+
+    private BigDecimal quantity;
+    private BigDecimal price;
+    private BigDecimal total;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+}
