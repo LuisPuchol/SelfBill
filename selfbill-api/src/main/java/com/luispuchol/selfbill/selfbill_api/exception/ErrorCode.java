@@ -16,6 +16,10 @@ public enum ErrorCode {
     DELIVERY_NOTE_NOT_FOUND("Delivery note not found: {0}", HttpStatus.NOT_FOUND),
     DELIVERY_NOTE_DUPLICATE_CODE("Already exists a delivery note with code: {0}", HttpStatus.CONFLICT),
 
+    // TaxConfig
+    TAX_CONFIG_NOT_FOUND("Tax configuration not found", HttpStatus.NOT_FOUND),
+    TAX_CONFIG_ALREADY_EXISTS("Tax configuration already exists", HttpStatus.CONFLICT),
+
     // Invoice
     INVOICE_NOT_FOUND("Invoice not found: {0}", HttpStatus.NOT_FOUND),
     INVOICE_DUPLICATE_CODE("Already exists an invoice with code: {0}", HttpStatus.CONFLICT),

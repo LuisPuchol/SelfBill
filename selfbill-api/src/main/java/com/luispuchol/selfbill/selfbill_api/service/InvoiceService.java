@@ -17,6 +17,7 @@ import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceSectionRespons
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
 import com.luispuchol.selfbill.selfbill_api.entity.InvoiceLine;
+import com.luispuchol.selfbill.selfbill_api.entity.TaxConfig;
 import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 import com.luispuchol.selfbill.selfbill_api.entity.Client;
@@ -38,6 +39,7 @@ public class InvoiceService implements IInvoiceService {
         private final DeliveryNoteRepository deliveryNoteRepository;
         private final ClientRepository clientRepository;
         private final InvoiceMapper invoiceMapper;
+        private final ITaxConfigService taxConfigService;
 
         @Transactional(readOnly = true)
         @Override
@@ -90,9 +92,9 @@ public class InvoiceService implements IInvoiceService {
 
                 Invoice invoice = invoiceMapper.toEntity(client, deliveryNotesFromInvoice);
 
-                // TODO obtain VAT & Surcharge from vatModule
-                BigDecimal vatPercentage = BigDecimal.valueOf(21);
-                BigDecimal surchargePercentage = BigDecimal.valueOf(5);
+                TaxConfig taxConfig = taxConfigService.getTaxConfigEntity();
+                BigDecimal vatPercentage = taxConfig.getVatPercentage();
+                BigDecimal surchargePercentage = taxConfig.getSurchargePercentage();
 
                 BigDecimal subtotal = deliveryNotesFromInvoice.stream()
                                 .map(dn -> dn.getTotal())
