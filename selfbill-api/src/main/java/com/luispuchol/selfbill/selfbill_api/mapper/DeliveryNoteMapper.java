@@ -19,6 +19,7 @@ public interface DeliveryNoteMapper {
 
     @Mapping(source = "client.id", target = "clientId")
     @Mapping(source = "client.name", target = "clientName")
+    @Mapping(source = "invoice.id", target = "invoiceId")
     @Mapping(source = "deliveryNoteArticles", target = "items")
     DeliveryNoteResponse toResponse(DeliveryNote deliveryNote);
 

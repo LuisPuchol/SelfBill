@@ -16,7 +16,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class InvoiceRequest {
 
-    // PER_DELIVERY_NOTE: exactly one ID; GROUPED: one or more IDs from the same client
+    private Integer clientId;
+
+    // PER_DELIVERY_NOTE: exactly one ID; GROUPED: one or more IDs from the same
+    // client
     @NotEmpty(message = "At least one delivery note ID is required")
     private List<@NotNull @Positive Integer> deliveryNoteIds;
 }

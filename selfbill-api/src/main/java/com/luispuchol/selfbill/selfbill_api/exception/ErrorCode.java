@@ -20,6 +20,7 @@ public enum ErrorCode {
     INVOICE_NOT_FOUND("Invoice not found: {0}", HttpStatus.NOT_FOUND),
     INVOICE_DUPLICATE_CODE("Already exists an invoice with code: {0}", HttpStatus.CONFLICT),
     INVOICE_DUPLICATE_DELIVERY_NOTE("Delivery note {0} already has an associated invoice", HttpStatus.CONFLICT),
+    INVOICE_MIXED_CLIENTS("All delivery notes must belong to the same client", HttpStatus.CONFLICT),
 
     // Generic
     VALIDATION_ERROR("Validation error", HttpStatus.BAD_REQUEST),

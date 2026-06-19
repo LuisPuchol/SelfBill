@@ -17,6 +17,9 @@ public class DeliveryNoteResponse {
 
     private Integer id;
     private Integer code;
+
+    private Integer invoiceId;
+
     private LocalDateTime date;
     private BigDecimal total;
 
