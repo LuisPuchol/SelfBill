@@ -3,7 +3,9 @@ package com.luispuchol.selfbill.selfbill_api.controller;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +14,7 @@ import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceResponse;
 import com.luispuchol.selfbill.selfbill_api.service.IInvoiceService;
+import com.luispuchol.selfbill.selfbill_api.service.IPdfService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -30,6 +33,7 @@ import org.springdoc.core.annotations.ParameterObject;
 public class InvoiceController {
 
     private final IInvoiceService invoiceService;
+    private final IPdfService pdfService;
 
     @Operation(summary = "Get all invoices", description = "Returns paginated and filtered list of non-deleted invoices")
     @ApiResponse(responseCode = "200", description = "Successful operation")
@@ -72,5 +76,17 @@ public class InvoiceController {
             @PathVariable @NotNull @Positive Integer id) {
         invoiceService.deleteInvoice(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Export invoice as PDF")
+    @ApiResponse(responseCode = "200", description = "PDF generated successfully")
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> exportInvoicePdf(
+            @PathVariable @NotNull @Positive Integer id) {
+        byte[] pdf = pdfService.generateInvoicePdf(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=factura-" + id + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }
