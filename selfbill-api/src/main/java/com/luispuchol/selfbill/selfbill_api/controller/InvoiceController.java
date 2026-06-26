@@ -89,7 +89,7 @@ public class InvoiceController {
     @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
     public ResponseEntity<byte[]> exportInvoicePdf(
             @PathVariable @NotNull @Positive Integer id) {
-        byte[] pdf = "PDF de prueba".getBytes();
+        byte[] pdf = pdfService.generateInvoicePdf(id);
         Object[] args = { id };
         String filename = messageSource.getMessage("invoice.pdf.filename", args, LocaleContextHolder.getLocale());
         return ResponseEntity.ok()

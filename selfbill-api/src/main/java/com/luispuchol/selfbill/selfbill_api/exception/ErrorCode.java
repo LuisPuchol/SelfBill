@@ -20,6 +20,11 @@ public enum ErrorCode {
     TAX_CONFIG_NOT_FOUND("Tax configuration not found", HttpStatus.NOT_FOUND),
     TAX_CONFIG_ALREADY_EXISTS("Tax configuration already exists", HttpStatus.CONFLICT),
 
+    // UserProfile
+    USER_PROFILE_NOT_FOUND("User profile not found", HttpStatus.NOT_FOUND),
+    USER_PROFILE_LOGO_NOT_FOUND("User profile logo not found", HttpStatus.NOT_FOUND),
+    USER_PROFILE_INVALID_LOGO_FORMAT("Logo must be a JPEG or PNG image", HttpStatus.BAD_REQUEST),
+
     // Invoice
     INVOICE_NOT_FOUND("Invoice not found: {0}", HttpStatus.NOT_FOUND),
     INVOICE_DUPLICATE_CODE("Already exists an invoice with code: {0}", HttpStatus.CONFLICT),
