@@ -39,7 +39,6 @@ public class UserProfile {
     @Column(length = 20)
     private String phone;
 
-    @Lob
     @Column(name = "logo_data")
     private byte[] logoData;
 
