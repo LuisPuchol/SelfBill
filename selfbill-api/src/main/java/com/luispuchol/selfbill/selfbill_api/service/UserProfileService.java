@@ -24,6 +24,7 @@ public class UserProfileService implements IUserProfileService {
 
     private final UserProfileRepository userProfileRepository;
     private final UserProfileMapper userProfileMapper;
+    private final CredentialEncryptionService credentialEncryptionService;
 
     @Transactional(readOnly = true)
     @Override
@@ -42,7 +43,37 @@ public class UserProfileService implements IUserProfileService {
         } else {
             profile = userProfileMapper.toEntity(request);
         }
+
+        applySmtpDefaults(profile, request);
+        applyMailPassword(profile, request);
+
         return userProfileMapper.toResponse(userProfileRepository.save(profile));
+    }
+
+    private void applySmtpDefaults(UserProfile profile, UserProfileRequest request) {
+        if (request.getSmtpHost() == null && profile.getEmail() != null) {
+            String defaultHost = SmtpProviderDefaults.defaultHost(profile.getEmail());
+            if (defaultHost != null) {
+                profile.setSmtpHost(defaultHost);
+            }
+        }
+        if (request.getSmtpPort() == null && profile.getEmail() != null) {
+            Integer defaultPort = SmtpProviderDefaults.defaultPort(profile.getEmail());
+            if (defaultPort != null) {
+                profile.setSmtpPort(defaultPort);
+            }
+        }
+    }
+
+    private void applyMailPassword(UserProfile profile, UserProfileRequest request) {
+        if (request.getMailPassword() == null) {
+            return;
+        }
+        if (request.getMailPassword().isBlank()) {
+            profile.setMailPasswordEncrypted(null);
+            return;
+        }
+        profile.setMailPasswordEncrypted(credentialEncryptionService.encrypt(request.getMailPassword()));
     }
 
     @Transactional

@@ -31,6 +31,11 @@ public enum ErrorCode {
     INVOICE_DUPLICATE_DELIVERY_NOTE("Delivery note {0} already has an associated invoice", HttpStatus.CONFLICT),
     INVOICE_MIXED_CLIENTS("All delivery notes must belong to the same client", HttpStatus.CONFLICT),
 
+    // Email
+    EMAIL_SEND_FAILED("Failed to send email to: {0}", HttpStatus.INTERNAL_SERVER_ERROR),
+    CLIENT_EMAIL_NOT_CONFIGURED("Client {0} has no email address configured", HttpStatus.BAD_REQUEST),
+    MAIL_NOT_CONFIGURED("Mail account is not fully configured. Please set your email, SMTP host/port and app password in your profile", HttpStatus.BAD_REQUEST),
+
     // Generic
     VALIDATION_ERROR("Validation error", HttpStatus.BAD_REQUEST),
     MALFORMED_REQUEST("Malformed request body", HttpStatus.BAD_REQUEST),

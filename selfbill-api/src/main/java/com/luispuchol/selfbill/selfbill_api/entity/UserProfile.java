@@ -39,6 +39,15 @@ public class UserProfile {
     @Column(length = 20)
     private String phone;
 
+    @Column(name = "smtp_host", length = 255)
+    private String smtpHost;
+
+    @Column(name = "smtp_port")
+    private Integer smtpPort;
+
+    @Column(name = "mail_password_encrypted", length = 500)
+    private String mailPasswordEncrypted;
+
     @Column(name = "logo_data")
     private byte[] logoData;
 

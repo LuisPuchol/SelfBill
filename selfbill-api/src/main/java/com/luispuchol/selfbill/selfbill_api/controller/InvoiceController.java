@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceResponse;
+import com.luispuchol.selfbill.selfbill_api.service.IEmailService;
 import com.luispuchol.selfbill.selfbill_api.service.IInvoiceService;
 import com.luispuchol.selfbill.selfbill_api.service.IPdfService;
 
@@ -38,6 +39,7 @@ public class InvoiceController {
 
     private final IInvoiceService invoiceService;
     private final IPdfService pdfService;
+    private final IEmailService emailService;
     private final MessageSource messageSource;
 
     @Operation(summary = "Get all invoices", description = "Returns paginated and filtered list of non-deleted invoices")
@@ -80,6 +82,16 @@ public class InvoiceController {
     public ResponseEntity<Void> deleteInvoice(
             @PathVariable @NotNull @Positive Integer id) {
         invoiceService.deleteInvoice(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Send invoice by email")
+    @ApiResponse(responseCode = "204", description = "Email sent successfully")
+    @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
+    @PostMapping("/{id}/email")
+    public ResponseEntity<Void> sendInvoiceEmail(
+            @PathVariable @NotNull @Positive Integer id) {
+        emailService.sendInvoiceEmail(id);
         return ResponseEntity.noContent().build();
     }
 

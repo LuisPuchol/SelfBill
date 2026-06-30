@@ -1,5 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.dto.userProfileDTO;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -34,4 +36,15 @@ public class UserProfileRequest {
 
     @Size(max = 20, message = "Phone must not exceed 20 characters")
     private String phone;
+
+    @Size(max = 255, message = "SMTP host must not exceed 255 characters")
+    private String smtpHost;
+
+    @Min(value = 1, message = "SMTP port must be between 1 and 65535")
+    @Max(value = 65535, message = "SMTP port must be between 1 and 65535")
+    private Integer smtpPort;
+
+    // Null keeps the stored password untouched; blank explicitly clears it
+    @Size(max = 255, message = "Mail password must not exceed 255 characters")
+    private String mailPassword;
 }
