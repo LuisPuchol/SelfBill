@@ -17,7 +17,6 @@ import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceResponse;
 import com.luispuchol.selfbill.selfbill_api.service.IEmailService;
 import com.luispuchol.selfbill.selfbill_api.service.IInvoiceService;
-import com.luispuchol.selfbill.selfbill_api.service.IPdfService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,7 +37,6 @@ import org.springdoc.core.annotations.ParameterObject;
 public class InvoiceController {
 
     private final IInvoiceService invoiceService;
-    private final IPdfService pdfService;
     private final IEmailService emailService;
     private final MessageSource messageSource;
 
@@ -101,7 +99,7 @@ public class InvoiceController {
     @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
     public ResponseEntity<byte[]> exportInvoicePdf(
             @PathVariable @NotNull @Positive Integer id) {
-        byte[] pdf = pdfService.generateInvoicePdf(id);
+        byte[] pdf = invoiceService.generateInvoicePdf(id);
         Object[] args = { id };
         String filename = messageSource.getMessage("invoice.pdf.filename", args, LocaleContextHolder.getLocale());
         return ResponseEntity.ok()

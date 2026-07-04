@@ -17,4 +17,7 @@ public interface IDeliveryNoteService {
     DeliveryNoteResponse updateDeliveryNote(Integer id, DeliveryNoteRequest deliveryNoteRequest);
 
     void deleteDeliveryNote(Integer id);
+
+    byte[] generateDeliveryNotePdf(Integer id);
+
 }

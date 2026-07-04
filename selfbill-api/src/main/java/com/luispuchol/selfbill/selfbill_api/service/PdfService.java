@@ -9,30 +9,34 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
-import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
-import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
-import com.luispuchol.selfbill.selfbill_api.repository.InvoiceRepository;
-
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceMode;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class PdfService implements IPdfService {
 
-    private final InvoiceRepository invoiceRepository;
+    // TODO: replace with real PDF generation (e.g. OpenPDF) using invoice data.
+    // Mock below only unblocks testing of the email-attachment flow.
 
     @Override
-    public byte[] generateInvoicePdf(Integer invoiceId) {
-        Invoice invoice = invoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, invoiceId));
-
-        // TODO: replace with real PDF generation (e.g. OpenPDF) using invoice data.
-        // Mock below only unblocks testing of the email-attachment flow.
-        return buildMockPdf(invoice);
+    public byte[] generateInvoicePdf(Invoice invoice) {
+        return buildMockPdf("invoice", invoice.getCode());
     }
 
-    private byte[] buildMockPdf(Invoice invoice) {
+    @Override
+    public byte[] generateDeliveryNotePdf(DeliveryNote deliveryNote) {
+        return buildMockPdf("delivery note", deliveryNote.getCode());
+    }
+
+    @Override
+    public byte[] generateDeliveryNoteWithTaxesPdf(DeliveryNote deliveryNote) {
+        return buildMockPdf("Delivery Note with taxes", deliveryNote.getCode());
+    }
+
+    private byte[] buildMockPdf(String label, Integer code) {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             List<Integer> offsets = new ArrayList<>();
@@ -53,7 +57,7 @@ public class PdfService implements IPdfService {
             offsets.add(out.size());
             writeAscii(out, "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n");
 
-            String text = "BT /F1 18 Tf 50 780 Td (Mock invoice #" + invoice.getCode() + ") Tj ET";
+            String text = "BT /F1 18 Tf 50 780 Td (Mock " + label + " #" + code + ") Tj ET";
             offsets.add(out.size());
             writeAscii(out, "5 0 obj\n<< /Length " + text.length() + " >>\nstream\n" + text + "\nendstream\nendobj\n");
 

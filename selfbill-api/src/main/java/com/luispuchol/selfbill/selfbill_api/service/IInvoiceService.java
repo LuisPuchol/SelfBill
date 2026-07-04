@@ -20,4 +20,6 @@ public interface IInvoiceService {
     InvoiceResponse updateInvoice(Integer id, InvoiceRequest request);
 
     void deleteInvoice(Integer id);
+
+    byte[] generateInvoicePdf(Integer id);
 }

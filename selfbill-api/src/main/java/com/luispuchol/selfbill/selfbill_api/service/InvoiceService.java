@@ -42,6 +42,7 @@ public class InvoiceService implements IInvoiceService {
         private final ClientRepository clientRepository;
         private final InvoiceMapper invoiceMapper;
         private final ITaxConfigService taxConfigService;
+        private final PdfService pdfService;
 
         @Transactional(readOnly = true)
         @Override
@@ -192,4 +193,13 @@ public class InvoiceService implements IInvoiceService {
                                                 .build())
                                 .toList();
         }
+
+        @Transactional(readOnly = true)
+        @Override
+        public byte[] generateInvoicePdf(Integer id) {
+                Invoice invoice = invoiceRepository.findById(id)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
+                return pdfService.generateInvoicePdf(invoice);
+        }
+
 }

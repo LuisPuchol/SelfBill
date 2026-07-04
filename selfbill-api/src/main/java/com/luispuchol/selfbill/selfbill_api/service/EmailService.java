@@ -56,7 +56,7 @@ public class EmailService implements IEmailService {
                 new Object[] { invoice.getClient().getName(), invoice.getCode() }, locale);
         String pdfFilename = messageSource.getMessage("invoice.pdf.filename", codeArg, locale);
 
-        byte[] pdfBytes = pdfService.generateInvoicePdf(invoiceId);
+        byte[] pdfBytes = pdfService.generateInvoicePdf(invoice);
 
         sendEmail(senderProfile, clientEmail, subject, body, pdfBytes, pdfFilename);
     }

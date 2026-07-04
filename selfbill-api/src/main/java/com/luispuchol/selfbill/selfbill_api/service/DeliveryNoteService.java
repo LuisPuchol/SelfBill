@@ -15,6 +15,7 @@ import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteResp
 import com.luispuchol.selfbill.selfbill_api.entity.Article;
 import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceMode;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.DeliveryNoteMapper;
@@ -33,6 +34,7 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     private final ClientRepository clientRepository;
     private final ArticleRepository articleRepository;
     private final DeliveryNoteMapper deliveryNoteMapper;
+    private final PdfService pdfService;
 
     @Transactional(readOnly = true)
     @Override
@@ -120,4 +122,17 @@ public class DeliveryNoteService implements IDeliveryNoteService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         note.setTotal(total);
     }
+
+    @Transactional(readOnly = true)
+    @Override
+    public byte[] generateDeliveryNotePdf(Integer id) {
+        DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
+
+        if (deliveryNote.getClient().getInvoiceMode() == InvoiceMode.PER_DELIVERY_NOTE) {
+            return pdfService.generateDeliveryNoteWithTaxesPdf(deliveryNote);
+        }
+        return pdfService.generateDeliveryNotePdf(deliveryNote);
+    }
+
 }
