@@ -1,5 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -31,11 +32,19 @@ public class UserProfileController {
         return ResponseEntity.ok(userProfileService.getUserProfile());
     }
 
-    @Operation(summary = "Create or update user profile")
-    @PutMapping
-    public ResponseEntity<UserProfileResponse> saveUserProfile(
+    @Operation(summary = "Create user profile")
+    @PostMapping
+    public ResponseEntity<UserProfileResponse> createUserProfile(
             @RequestBody @Valid UserProfileRequest request) {
-        return ResponseEntity.ok(userProfileService.saveUserProfile(request));
+        UserProfileResponse created = userProfileService.createUserProfile(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @Operation(summary = "Update user profile")
+    @PutMapping
+    public ResponseEntity<UserProfileResponse> updateUserProfile(
+            @RequestBody @Valid UserProfileRequest request) {
+        return ResponseEntity.ok(userProfileService.updateUserProfile(request));
     }
 
     @Operation(summary = "Upload profile logo (JPEG or PNG)")

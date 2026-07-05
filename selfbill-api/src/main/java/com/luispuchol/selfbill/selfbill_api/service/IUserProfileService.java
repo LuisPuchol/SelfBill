@@ -7,7 +7,10 @@ import com.luispuchol.selfbill.selfbill_api.dto.userProfileDTO.UserProfileRespon
 
 public interface IUserProfileService {
     UserProfileResponse getUserProfile();
-    UserProfileResponse saveUserProfile(UserProfileRequest request);
+    UserProfileResponse createUserProfile(UserProfileRequest request);
+    UserProfileResponse updateUserProfile(UserProfileRequest request);
     void uploadLogo(MultipartFile file);
     UserProfileLogoResponse getLogo();
+
+    UserProfileResponse getConfiguredSenderProfile();
 }

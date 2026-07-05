@@ -2,7 +2,6 @@ package com.luispuchol.selfbill.selfbill_api.service;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,25 +28,44 @@ public class UserProfileService implements IUserProfileService {
     @Transactional(readOnly = true)
     @Override
     public UserProfileResponse getUserProfile() {
-        return userProfileMapper.toResponse(findProfileOrThrow());
+        return toResponseWithPassword(findProfileOrThrow());
     }
 
     @Transactional
     @Override
-    public UserProfileResponse saveUserProfile(UserProfileRequest request) {
-        Optional<UserProfile> existing = userProfileRepository.findFirstBy();
-        UserProfile profile;
-        if (existing.isPresent()) {
-            profile = existing.get();
-            userProfileMapper.updateEntity(profile, request);
-        } else {
-            profile = userProfileMapper.toEntity(request);
+    public UserProfileResponse createUserProfile(UserProfileRequest request) {
+        if (userProfileRepository.findFirstBy().isPresent()) {
+            throw new BusinessException(ErrorCode.USER_PROFILE_ALREADY_EXISTS);
+        }
+        if (request.getMailPassword() == null || request.getMailPassword().isBlank()) {
+            throw new BusinessException(ErrorCode.USER_PROFILE_MAIL_PASSWORD_REQUIRED);
         }
 
+        UserProfile profile = userProfileMapper.toEntity(request);
+        applySmtpDefaults(profile, request);
+        profile.setMailPasswordEncrypted(credentialEncryptionService.encrypt(request.getMailPassword()));
+
+        return toResponseWithPassword(userProfileRepository.save(profile));
+    }
+
+    @Transactional
+    @Override
+    public UserProfileResponse updateUserProfile(UserProfileRequest request) {
+        UserProfile profile = findProfileOrThrow();
+
+        userProfileMapper.updateEntity(profile, request);
         applySmtpDefaults(profile, request);
         applyMailPassword(profile, request);
 
-        return userProfileMapper.toResponse(userProfileRepository.save(profile));
+        return toResponseWithPassword(userProfileRepository.save(profile));
+    }
+
+    private UserProfileResponse toResponseWithPassword(UserProfile profile) {
+        UserProfileResponse response = userProfileMapper.toResponse(profile);
+        if (profile.getMailPasswordEncrypted() != null) {
+            response.setMailPassword(credentialEncryptionService.decrypt(profile.getMailPasswordEncrypted()));
+        }
+        return response;
     }
 
     private void applySmtpDefaults(UserProfile profile, UserProfileRequest request) {
@@ -66,14 +84,9 @@ public class UserProfileService implements IUserProfileService {
     }
 
     private void applyMailPassword(UserProfile profile, UserProfileRequest request) {
-        if (request.getMailPassword() == null) {
-            return;
-        }
-        if (request.getMailPassword().isBlank()) {
-            profile.setMailPasswordEncrypted(null);
-            return;
-        }
-        profile.setMailPasswordEncrypted(credentialEncryptionService.encrypt(request.getMailPassword()));
+        String password = request.getMailPassword();
+        profile.setMailPasswordEncrypted(
+                password == null || password.isBlank() ? null : credentialEncryptionService.encrypt(password));
     }
 
     @Transactional
@@ -109,5 +122,22 @@ public class UserProfileService implements IUserProfileService {
     private UserProfile findProfileOrThrow() {
         return userProfileRepository.findFirstBy()
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_PROFILE_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public UserProfileResponse getConfiguredSenderProfile() {
+        UserProfile profile = userProfileRepository.findFirstBy()
+                .orElseThrow(() -> new BusinessException(ErrorCode.MAIL_NOT_CONFIGURED));
+        if (!isMailConfigured(profile)) {
+            throw new BusinessException(ErrorCode.MAIL_NOT_CONFIGURED);
+        }
+        return toResponseWithPassword(profile);
+    }
+
+    private boolean isMailConfigured(UserProfile profile) {
+        return profile.getSmtpHost() != null && !profile.getSmtpHost().isBlank()
+                && profile.getSmtpPort() != null
+                && profile.getMailPasswordEncrypted() != null;
     }
 }

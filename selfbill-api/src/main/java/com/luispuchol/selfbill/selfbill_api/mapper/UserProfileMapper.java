@@ -12,7 +12,7 @@ import com.luispuchol.selfbill.selfbill_api.entity.UserProfile;
 public interface UserProfileMapper {
 
     @Mapping(target = "hasLogo", expression = "java(userProfile.getLogoData() != null)")
-    @Mapping(target = "hasMailPassword", expression = "java(userProfile.getMailPasswordEncrypted() != null && !userProfile.getMailPasswordEncrypted().isBlank())")
+    @Mapping(target = "mailPassword", ignore = true)
     UserProfileResponse toResponse(UserProfile userProfile);
 
     @Mapping(target = "id", ignore = true)

@@ -4,9 +4,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,6 +19,7 @@ import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceResponse;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceSectionResponse;
+import com.luispuchol.selfbill.selfbill_api.dto.userProfileDTO.UserProfileResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
 import com.luispuchol.selfbill.selfbill_api.entity.InvoiceLine;
@@ -43,6 +47,9 @@ public class InvoiceService implements IInvoiceService {
         private final InvoiceMapper invoiceMapper;
         private final ITaxConfigService taxConfigService;
         private final PdfService pdfService;
+        private final IEmailService emailService;
+        private final IUserProfileService userProfileService;
+        private final MessageSource messageSource;
 
         @Transactional(readOnly = true)
         @Override
@@ -200,6 +207,33 @@ public class InvoiceService implements IInvoiceService {
                 Invoice invoice = invoiceRepository.findById(id)
                                 .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
                 return pdfService.generateInvoicePdf(invoice);
+        }
+
+        @Transactional(readOnly = true)
+        @Override
+        public void sendInvoiceEmail(Integer id) {
+                Invoice invoice = invoiceRepository.findById(id)
+                                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
+
+                String clientEmail = invoice.getClient().getEmail();
+                if (clientEmail == null || clientEmail.isBlank()) {
+                        throw new BusinessException(ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED, invoice.getClient().getId());
+                }
+
+                UserProfileResponse senderProfile = userProfileService.getConfiguredSenderProfile();
+                MailSender sender = new MailSender(senderProfile.getEmail(), senderProfile.getSmtpHost(),
+                                senderProfile.getSmtpPort(), senderProfile.getMailPassword());
+
+                Locale locale = LocaleContextHolder.getLocale();
+                Object[] codeArg = { invoice.getCode() };
+                String subject = messageSource.getMessage("invoice.email.subject", codeArg, locale);
+                String body = messageSource.getMessage("invoice.email.body",
+                                new Object[] { invoice.getClient().getName(), invoice.getCode() }, locale);
+                String pdfFilename = messageSource.getMessage("invoice.pdf.filename", codeArg, locale);
+
+                byte[] pdfBytes = pdfService.generateInvoicePdf(invoice);
+
+                emailService.sendEmail(sender, clientEmail, subject, body, pdfBytes, pdfFilename);
         }
 
 }

@@ -21,7 +21,7 @@ public class UserProfileResponse {
     private String phone;
     private String smtpHost;
     private Integer smtpPort;
-    private boolean hasMailPassword;
+    private String mailPassword;
     private boolean hasLogo;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

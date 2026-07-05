@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceResponse;
-import com.luispuchol.selfbill.selfbill_api.service.IEmailService;
 import com.luispuchol.selfbill.selfbill_api.service.IInvoiceService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,7 +36,6 @@ import org.springdoc.core.annotations.ParameterObject;
 public class InvoiceController {
 
     private final IInvoiceService invoiceService;
-    private final IEmailService emailService;
     private final MessageSource messageSource;
 
     @Operation(summary = "Get all invoices", description = "Returns paginated and filtered list of non-deleted invoices")
@@ -89,7 +87,7 @@ public class InvoiceController {
     @PostMapping("/{id}/email")
     public ResponseEntity<Void> sendInvoiceEmail(
             @PathVariable @NotNull @Positive Integer id) {
-        emailService.sendInvoiceEmail(id);
+        invoiceService.sendInvoiceEmail(id);
         return ResponseEntity.noContent().build();
     }
 

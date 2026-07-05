@@ -75,6 +75,16 @@ public class DeliveryNoteController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Send delivery note by email")
+    @ApiResponse(responseCode = "204", description = "Email sent successfully")
+    @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
+    @PostMapping("/{id}/email")
+    public ResponseEntity<Void> sendDeliveryNoteEmail(
+            @PathVariable @NotNull @Positive Integer id) {
+        deliveryNoteService.sendDeliveryNoteEmail(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Export Delivery Note as PDF")
     @ApiResponse(responseCode = "200", description = "PDF generated successfully")
     @GetMapping("/{id}/pdf")

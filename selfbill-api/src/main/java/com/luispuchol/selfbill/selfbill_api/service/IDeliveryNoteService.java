@@ -20,4 +20,6 @@ public interface IDeliveryNoteService {
 
     byte[] generateDeliveryNotePdf(Integer id);
 
+    void sendDeliveryNoteEmail(Integer id);
+
 }

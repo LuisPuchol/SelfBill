@@ -23,13 +23,14 @@ public class UserProfileRequest {
     @NotBlank(message = "Fiscal name cannot be blank")
     @Size(max = 255, message = "Fiscal name must not exceed 255 characters")
     private String fiscalName;
-
+    @NotBlank(message = "nif cannot be blank")
     @Size(max = 20, message = "NIF must not exceed 20 characters")
     private String nif;
-
+    @NotBlank(message = "address cannot be blank")
     @Size(max = 500, message = "Address must not exceed 500 characters")
     private String address;
 
+    @NotBlank(message = "Email cannot be blank")
     @Size(max = 50, message = "Email must not exceed 50 characters")
     @Pattern(regexp = "^$|^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,6}$", message = "Email format is invalid")
     private String email;

@@ -22,4 +22,6 @@ public interface IInvoiceService {
     void deleteInvoice(Integer id);
 
     byte[] generateInvoicePdf(Integer id);
+
+    void sendInvoiceEmail(Integer id);
 }

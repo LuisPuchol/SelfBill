@@ -1,8 +1,11 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
 import java.math.BigDecimal;
+import java.util.Locale;
 import java.util.Optional;
 
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -12,6 +15,7 @@ import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteArti
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteResponse;
+import com.luispuchol.selfbill.selfbill_api.dto.userProfileDTO.UserProfileResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.Article;
 import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
@@ -35,6 +39,9 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     private final ArticleRepository articleRepository;
     private final DeliveryNoteMapper deliveryNoteMapper;
     private final PdfService pdfService;
+    private final IEmailService emailService;
+    private final IUserProfileService userProfileService;
+    private final MessageSource messageSource;
 
     @Transactional(readOnly = true)
     @Override
@@ -128,11 +135,41 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     public byte[] generateDeliveryNotePdf(Integer id) {
         DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
+        return generatePdf(deliveryNote);
+    }
 
+    private byte[] generatePdf(DeliveryNote deliveryNote) {
         if (deliveryNote.getClient().getInvoiceMode() == InvoiceMode.PER_DELIVERY_NOTE) {
             return pdfService.generateDeliveryNoteWithTaxesPdf(deliveryNote);
         }
         return pdfService.generateDeliveryNotePdf(deliveryNote);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public void sendDeliveryNoteEmail(Integer id) {
+        DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
+
+        String clientEmail = deliveryNote.getClient().getEmail();
+        if (clientEmail == null || clientEmail.isBlank()) {
+            throw new BusinessException(ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED, deliveryNote.getClient().getId());
+        }
+
+        UserProfileResponse senderProfile = userProfileService.getConfiguredSenderProfile();
+        MailSender sender = new MailSender(senderProfile.getEmail(), senderProfile.getSmtpHost(),
+                senderProfile.getSmtpPort(), senderProfile.getMailPassword());
+
+        Locale locale = LocaleContextHolder.getLocale();
+        Object[] codeArg = { deliveryNote.getCode() };
+        String subject = messageSource.getMessage("deliveryNote.email.subject", codeArg, locale);
+        String body = messageSource.getMessage("deliveryNote.email.body",
+                new Object[] { deliveryNote.getClient().getName(), deliveryNote.getCode() }, locale);
+        String pdfFilename = messageSource.getMessage("deliveryNote.pdf.filename", codeArg, locale);
+
+        byte[] pdfBytes = generatePdf(deliveryNote);
+
+        emailService.sendEmail(sender, clientEmail, subject, body, pdfBytes, pdfFilename);
     }
 
 }

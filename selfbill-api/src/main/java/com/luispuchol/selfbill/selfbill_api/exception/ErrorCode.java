@@ -22,6 +22,8 @@ public enum ErrorCode {
 
     // UserProfile
     USER_PROFILE_NOT_FOUND("User profile not found", HttpStatus.NOT_FOUND),
+    USER_PROFILE_ALREADY_EXISTS("A user profile already exists", HttpStatus.CONFLICT),
+    USER_PROFILE_MAIL_PASSWORD_REQUIRED("Mail password is required to create a user profile", HttpStatus.BAD_REQUEST),
     USER_PROFILE_LOGO_NOT_FOUND("User profile logo not found", HttpStatus.NOT_FOUND),
     USER_PROFILE_INVALID_LOGO_FORMAT("Logo must be a JPEG or PNG image", HttpStatus.BAD_REQUEST),
 
