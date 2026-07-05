@@ -91,7 +91,7 @@ public class DeliveryNoteController {
     @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
     public ResponseEntity<byte[]> exportDeliveryNotePdf(
             @PathVariable @NotNull @Positive Integer id) {
-        byte[] pdf = deliveryNoteService.generateDeliveryNotePdf(id);
+        byte[] pdf = deliveryNoteService.exportDeliveryNotePdf(id);
         Object[] args = { id };
         String filename = messageSource.getMessage("deliveryNote.pdf.filename", args, LocaleContextHolder.getLocale());
         return ResponseEntity.ok()

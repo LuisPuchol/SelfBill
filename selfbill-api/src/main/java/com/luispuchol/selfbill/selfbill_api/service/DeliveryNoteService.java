@@ -132,7 +132,7 @@ public class DeliveryNoteService implements IDeliveryNoteService {
 
     @Transactional(readOnly = true)
     @Override
-    public byte[] generateDeliveryNotePdf(Integer id) {
+    public byte[] exportDeliveryNotePdf(Integer id) {
         DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
         return generatePdf(deliveryNote);

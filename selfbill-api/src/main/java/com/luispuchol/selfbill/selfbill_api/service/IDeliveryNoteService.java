@@ -18,8 +18,7 @@ public interface IDeliveryNoteService {
 
     void deleteDeliveryNote(Integer id);
 
-    byte[] generateDeliveryNotePdf(Integer id);
+    byte[] exportDeliveryNotePdf(Integer id);
 
     void sendDeliveryNoteEmail(Integer id);
-
 }
