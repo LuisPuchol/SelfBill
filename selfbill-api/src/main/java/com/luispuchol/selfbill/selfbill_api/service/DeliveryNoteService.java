@@ -82,6 +82,10 @@ public class DeliveryNoteService implements IDeliveryNoteService {
         DeliveryNote existing = deliveryNoteRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
 
+        if (existing.getInvoice() != null) {
+            throw new BusinessException(ErrorCode.DELIVERY_NOTE_ALREADY_INVOICED, existing.getCode());
+        }
+
         if (!existing.getCode().equals(request.getCode())) {
             Optional<DeliveryNote> noteWithSameCode = deliveryNoteRepository.findByCode(request.getCode());
             if (noteWithSameCode.isPresent()) {
@@ -106,6 +110,11 @@ public class DeliveryNoteService implements IDeliveryNoteService {
     public void deleteDeliveryNote(Integer id) {
         DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
+
+        if (deliveryNote.getInvoice() != null) {
+            throw new BusinessException(ErrorCode.DELIVERY_NOTE_ALREADY_INVOICED, deliveryNote.getCode());
+        }
+
         deliveryNoteRepository.delete(deliveryNote);
     }
 

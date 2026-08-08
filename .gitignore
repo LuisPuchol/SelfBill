@@ -19,6 +19,9 @@ back/build/
 .DS_Store
 Thumbs.db
 
+# CodeGraph local index (machine-specific, not shared)
+.codegraph/
+
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar

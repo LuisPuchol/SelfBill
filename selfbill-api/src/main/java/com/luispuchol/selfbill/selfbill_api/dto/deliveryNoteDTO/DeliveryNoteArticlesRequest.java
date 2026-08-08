@@ -15,8 +15,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DeliveryNoteArticlesRequest {
 
-    private Integer id;
-
     @NotNull(message = "Article ID cannot be null")
     @Positive(message = "Article ID must be positive")
     private Integer articleId;

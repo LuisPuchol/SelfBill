@@ -82,7 +82,7 @@ class ArticleControllerTest {
                 .andExpect(jsonPath("$.content[0].name", is("Laptop Dell XPS")))
                 .andExpect(jsonPath("$.content[1].id", is(2)))
                 .andExpect(jsonPath("$.content[1].name", is("Mouse Logitech")))
-                .andExpect(jsonPath("$.totalElements", is(2)));
+                .andExpect(jsonPath("$.page.totalElements", is(2)));
 
         verify(articleService, times(1)).getAllArticles(any(ArticleFilter.class), any(Pageable.class));
     }

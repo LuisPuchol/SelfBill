@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
 import com.luispuchol.selfbill.selfbill_api.service.ClientService;
@@ -10,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -95,23 +99,25 @@ class ClientControllerTest {
         }
 
         @Test
-        @DisplayName("GET /api/clients - Debe retornar todos los clientes")
-        void getAllClients_ShouldReturnListOfClients() throws Exception {
+        @DisplayName("GET /api/clients - Debe retornar todos los clientes paginados")
+        void getAllClients_ShouldReturnPageOfClients() throws Exception {
                 // Given
                 List<ClientResponse> clients = Arrays.asList(clientResponse1, clientResponse2);
-                when(clientService.getAllClients()).thenReturn(clients);
+                Page<ClientResponse> page = new PageImpl<>(clients);
+                when(clientService.getAllClients(any(ClientFilter.class), any(Pageable.class))).thenReturn(page);
 
                 // When & Then
                 mockMvc.perform(get("/api/clients")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$", hasSize(2)))
-                                .andExpect(jsonPath("$[0].id", is(1)))
-                                .andExpect(jsonPath("$[0].businessName", is("Acme Corporation SA")))
-                                .andExpect(jsonPath("$[1].id", is(2)))
-                                .andExpect(jsonPath("$[1].businessName", is("Tech Solutions SL")));
+                                .andExpect(jsonPath("$.content", hasSize(2)))
+                                .andExpect(jsonPath("$.content[0].id", is(1)))
+                                .andExpect(jsonPath("$.content[0].businessName", is("Acme Corporation SA")))
+                                .andExpect(jsonPath("$.content[1].id", is(2)))
+                                .andExpect(jsonPath("$.content[1].businessName", is("Tech Solutions SL")))
+                                .andExpect(jsonPath("$.page.totalElements", is(2)));
 
-                verify(clientService, times(1)).getAllClients();
+                verify(clientService, times(1)).getAllClients(any(ClientFilter.class), any(Pageable.class));
         }
 
         @Test

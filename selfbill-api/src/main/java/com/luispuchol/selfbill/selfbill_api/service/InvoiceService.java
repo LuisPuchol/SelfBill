@@ -111,6 +111,14 @@ public class InvoiceService implements IInvoiceService {
         }
 
         private Invoice buildInvoice(Client client, List<DeliveryNote> deliveryNotes) {
+                Invoice invoice = invoiceMapper.toEntity(client, deliveryNotes);
+                applyFinancials(invoice, client, deliveryNotes);
+                invoice.setCode(invoiceRepository.findMaxCode().orElse(0) + 1);
+                invoice.setDate(LocalDateTime.now());
+                return invoice;
+        }
+
+        private void applyFinancials(Invoice invoice, Client client, List<DeliveryNote> deliveryNotes) {
                 TaxConfig taxConfig = taxConfigService.getTaxConfigEntity();
                 BigDecimal vatPercentage = taxConfig.getVatPercentage();
                 BigDecimal surchargePercentage = taxConfig.getSurchargePercentage();
@@ -129,20 +137,21 @@ public class InvoiceService implements IInvoiceService {
                                                 RoundingMode.HALF_UP)
                                 : BigDecimal.ZERO;
 
-                Invoice invoice = invoiceMapper.toEntity(client, deliveryNotes);
                 invoice.setSubtotal(subtotal);
                 invoice.setVatPercentage(vatPercentage);
                 invoice.setVatAmount(vatAmount);
                 invoice.setSurchargePercentage(surchargePercentage);
                 invoice.setSurchargeAmount(surchargeAmount);
                 invoice.setTotal(subtotal.add(vatAmount).add(surchargeAmount));
-                invoice.setCode(invoiceRepository.findMaxCode().orElse(0) + 1);
-                invoice.setDate(LocalDateTime.now());
-                return invoice;
         }
 
         private void buildAndLinkLines(Invoice invoice, List<DeliveryNote> deliveryNotes) {
-                List<InvoiceLine> lines = deliveryNotes.stream()
+                invoice.setLines(buildLines(invoice, deliveryNotes));
+                deliveryNotes.forEach(dn -> dn.setInvoice(invoice));
+        }
+
+        private List<InvoiceLine> buildLines(Invoice invoice, List<DeliveryNote> deliveryNotes) {
+                return deliveryNotes.stream()
                                 .flatMap(dn -> dn.getDeliveryNoteArticles().stream()
                                                 .map(dna -> InvoiceLine.builder()
                                                                 .invoice(invoice)
@@ -160,13 +169,48 @@ public class InvoiceService implements IInvoiceService {
                                                                 .total(dna.getTotal())
                                                                 .build()))
                                 .toList();
-                invoice.setLines(lines);
-                deliveryNotes.forEach(dn -> dn.setInvoice(invoice));
         }
 
         @Transactional
         @Override
         public InvoiceResponse updateInvoice(Integer id, InvoiceRequest request) {
+                /**
+                 * 
+                 * TODO: Solución que tengo que valorar para saber que hacer
+                 * 
+                 * Invoice existing = invoiceRepository.findById(id)
+                 * .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
+                 * 
+                 * List<Integer> deliveryNoteIds = request.getDeliveryNoteIds();
+                 * Integer clientId = request.getClientId();
+                 * 
+                 * List<DeliveryNote> deliveryNotes =
+                 * deliveryNoteRepository.findAllById(deliveryNoteIds);
+                 * Client client = clientRepository.findById(clientId)
+                 * .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND,
+                 * clientId));
+                 * 
+                 * validateRequest(clientId, deliveryNoteIds, deliveryNotes, existing.getId());
+                 * 
+                 * // Detach delivery notes that were part of this invoice but were removed from
+                 * // the request
+                 * Set<Integer> newDeliveryNoteIds =
+                 * deliveryNotes.stream().map(DeliveryNote::getId)
+                 * .collect(Collectors.toSet());
+                 * List.copyOf(existing.getDeliveryNotes()).stream()
+                 * .filter(dn -> !newDeliveryNoteIds.contains(dn.getId()))
+                 * .forEach(dn -> dn.setInvoice(null));
+                 * 
+                 * existing.setClient(client);
+                 * applyFinancials(existing, client, deliveryNotes);
+                 * 
+                 * existing.getLines().clear();
+                 * existing.getLines().addAll(buildLines(existing, deliveryNotes));
+                 * deliveryNotes.forEach(dn -> dn.setInvoice(existing));
+                 * 
+                 * return toResponseWithSections(invoiceRepository.save(existing));
+                 */
+
                 return null;
         }
 
@@ -175,6 +219,8 @@ public class InvoiceService implements IInvoiceService {
         public void deleteInvoice(Integer id) {
                 Invoice invoice = invoiceRepository.findById(id)
                                 .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
+
+                invoice.getDeliveryNotes().forEach(dn -> dn.setInvoice(null));
 
                 invoiceRepository.delete(invoice);
         }
