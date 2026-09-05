@@ -105,7 +105,8 @@ public class InvoiceService implements IInvoiceService {
 
                 deliveryNotes.forEach(dn -> {
                         if (dn.getInvoice() != null) {
-                                throw new BusinessException(ErrorCode.INVOICE_DUPLICATE_DELIVERY_NOTE, dn.getCode());
+                                throw new BusinessException(ErrorCode.INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED,
+                                                dn.getCode());
                         }
                 });
         }

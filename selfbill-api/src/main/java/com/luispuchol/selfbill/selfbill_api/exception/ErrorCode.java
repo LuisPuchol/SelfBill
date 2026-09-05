@@ -15,7 +15,8 @@ public enum ErrorCode {
     // DeliveryNote
     DELIVERY_NOTE_NOT_FOUND("Delivery note not found: {0}", HttpStatus.NOT_FOUND),
     DELIVERY_NOTE_DUPLICATE_CODE("Already exists a delivery note with code: {0}", HttpStatus.CONFLICT),
-    DELIVERY_NOTE_ALREADY_INVOICED("Delivery note {0} is already invoiced and cannot be modified or deleted", HttpStatus.CONFLICT),
+    DELIVERY_NOTE_ALREADY_INVOICED("Delivery note {0} is already invoiced and cannot be modified or deleted",
+            HttpStatus.CONFLICT),
 
     // TaxConfig
     TAX_CONFIG_NOT_FOUND("Tax configuration not found", HttpStatus.NOT_FOUND),
@@ -31,13 +32,16 @@ public enum ErrorCode {
     // Invoice
     INVOICE_NOT_FOUND("Invoice not found: {0}", HttpStatus.NOT_FOUND),
     INVOICE_DUPLICATE_CODE("Already exists an invoice with code: {0}", HttpStatus.CONFLICT),
-    INVOICE_DUPLICATE_DELIVERY_NOTE("Delivery note {0} already has an associated invoice", HttpStatus.CONFLICT),
+    INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED("Delivery note {0} already has an associated invoice",
+            HttpStatus.CONFLICT),
     INVOICE_MIXED_CLIENTS("All delivery notes must belong to the same client", HttpStatus.CONFLICT),
 
     // Email
     EMAIL_SEND_FAILED("Failed to send email to: {0}", HttpStatus.INTERNAL_SERVER_ERROR),
     CLIENT_EMAIL_NOT_CONFIGURED("Client {0} has no email address configured", HttpStatus.BAD_REQUEST),
-    MAIL_NOT_CONFIGURED("Mail account is not fully configured. Please set your email, SMTP host/port and app password in your profile", HttpStatus.BAD_REQUEST),
+    MAIL_NOT_CONFIGURED(
+            "Mail account is not fully configured. Please set your email, SMTP host/port and app password in your profile",
+            HttpStatus.BAD_REQUEST),
 
     // Generic
     VALIDATION_ERROR("Validation error", HttpStatus.BAD_REQUEST),
