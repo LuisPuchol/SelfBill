@@ -10,6 +10,7 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceSeries;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
 
 import jakarta.persistence.CascadeType;
@@ -25,6 +26,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,7 +34,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "invoices")
+@Table(name = "invoices", uniqueConstraints = @UniqueConstraint(columnNames = { "series", "code" }))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -46,7 +48,10 @@ public class Invoice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(unique = true)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private InvoiceSeries series;
+
     private Integer code;
 
     private LocalDateTime date;
@@ -115,4 +120,8 @@ public class Invoice {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public String getNumber() {
+        return code == null ? null : series.format(code);
+    }
 }

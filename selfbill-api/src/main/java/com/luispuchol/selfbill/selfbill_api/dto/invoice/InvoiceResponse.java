@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceSeries;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
 
 import lombok.AllArgsConstructor;
@@ -18,7 +19,9 @@ import lombok.NoArgsConstructor;
 public class InvoiceResponse {
 
     private Integer id;
+    private InvoiceSeries series;
     private Integer code;
+    private String number;
     private LocalDateTime date;
     private InvoiceStatus status;
 

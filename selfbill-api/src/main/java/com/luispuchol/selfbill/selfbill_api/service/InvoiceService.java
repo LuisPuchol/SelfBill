@@ -26,6 +26,7 @@ import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
 import com.luispuchol.selfbill.selfbill_api.entity.InvoiceLine;
 import com.luispuchol.selfbill.selfbill_api.entity.TaxConfig;
 import com.luispuchol.selfbill.selfbill_api.enums.DocumentType;
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceSeries;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
 import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.enums.VatType;
@@ -65,10 +66,10 @@ public class InvoiceService {
         return toResponseWithSections(findInvoice(id));
     }
 
-    public InvoiceResponse getInvoiceByCode(Integer code) {
-        return invoiceRepository.findByCode(code)
+    public InvoiceResponse getInvoiceByCode(InvoiceSeries series, Integer code) {
+        return invoiceRepository.findBySeriesAndCode(series, code)
                 .map(this::toResponseWithSections)
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, code));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, series.format(code)));
     }
 
     @Transactional
@@ -76,7 +77,10 @@ public class InvoiceService {
         Client client = findClient(request.getClientId());
         List<DeliveryNote> deliveryNotes = findInvoiceableDeliveryNotes(request, null);
 
-        Invoice invoice = invoiceRepository.save(Invoice.builder().client(client).build());
+        Invoice invoice = invoiceRepository.save(Invoice.builder()
+                .client(client)
+                .series(InvoiceSeries.forVatType(client.getVatType()))
+                .build());
         include(invoice, deliveryNotes);
         return toResponseWithSections(invoice);
     }
@@ -100,7 +104,7 @@ public class InvoiceService {
         requireDraft(invoice);
 
         // Numbered only on issue so a discarded draft never consumes a number (CONCEPTO.md §5)
-        invoice.setCode(invoiceRepository.findMaxCode().orElse(0) + 1);
+        invoice.setCode(invoiceRepository.findMaxCode(invoice.getSeries().name()).orElse(0) + 1);
         invoice.setDate(LocalDateTime.now(clock));
         invoice.setStatus(InvoiceStatus.ISSUED);
         freezeClientData(invoice);
@@ -123,13 +127,13 @@ public class InvoiceService {
 
     public PdfFile exportInvoicePdf(Integer id) {
         Invoice invoice = findIssuedInvoice(id);
-        return new PdfFile(documentMessages.filename(DocumentType.INVOICE, invoice.getCode()),
+        return new PdfFile(documentMessages.filename(DocumentType.INVOICE, invoice.getNumber()),
                 pdfService.generateInvoicePdf(invoice));
     }
 
     public void sendInvoiceEmail(Integer id) {
         Invoice invoice = findIssuedInvoice(id);
-        emailService.sendDocument(DocumentType.INVOICE, invoice.getClient(), invoice.getCode(),
+        emailService.sendDocument(DocumentType.INVOICE, invoice.getClient(), invoice.getNumber(),
                 pdfService.generateInvoicePdf(invoice));
     }
 
@@ -166,6 +170,7 @@ public class InvoiceService {
     }
 
     private void recalculate(Invoice invoice, List<DeliveryNote> deliveryNotes) {
+        invoice.setSeries(InvoiceSeries.forVatType(invoice.getClient().getVatType()));
         applyFinancials(invoice, deliveryNotes);
         invoice.getLines().clear();
         invoice.getLines().addAll(buildLines(invoice, deliveryNotes));

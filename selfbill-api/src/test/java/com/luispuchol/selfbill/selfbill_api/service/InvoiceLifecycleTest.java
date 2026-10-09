@@ -25,6 +25,7 @@ import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceResponse;
 import com.luispuchol.selfbill.selfbill_api.dto.taxconfig.TaxConfigRequest;
 import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceSeries;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
 import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.enums.VatType;
@@ -93,6 +94,31 @@ class InvoiceLifecycleTest {
         assertThat(issued.getCode()).isEqualTo(1);
         assertThat(issued.getDate()).isNotNull();
         assertThat(second.getCode()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Invoices without VAT have their own series and never consume general numbers")
+    void invoicesWithoutVatHaveTheirOwnSeries() {
+        Integer withoutVatClientId = clientService.createClient(
+                clientRequest(2, DeliveryNoteFormat.PLAIN, "Client 2 SL", VatType.WITHOUT_VAT)).getId();
+
+        InvoiceResponse general1 = issue(clientId, createDeliveryNote(clientId, "1", "1"));
+        InvoiceResponse withoutVat1 = issue(withoutVatClientId, createDeliveryNote(withoutVatClientId, "1", "1"));
+        InvoiceResponse withoutVat2 = issue(withoutVatClientId, createDeliveryNote(withoutVatClientId, "1", "1"));
+        InvoiceResponse general2 = issue(clientId, createDeliveryNote(clientId, "1", "1"));
+
+        assertThat(general1.getSeries()).isEqualTo(InvoiceSeries.GENERAL);
+        assertThat(general1.getNumber()).isEqualTo("1");
+        assertThat(withoutVat1.getSeries()).isEqualTo(InvoiceSeries.WITHOUT_VAT);
+        assertThat(withoutVat1.getNumber()).isEqualTo("S-1");
+        assertThat(withoutVat2.getNumber()).isEqualTo("S-2");
+        assertThat(general2.getNumber()).isEqualTo("2");
+        assertThat(withoutVat1.getVatAmount()).isEqualByComparingTo("0");
+
+        assertThat(invoiceService.getInvoiceByCode(InvoiceSeries.GENERAL, 1).getId()).isEqualTo(general1.getId());
+        assertThat(invoiceService.getInvoiceByCode(InvoiceSeries.WITHOUT_VAT, 1).getId())
+                .isEqualTo(withoutVat1.getId());
+        assertThat(invoiceService.exportInvoicePdf(withoutVat1.getId()).filename()).endsWith("-S-1.pdf");
     }
 
     @Test
@@ -235,6 +261,11 @@ class InvoiceLifecycleTest {
     }
 
     private static ClientRequest clientRequest(int code, DeliveryNoteFormat format, String businessName) {
+        return clientRequest(code, format, businessName, VatType.WITH_VAT);
+    }
+
+    private static ClientRequest clientRequest(int code, DeliveryNoteFormat format, String businessName,
+            VatType vatType) {
         return ClientRequest.builder()
                 .code(code)
                 .businessName(businessName)
@@ -244,7 +275,7 @@ class InvoiceLifecycleTest {
                 .city("Valencia")
                 .province("Valencia")
                 .postalCode("46001")
-                .vatType(VatType.WITH_VAT)
+                .vatType(vatType)
                 .surchargeType(SurchargeType.WITHOUT_SURCHARGE)
                 .defaultDeliveryNoteFormat(format)
                 .build();
@@ -274,6 +305,14 @@ class InvoiceLifecycleTest {
                         .price(new BigDecimal(price))
                         .build()))
                 .build();
+    }
+
+    private InvoiceResponse issue(Integer client, DeliveryNoteResponse deliveryNote) {
+        InvoiceResponse draft = invoiceService.createInvoice(InvoiceRequest.builder()
+                .clientId(client)
+                .deliveryNoteIds(List.of(deliveryNote.getId()))
+                .build());
+        return invoiceService.issueInvoice(draft.getId());
     }
 
     private InvoiceResponse createInvoice(Integer... deliveryNoteIds) {

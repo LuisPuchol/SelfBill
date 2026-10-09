@@ -17,17 +17,17 @@ import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
 public class PdfService {
 
     public byte[] generateInvoicePdf(Invoice invoice) {
-        return buildMockPdf("invoice", invoice.getCode());
+        return buildMockPdf("invoice", invoice.getNumber());
     }
 
     public byte[] generateDeliveryNotePdf(DeliveryNote deliveryNote) {
         String label = deliveryNote.getFormat() == DeliveryNoteFormat.VALUED
                 ? "Delivery Note with taxes"
                 : "delivery note";
-        return buildMockPdf(label, deliveryNote.getCode());
+        return buildMockPdf(label, String.valueOf(deliveryNote.getCode()));
     }
 
-    private byte[] buildMockPdf(String label, Integer code) {
+    private byte[] buildMockPdf(String label, String number) {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             List<Integer> offsets = new ArrayList<>();
@@ -48,7 +48,7 @@ public class PdfService {
             offsets.add(out.size());
             writeAscii(out, "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n");
 
-            String text = "BT /F1 18 Tf 50 780 Td (Mock " + label + " #" + code + ") Tj ET";
+            String text = "BT /F1 18 Tf 50 780 Td (Mock " + label + " #" + number + ") Tj ET";
             offsets.add(out.size());
             writeAscii(out, "5 0 obj\n<< /Length " + text.length() + " >>\nstream\n" + text + "\nendstream\nendobj\n");
 

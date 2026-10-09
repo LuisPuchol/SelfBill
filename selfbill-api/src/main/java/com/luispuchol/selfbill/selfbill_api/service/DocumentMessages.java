@@ -14,16 +14,16 @@ public class DocumentMessages {
 
     private final MessageSource messageSource;
 
-    public String filename(DocumentType type, Integer code) {
-        return message(type, "pdf.filename", String.valueOf(code));
+    public String filename(DocumentType type, String number) {
+        return message(type, "pdf.filename", number);
     }
 
-    public String emailSubject(DocumentType type, Integer code) {
-        return message(type, "email.subject", String.valueOf(code));
+    public String emailSubject(DocumentType type, String number) {
+        return message(type, "email.subject", number);
     }
 
-    public String emailBody(DocumentType type, String recipientName, Integer code) {
-        return message(type, "email.body", recipientName, String.valueOf(code));
+    public String emailBody(DocumentType type, String recipientName, String number) {
+        return message(type, "email.body", recipientName, number);
     }
 
     private String message(DocumentType type, String key, Object... args) {

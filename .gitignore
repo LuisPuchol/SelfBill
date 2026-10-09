@@ -60,3 +60,6 @@ build/
 *.db
 *.sqlite
 *.sqlite3
+
+### Claude Code ###
+/CLAUDE.md

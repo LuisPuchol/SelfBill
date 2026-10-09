@@ -14,12 +14,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceResponse;
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceSeries;
 import com.luispuchol.selfbill.selfbill_api.service.InvoiceService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,9 +53,11 @@ public class InvoiceController {
         return invoiceService.getInvoiceById(id);
     }
 
+    @Operation(summary = "Get an invoice by its number within a series")
     @GetMapping("/by-code/{code}")
-    public InvoiceResponse getInvoiceByCode(@PathVariable @Positive Integer code) {
-        return invoiceService.getInvoiceByCode(code);
+    public InvoiceResponse getInvoiceByCode(@PathVariable @Positive Integer code,
+            @RequestParam(defaultValue = "GENERAL") InvoiceSeries series) {
+        return invoiceService.getInvoiceByCode(series, code);
     }
 
     @Operation(summary = "Create a draft invoice")

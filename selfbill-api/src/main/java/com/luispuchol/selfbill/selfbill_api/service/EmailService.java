@@ -24,7 +24,7 @@ public class EmailService {
     private final UserProfileService userProfileService;
     private final DocumentMessages documentMessages;
 
-    public void sendDocument(DocumentType type, Client recipient, Integer code, byte[] pdf) {
+    public void sendDocument(DocumentType type, Client recipient, String number, byte[] pdf) {
         String to = recipient.getEmail();
         if (to == null || to.isBlank()) {
             throw new BusinessException(ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED, recipient.getId());
@@ -37,9 +37,9 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
             helper.setFrom(account.email());
             helper.setTo(to);
-            helper.setSubject(documentMessages.emailSubject(type, code));
-            helper.setText(documentMessages.emailBody(type, recipient.getName(), code));
-            helper.addAttachment(documentMessages.filename(type, code), new ByteArrayResource(pdf));
+            helper.setSubject(documentMessages.emailSubject(type, number));
+            helper.setText(documentMessages.emailBody(type, recipient.getName(), number));
+            helper.addAttachment(documentMessages.filename(type, number), new ByteArrayResource(pdf));
             mailSender.send(message);
         } catch (MailException | MessagingException _) {
             throw new BusinessException(ErrorCode.EMAIL_SEND_FAILED, to);

@@ -101,13 +101,14 @@ public class DeliveryNoteService {
 
     public PdfFile exportDeliveryNotePdf(Integer id) {
         DeliveryNote deliveryNote = findDeliveryNote(id);
-        return new PdfFile(documentMessages.filename(DocumentType.DELIVERY_NOTE, deliveryNote.getCode()),
+        return new PdfFile(documentMessages.filename(DocumentType.DELIVERY_NOTE, String.valueOf(deliveryNote.getCode())),
                 pdfService.generateDeliveryNotePdf(deliveryNote));
     }
 
     public void sendDeliveryNoteEmail(Integer id) {
         DeliveryNote deliveryNote = findDeliveryNote(id);
-        emailService.sendDocument(DocumentType.DELIVERY_NOTE, deliveryNote.getClient(), deliveryNote.getCode(),
+        emailService.sendDocument(DocumentType.DELIVERY_NOTE, deliveryNote.getClient(),
+                String.valueOf(deliveryNote.getCode()),
                 pdfService.generateDeliveryNotePdf(deliveryNote));
     }
 

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceFilter;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceSeries;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
 
 public final class InvoiceSpecification {
@@ -15,6 +16,7 @@ public final class InvoiceSpecification {
 
     public static Specification<Invoice> withFilter(InvoiceFilter filter) {
         return Specification.<Invoice>unrestricted()
+                .and(series(filter.getSeries()))
                 .and(codeFrom(filter.getCodeFrom()))
                 .and(codeTo(filter.getCodeTo()))
                 .and(clientId(filter.getClientId()))
@@ -22,6 +24,11 @@ public final class InvoiceSpecification {
                 .and(status(filter.getStatus()))
                 .and(dateFrom(filter.getDateFrom()))
                 .and(dateTo(filter.getDateTo()));
+    }
+
+    private static Specification<Invoice> series(InvoiceSeries series) {
+        return (root, query, cb) -> series == null ? null
+                : cb.equal(root.get("series"), series);
     }
 
     private static Specification<Invoice> codeFrom(Integer from) {
