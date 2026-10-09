@@ -1,27 +1,40 @@
 package com.luispuchol.selfbill.selfbill_api.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
-
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
-
-import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Entity
 @Table(name = "invoices")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -33,36 +46,48 @@ public class Invoice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private Integer code;
 
-    @Column(nullable = false)
     private LocalDateTime date;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private InvoiceStatus status = InvoiceStatus.ACTIVE;
+    private InvoiceStatus status = InvoiceStatus.DRAFT;
 
-    // Relations
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
-    // All delivery notes included in this invoice (1 for PER_DELIVERY_NOTE, N for
-    // GROUPED)
-    @ToString.Exclude
+    // Frozen on issue so later client edits don't rewrite issued invoices (CONCEPTO.md §6)
+    @Column(name = "client_business_name", length = 255)
+    private String clientBusinessName;
+
+    @Column(name = "client_nif", length = 20)
+    private String clientNif;
+
+    @Column(name = "client_address", length = 500)
+    private String clientAddress;
+
+    @Column(name = "client_city", length = 100)
+    private String clientCity;
+
+    @Column(name = "client_province", length = 100)
+    private String clientProvince;
+
+    @Column(name = "client_postal_code", length = 10)
+    private String clientPostalCode;
+
     @OneToMany(mappedBy = "invoice", fetch = FetchType.LAZY)
     @Builder.Default
     private List<DeliveryNote> deliveryNotes = new ArrayList<>();
 
-    @ToString.Exclude
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<InvoiceLine> lines = new ArrayList<>();
 
-    // Financial fields
-    @Column(name = "subtotal", precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2)
     private BigDecimal subtotal;
 
     @Column(name = "vat_percentage", precision = 5, scale = 2)
@@ -80,7 +105,6 @@ public class Invoice {
     @Column(precision = 10, scale = 2)
     private BigDecimal total;
 
-    // Timestamps
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -91,33 +115,4 @@ public class Invoice {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
-
-    /*
-     * TODO campos Verifactu (añadir cuando implementes la integración)
-     * 
-     * @Column(nullable = false, length = 20)
-     * private String series; // "2026", "A", etc.
-     * 
-     * @Enumerated(EnumType.STRING)
-     * 
-     * @Column(name = "invoice_type", nullable = false)
-     * private InvoiceType invoiceType; // F1, F2, R1...R5
-     * 
-     * @Column(name = "verifactu_hash", length = 64)
-     * private String verifactuHash; // SHA-256 hex
-     * 
-     * @Column(name = "verifactu_timestamp")
-     * private LocalDateTime verifactuTimestamp;
-     * 
-     * // FK a la factura ANTERIOR en la serie (para construir el hash, no a la
-     * rectificada)
-     * 
-     * @ManyToOne(fetch = FetchType.LAZY)
-     * 
-     * @JoinColumn(name = "previous_invoice_id")
-     * private Invoice previousInvoice;
-     * 
-     * @Column(name = "verifactu_status", length = 20)
-     * private String verifactuStatus; // PENDING | SENT | ACCEPTED | REJECTED
-     */
 }

@@ -1,32 +1,34 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
-import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceFilter;
-import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceResponse;
-import com.luispuchol.selfbill.selfbill_api.service.IInvoiceService;
+import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceResponse;
+import com.luispuchol.selfbill.selfbill_api.service.InvoiceService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springdoc.core.annotations.ParameterObject;
 
 @RestController
 @RequestMapping("/api/invoices")
@@ -35,74 +37,63 @@ import org.springdoc.core.annotations.ParameterObject;
 @RequiredArgsConstructor
 public class InvoiceController {
 
-    private final IInvoiceService invoiceService;
-    private final MessageSource messageSource;
+    private final InvoiceService invoiceService;
 
     @Operation(summary = "Get all invoices", description = "Returns paginated and filtered list of non-deleted invoices")
-    @ApiResponse(responseCode = "200", description = "Successful operation")
     @GetMapping
-    public ResponseEntity<Page<InvoiceResponse>> getAllInvoices(
-            @ParameterObject @ModelAttribute InvoiceFilter filter,
+    public Page<InvoiceResponse> getAllInvoices(@ParameterObject InvoiceFilter filter,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        return ResponseEntity.ok(invoiceService.getAllInvoices(filter, pageable));
+        return invoiceService.getAllInvoices(filter, pageable);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<InvoiceResponse> getInvoiceById(
-            @PathVariable @NotNull @Positive Integer id) {
-        return ResponseEntity.ok(invoiceService.getInvoiceById(id));
+    public InvoiceResponse getInvoiceById(@PathVariable @Positive Integer id) {
+        return invoiceService.getInvoiceById(id);
     }
 
     @GetMapping("/by-code/{code}")
-    public ResponseEntity<InvoiceResponse> getInvoiceByCode(
-            @PathVariable @NotNull @Positive Integer code) {
-        return ResponseEntity.ok(invoiceService.getInvoiceByCode(code));
+    public InvoiceResponse getInvoiceByCode(@PathVariable @Positive Integer code) {
+        return invoiceService.getInvoiceByCode(code);
     }
 
+    @Operation(summary = "Create a draft invoice")
     @PostMapping
-    public ResponseEntity<InvoiceResponse> createInvoice(
-            @RequestBody @Valid InvoiceRequest invoiceRequest) {
-        InvoiceResponse created = invoiceService.createInvoice(invoiceRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @ResponseStatus(HttpStatus.CREATED)
+    public InvoiceResponse createInvoice(@RequestBody @Valid InvoiceRequest request) {
+        return invoiceService.createInvoice(request);
     }
 
+    @Operation(summary = "Change the delivery notes of a draft invoice")
     @PutMapping("/{id}")
-    public ResponseEntity<InvoiceResponse> updateInvoice(
-            @PathVariable @NotNull @Positive Integer id,
-            @RequestBody @Valid InvoiceRequest invoiceRequest) {
-        InvoiceResponse updated = invoiceService.updateInvoice(id, invoiceRequest);
-        return ResponseEntity.ok(updated);
+    public InvoiceResponse updateInvoice(@PathVariable @Positive Integer id,
+            @RequestBody @Valid InvoiceRequest request) {
+        return invoiceService.updateInvoice(id, request);
+    }
+
+    @Operation(summary = "Issue a draft invoice", description = "Assigns the next invoice number and the date, and freezes its content")
+    @PostMapping("/{id}/issue")
+    public InvoiceResponse issueInvoice(@PathVariable @Positive Integer id) {
+        return invoiceService.issueInvoice(id);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteInvoice(
-            @PathVariable @NotNull @Positive Integer id) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteInvoice(@PathVariable @Positive Integer id) {
         invoiceService.deleteInvoice(id);
-        return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Send invoice by email")
-    @ApiResponse(responseCode = "204", description = "Email sent successfully")
+    @Operation(summary = "Send an issued invoice by email")
     @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
     @PostMapping("/{id}/email")
-    public ResponseEntity<Void> sendInvoiceEmail(
-            @PathVariable @NotNull @Positive Integer id) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sendInvoiceEmail(@PathVariable @Positive Integer id) {
         invoiceService.sendInvoiceEmail(id);
-        return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Export invoice as PDF")
-    @ApiResponse(responseCode = "200", description = "PDF generated successfully")
-    @GetMapping("/{id}/pdf")
+    @Operation(summary = "Export an issued invoice as PDF")
     @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
-    public ResponseEntity<byte[]> exportInvoicePdf(
-            @PathVariable @NotNull @Positive Integer id) {
-        byte[] pdf = invoiceService.generateInvoicePdf(id);
-        Object[] args = { id };
-        String filename = messageSource.getMessage("invoice.pdf.filename", args, LocaleContextHolder.getLocale());
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdf);
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> exportInvoicePdf(@PathVariable @Positive Integer id) {
+        return PdfResponses.attachment(invoiceService.exportInvoicePdf(id));
     }
 }

@@ -1,25 +1,40 @@
 package com.luispuchol.selfbill.selfbill_api.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
-
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Entity
 @Table(name = "delivery_notes")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -40,24 +55,29 @@ public class DeliveryNote {
     @Column(precision = 10, scale = 2)
     private BigDecimal total;
 
-    // Relations
+    // Frozen at creation so a reprint reproduces what the client received (CONCEPTO.md §3, §4)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private DeliveryNoteFormat format;
+
+    @Column(name = "vat_percentage", nullable = false, precision = 5, scale = 2)
+    private BigDecimal vatPercentage;
+
+    @Column(name = "surcharge_percentage", nullable = false, precision = 5, scale = 2)
+    private BigDecimal surchargePercentage;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
-    // Nullable: set when this delivery note is included in an invoice
-    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id")
     private Invoice invoice;
 
     @OneToMany(mappedBy = "deliveryNote", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<DeliveryNoteArticles> deliveryNoteArticles = new ArrayList<>();
+    private List<DeliveryNoteLine> lines = new ArrayList<>();
 
-    // Business config ? relation
-
-    // Timestamps
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

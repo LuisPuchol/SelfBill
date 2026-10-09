@@ -1,32 +1,34 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
-import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteFilter;
-import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteResponse;
-import com.luispuchol.selfbill.selfbill_api.service.IDeliveryNoteService;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteResponse;
+import com.luispuchol.selfbill.selfbill_api.service.DeliveryNoteService;
 
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springdoc.core.annotations.ParameterObject;
 
 @RestController
 @RequestMapping("/api/deliveryNotes")
@@ -35,68 +37,50 @@ import org.springdoc.core.annotations.ParameterObject;
 @RequiredArgsConstructor
 public class DeliveryNoteController {
 
-    private final IDeliveryNoteService deliveryNoteService;
-    private final MessageSource messageSource;
+    private final DeliveryNoteService deliveryNoteService;
 
     @Operation(summary = "Get all delivery notes", description = "Returns paginated and filtered list of non-deleted delivery notes")
-    @ApiResponse(responseCode = "200", description = "Successful operation")
     @GetMapping
-    public ResponseEntity<Page<DeliveryNoteResponse>> getAllDeliveryNotes(
-            @ParameterObject @ModelAttribute DeliveryNoteFilter filter,
+    public Page<DeliveryNoteResponse> getAllDeliveryNotes(@ParameterObject DeliveryNoteFilter filter,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        return ResponseEntity.ok(deliveryNoteService.getAllDeliveryNotes(filter, pageable));
+        return deliveryNoteService.getAllDeliveryNotes(filter, pageable);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DeliveryNoteResponse> getDeliveryNoteById(
-            @PathVariable @NotNull @Positive Integer id) {
-        return ResponseEntity.ok(deliveryNoteService.getDeliveryNoteById(id));
+    public DeliveryNoteResponse getDeliveryNoteById(@PathVariable @Positive Integer id) {
+        return deliveryNoteService.getDeliveryNoteById(id);
     }
 
     @PostMapping
-    public ResponseEntity<DeliveryNoteResponse> createDeliveryNote(
-            @RequestBody @Valid DeliveryNoteRequest deliveryNoteRequest) {
-        DeliveryNoteResponse created = deliveryNoteService.createDeliveryNote(deliveryNoteRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @ResponseStatus(HttpStatus.CREATED)
+    public DeliveryNoteResponse createDeliveryNote(@RequestBody @Valid DeliveryNoteRequest request) {
+        return deliveryNoteService.createDeliveryNote(request);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<DeliveryNoteResponse> updateDeliveryNote(
-            @PathVariable @NotNull @Positive Integer id,
-            @RequestBody @Valid DeliveryNoteRequest deliveryNoteRequest) {
-        DeliveryNoteResponse updated = deliveryNoteService.updateDeliveryNote(id, deliveryNoteRequest);
-        return ResponseEntity.ok(updated);
+    public DeliveryNoteResponse updateDeliveryNote(@PathVariable @Positive Integer id,
+            @RequestBody @Valid DeliveryNoteRequest request) {
+        return deliveryNoteService.updateDeliveryNote(id, request);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDeliveryNote(
-            @PathVariable @NotNull @Positive Integer id) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteDeliveryNote(@PathVariable @Positive Integer id) {
         deliveryNoteService.deleteDeliveryNote(id);
-        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Send delivery note by email")
-    @ApiResponse(responseCode = "204", description = "Email sent successfully")
     @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
     @PostMapping("/{id}/email")
-    public ResponseEntity<Void> sendDeliveryNoteEmail(
-            @PathVariable @NotNull @Positive Integer id) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sendDeliveryNoteEmail(@PathVariable @Positive Integer id) {
         deliveryNoteService.sendDeliveryNoteEmail(id);
-        return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Export Delivery Note as PDF")
-    @ApiResponse(responseCode = "200", description = "PDF generated successfully")
-    @GetMapping("/{id}/pdf")
+    @Operation(summary = "Export delivery note as PDF")
     @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
-    public ResponseEntity<byte[]> exportDeliveryNotePdf(
-            @PathVariable @NotNull @Positive Integer id) {
-        byte[] pdf = deliveryNoteService.exportDeliveryNotePdf(id);
-        Object[] args = { id };
-        String filename = messageSource.getMessage("deliveryNote.pdf.filename", args, LocaleContextHolder.getLocale());
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdf);
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> exportDeliveryNotePdf(@PathVariable @Positive Integer id) {
+        return PdfResponses.attachment(deliveryNoteService.exportDeliveryNotePdf(id));
     }
 }

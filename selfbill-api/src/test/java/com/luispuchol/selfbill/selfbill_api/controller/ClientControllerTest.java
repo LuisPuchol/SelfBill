@@ -1,16 +1,19 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientFilter;
-import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
+import com.luispuchol.selfbill.selfbill_api.dto.client.ClientFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.client.ClientRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.client.ClientResponse;
+import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
+import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
+import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 import com.luispuchol.selfbill.selfbill_api.service.ClientService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -37,7 +40,7 @@ class ClientControllerTest {
         @Autowired
         private ObjectMapper objectMapper;
 
-        @MockBean
+        @MockitoBean
         private ClientService clientService;
 
         private ClientResponse clientResponse1;
@@ -46,7 +49,6 @@ class ClientControllerTest {
 
         @BeforeEach
         void setUp() {
-                // Preparar datos de prueba
                 clientResponse1 = ClientResponse.builder()
                                 .id(1)
                                 .code(2001)
@@ -59,9 +61,9 @@ class ClientControllerTest {
                                 .city("Madrid")
                                 .province("Madrid")
                                 .postalCode("28001")
-                                .vatType("WITH_VAT")
-                                .surchargeType("WITHOUT_SURCHARGE")
-                                .invoiceMode("PER_DELIVERY_NOTE")
+                                .vatType(VatType.WITH_VAT)
+                                .surchargeType(SurchargeType.WITHOUT_SURCHARGE)
+                                .defaultDeliveryNoteFormat(DeliveryNoteFormat.VALUED)
                                 .build();
 
                 clientResponse2 = ClientResponse.builder()
@@ -76,9 +78,9 @@ class ClientControllerTest {
                                 .city("Barcelona")
                                 .province("Barcelona")
                                 .postalCode("08001")
-                                .vatType("WITHOUT_VAT")
-                                .surchargeType("WITH_SURCHARGE")
-                                .invoiceMode("GROUPED")
+                                .vatType(VatType.WITHOUT_VAT)
+                                .surchargeType(SurchargeType.WITH_SURCHARGE)
+                                .defaultDeliveryNoteFormat(DeliveryNoteFormat.PLAIN)
                                 .build();
 
                 clientRequest = ClientRequest.builder()
@@ -92,21 +94,19 @@ class ClientControllerTest {
                                 .city("Valencia")
                                 .province("Valencia")
                                 .postalCode("46001")
-                                .vatType("WITH_VAT")
-                                .surchargeType("WITHOUT_SURCHARGE")
-                                .invoiceMode("PER_DELIVERY_NOTE")
+                                .vatType(VatType.WITH_VAT)
+                                .surchargeType(SurchargeType.WITHOUT_SURCHARGE)
+                                .defaultDeliveryNoteFormat(DeliveryNoteFormat.VALUED)
                                 .build();
         }
 
         @Test
         @DisplayName("GET /api/clients - Debe retornar todos los clientes paginados")
         void getAllClients_ShouldReturnPageOfClients() throws Exception {
-                // Given
                 List<ClientResponse> clients = Arrays.asList(clientResponse1, clientResponse2);
                 Page<ClientResponse> page = new PageImpl<>(clients);
                 when(clientService.getAllClients(any(ClientFilter.class), any(Pageable.class))).thenReturn(page);
 
-                // When & Then
                 mockMvc.perform(get("/api/clients")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk())
@@ -123,10 +123,8 @@ class ClientControllerTest {
         @Test
         @DisplayName("GET /api/clients/{id} - Debe retornar un cliente por ID")
         void getClientById_ShouldReturnClient() throws Exception {
-                // Given
                 when(clientService.getClientById(1)).thenReturn(clientResponse1);
 
-                // When & Then
                 mockMvc.perform(get("/api/clients/1")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk())
@@ -143,7 +141,6 @@ class ClientControllerTest {
         @Test
         @DisplayName("GET /api/clients/{id} - Debe fallar con ID inválido (0)")
         void getClientById_WithInvalidId_ShouldReturnBadRequest() throws Exception {
-                // When & Then
                 mockMvc.perform(get("/api/clients/0")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isBadRequest());
@@ -154,7 +151,6 @@ class ClientControllerTest {
         @Test
         @DisplayName("GET /api/clients/{id} - Debe fallar con ID negativo")
         void getClientById_WithNegativeId_ShouldReturnBadRequest() throws Exception {
-                // When & Then
                 mockMvc.perform(get("/api/clients/-1")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isBadRequest());
@@ -165,10 +161,8 @@ class ClientControllerTest {
         @Test
         @DisplayName("GET /api/clients/by-code/{code} - Debe retornar un cliente por código")
         void getClientByCode_ShouldReturnClient() throws Exception {
-                // Given
                 when(clientService.getClientByCode(2001)).thenReturn(clientResponse1);
 
-                // When & Then
                 mockMvc.perform(get("/api/clients/by-code/2001")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk())
@@ -181,10 +175,8 @@ class ClientControllerTest {
         @Test
         @DisplayName("GET /api/clients/by-name/{name} - Debe retornar un cliente por nombre")
         void getClientByName_ShouldReturnClient() throws Exception {
-                // Given
                 when(clientService.getClientByName("Acme Corporation SA")).thenReturn(clientResponse1);
 
-                // When & Then
                 mockMvc.perform(get("/api/clients/by-name/Acme Corporation SA")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk())
@@ -197,7 +189,6 @@ class ClientControllerTest {
         @Test
         @DisplayName("POST /api/clients - Debe crear un nuevo cliente")
         void createClient_ShouldReturnCreatedClient() throws Exception {
-                // Given
                 ClientResponse createdResponse = ClientResponse.builder()
                                 .id(3)
                                 .code(2003)
@@ -210,14 +201,13 @@ class ClientControllerTest {
                                 .city("Valencia")
                                 .province("Valencia")
                                 .postalCode("46001")
-                                .vatType("WITH_VAT")
-                                .surchargeType("WITHOUT_SURCHARGE")
-                                .invoiceMode("PER_DELIVERY_NOTE")
+                                .vatType(VatType.WITH_VAT)
+                                .surchargeType(SurchargeType.WITHOUT_SURCHARGE)
+                                .defaultDeliveryNoteFormat(DeliveryNoteFormat.VALUED)
                                 .build();
 
                 when(clientService.createClient(any(ClientRequest.class))).thenReturn(createdResponse);
 
-                // When & Then
                 mockMvc.perform(post("/api/clients")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(clientRequest)))
@@ -233,10 +223,8 @@ class ClientControllerTest {
         @Test
         @DisplayName("POST /api/clients - Debe fallar con body inválido (sin campos requeridos)")
         void createClient_WithInvalidBody_ShouldReturnBadRequest() throws Exception {
-                // Given - ClientRequest vacío o con campos null
                 ClientRequest invalidRequest = ClientRequest.builder().build();
 
-                // When & Then
                 mockMvc.perform(post("/api/clients")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(invalidRequest)))
@@ -248,7 +236,6 @@ class ClientControllerTest {
         @Test
         @DisplayName("PUT /api/clients/{id} - Debe actualizar un cliente existente")
         void updateClient_ShouldReturnUpdatedClient() throws Exception {
-                // Given
                 ClientResponse updatedResponse = ClientResponse.builder()
                                 .id(1)
                                 .code(2003)
@@ -260,7 +247,6 @@ class ClientControllerTest {
 
                 when(clientService.updateClient(eq(1), any(ClientRequest.class))).thenReturn(updatedResponse);
 
-                // When & Then
                 mockMvc.perform(put("/api/clients/1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(clientRequest)))
@@ -275,7 +261,6 @@ class ClientControllerTest {
         @Test
         @DisplayName("PUT /api/clients/{id} - Debe fallar con ID inválido")
         void updateClient_WithInvalidId_ShouldReturnBadRequest() throws Exception {
-                // When & Then
                 mockMvc.perform(put("/api/clients/0")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(clientRequest)))
@@ -287,10 +272,8 @@ class ClientControllerTest {
         @Test
         @DisplayName("DELETE /api/clients/{id} - Debe eliminar un cliente")
         void deleteClient_ShouldReturnNoContent() throws Exception {
-                // Given
                 doNothing().when(clientService).deleteClient(1);
 
-                // When & Then
                 mockMvc.perform(delete("/api/clients/1")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isNoContent());
@@ -301,7 +284,6 @@ class ClientControllerTest {
         @Test
         @DisplayName("DELETE /api/clients/{id} - Debe fallar con ID inválido")
         void deleteClient_WithInvalidId_ShouldReturnBadRequest() throws Exception {
-                // When & Then
                 mockMvc.perform(delete("/api/clients/-1")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isBadRequest());

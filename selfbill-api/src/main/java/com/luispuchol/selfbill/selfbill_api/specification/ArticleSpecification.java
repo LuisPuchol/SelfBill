@@ -2,10 +2,13 @@ package com.luispuchol.selfbill.selfbill_api.specification;
 
 import org.springframework.data.jpa.domain.Specification;
 
-import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleFilter;
 import com.luispuchol.selfbill.selfbill_api.entity.Article;
 
-public class ArticleSpecification {
+public final class ArticleSpecification {
+
+    private ArticleSpecification() {
+    }
 
     public static Specification<Article> withFilter(ArticleFilter filter) {
         return Specification.<Article>unrestricted()

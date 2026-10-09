@@ -1,22 +1,32 @@
 package com.luispuchol.selfbill.selfbill_api.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 @Entity
 @Table(name = "invoice_lines")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -28,30 +38,25 @@ public class InvoiceLine {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    // Relations
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id", nullable = false)
     private Invoice invoice;
 
-    // Nullable FK: traceability to the source delivery note; set to null if the delivery note is deleted
+    // The printed data lives in the frozen copies below; these FKs are only links (CONCEPTO.md §6)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "delivery_note_id")
     private DeliveryNote deliveryNote;
 
-    // Snapshot fields — delivery note data frozen at invoice creation for grouping and display,
-    // independent of the delivery note lifecycle
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "article_id")
+    private Article article;
+
     @Column(name = "delivery_note_code", nullable = false)
     private Integer deliveryNoteCode;
 
     @Column(name = "delivery_note_date", nullable = false)
     private LocalDateTime deliveryNoteDate;
 
-    // Nullable: the article may be deleted but the invoice line must be preserved
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "article_id")
-    private Article article;
-
-    // Snapshot fields — frozen at invoice creation, independent of future article changes
     @Column(name = "article_name", nullable = false, length = 255)
     private String articleName;
 
@@ -76,7 +81,6 @@ public class InvoiceLine {
     @Column(precision = 10, scale = 2)
     private BigDecimal total;
 
-    // Timestamps
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

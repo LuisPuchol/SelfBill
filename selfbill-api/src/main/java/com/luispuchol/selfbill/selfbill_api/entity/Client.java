@@ -1,27 +1,34 @@
 package com.luispuchol.selfbill.selfbill_api.entity;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import com.luispuchol.selfbill.selfbill_api.enums.InvoiceMode;
+import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
 import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
-
-import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "clients")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -36,7 +43,6 @@ public class Client {
     @Column(nullable = false, unique = true)
     private Integer code;
 
-    // Business and personal details
     @Column(name = "business_name", nullable = false, length = 255)
     private String businessName;
 
@@ -46,30 +52,27 @@ public class Client {
     @Column(length = 20)
     private String nif;
 
-    // Contact details
     @Column(length = 50)
-    @Email
     private String email;
 
     @Column(length = 500)
     private String address;
 
-    @Column(name = "city", length = 100)
+    @Column(length = 100)
     private String city;
 
-    @Column(name = "province", length = 100)
+    @Column(length = 100)
     private String province;
 
     @Column(name = "postal_code", length = 10)
     private String postalCode;
 
-    @Column(name = "phone", length = 20)
+    @Column(length = 20)
     private String phone;
 
-    @Column(name = "phone2", length = 20)
+    @Column(length = 20)
     private String phone2;
 
-    // Client options
     @Enumerated(EnumType.STRING)
     @Column(name = "vat_type", nullable = false)
     @Builder.Default
@@ -81,13 +84,10 @@ public class Client {
     private SurchargeType surchargeType = SurchargeType.WITHOUT_SURCHARGE;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "invoice_mode", nullable = false)
+    @Column(name = "default_delivery_note_format", nullable = false)
     @Builder.Default
-    private InvoiceMode invoiceMode = InvoiceMode.GROUPED;
+    private DeliveryNoteFormat defaultDeliveryNoteFormat = DeliveryNoteFormat.PLAIN;
 
-    // Relations
-
-    // Timestamps
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

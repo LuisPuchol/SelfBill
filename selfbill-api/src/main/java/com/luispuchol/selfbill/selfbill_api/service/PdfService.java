@@ -11,29 +11,20 @@ import org.springframework.stereotype.Service;
 
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
-import com.luispuchol.selfbill.selfbill_api.enums.InvoiceMode;
-import lombok.RequiredArgsConstructor;
+import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
 
 @Service
-@RequiredArgsConstructor
-public class PdfService implements IPdfService {
+public class PdfService {
 
-    // TODO: replace with real PDF generation (e.g. OpenPDF) using invoice data.
-    // Mock below only unblocks testing of the email-attachment flow.
-
-    @Override
     public byte[] generateInvoicePdf(Invoice invoice) {
         return buildMockPdf("invoice", invoice.getCode());
     }
 
-    @Override
     public byte[] generateDeliveryNotePdf(DeliveryNote deliveryNote) {
-        return buildMockPdf("delivery note", deliveryNote.getCode());
-    }
-
-    @Override
-    public byte[] generateDeliveryNoteWithTaxesPdf(DeliveryNote deliveryNote) {
-        return buildMockPdf("Delivery Note with taxes", deliveryNote.getCode());
+        String label = deliveryNote.getFormat() == DeliveryNoteFormat.VALUED
+                ? "Delivery Note with taxes"
+                : "delivery note";
+        return buildMockPdf(label, deliveryNote.getCode());
     }
 
     private byte[] buildMockPdf(String label, Integer code) {
@@ -74,7 +65,7 @@ public class PdfService implements IPdfService {
         }
     }
 
-    private void writeAscii(ByteArrayOutputStream out, String text) throws IOException {
+    private static void writeAscii(ByteArrayOutputStream out, String text) throws IOException {
         out.write(text.getBytes(StandardCharsets.ISO_8859_1));
     }
 }

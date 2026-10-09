@@ -4,10 +4,13 @@ import java.time.LocalDateTime;
 
 import org.springframework.data.jpa.domain.Specification;
 
-import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteFilter;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 
-public class DeliveryNoteSpecification {
+public final class DeliveryNoteSpecification {
+
+    private DeliveryNoteSpecification() {
+    }
 
     public static Specification<DeliveryNote> withFilter(DeliveryNoteFilter filter) {
         return Specification.<DeliveryNote>unrestricted()

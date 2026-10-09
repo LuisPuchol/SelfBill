@@ -1,107 +1,86 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
-import java.util.Optional;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientFilter;
-import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.clientDTO.ClientResponse;
-import com.luispuchol.selfbill.selfbill_api.specification.ClientSpecification;
+import com.luispuchol.selfbill.selfbill_api.dto.client.ClientFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.client.ClientRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.client.ClientResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.ClientMapper;
 import com.luispuchol.selfbill.selfbill_api.repository.ClientRepository;
+import com.luispuchol.selfbill.selfbill_api.specification.ClientSpecification;
 
-import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ClientService implements IClientService {
+@Transactional(readOnly = true)
+public class ClientService {
 
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
 
-    @Transactional(readOnly = true)
-    @Override
     public Page<ClientResponse> getAllClients(ClientFilter filter, Pageable pageable) {
         return clientRepository.findAll(ClientSpecification.withFilter(filter), pageable)
                 .map(clientMapper::toResponse);
     }
 
-    @Transactional(readOnly = true)
-    @Override
     public ClientResponse getClientById(Integer id) {
-        Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
-        return clientMapper.toResponse(client);
+        return clientMapper.toResponse(findClient(id));
     }
 
-    @Transactional(readOnly = true)
-    @Override
     public ClientResponse getClientByCode(Integer code) {
-        Client client = clientRepository.findByCode(code)
+        return clientRepository.findByCode(code)
+                .map(clientMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, code));
-        return clientMapper.toResponse(client);
     }
 
-    @Transactional(readOnly = true)
-    @Override
     public ClientResponse getClientByName(String name) {
-        Client client = clientRepository.findByNameIgnoreCase(name)
+        return clientRepository.findByNameIgnoreCase(name)
+                .map(clientMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, name));
-        return clientMapper.toResponse(client);
     }
 
-    @Transactional(readOnly = true)
-    @Override
     public ClientResponse getClientByNif(String nif) {
-        Client client = clientRepository.findByNif(nif)
+        return clientRepository.findByNif(nif)
+                .map(clientMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, nif));
-        return clientMapper.toResponse(client);
     }
 
     @Transactional
-    @Override
-    public ClientResponse createClient(ClientRequest clientRequest) {
-        Optional<Client> existingByCode = clientRepository.findByCode(clientRequest.getCode());
-        if (existingByCode.isPresent()) {
-            throw new BusinessException(ErrorCode.CLIENT_DUPLICATE_CODE, clientRequest.getCode());
+    public ClientResponse createClient(ClientRequest request) {
+        requireUnusedCode(request.getCode());
+        return clientMapper.toResponse(clientRepository.save(clientMapper.toEntity(request)));
+    }
+
+    @Transactional
+    public ClientResponse updateClient(Integer id, ClientRequest request) {
+        Client client = findClient(id);
+        if (!client.getCode().equals(request.getCode())) {
+            requireUnusedCode(request.getCode());
         }
-
-        Client client = clientMapper.toEntity(clientRequest);
-        Client saved = clientRepository.save(client);
-        return clientMapper.toResponse(saved);
+        clientMapper.updateEntity(client, request);
+        return clientMapper.toResponse(clientRepository.save(client));
     }
 
     @Transactional
-    @Override
-    public ClientResponse updateClient(Integer id, ClientRequest clientRequest) {
-        Client existingClient = clientRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
-
-        if (!existingClient.getCode().equals(clientRequest.getCode())) {
-            Optional<Client> existingByCode = clientRepository.findByCode(clientRequest.getCode());
-            if (existingByCode.isPresent()) {
-                throw new BusinessException(ErrorCode.CLIENT_DUPLICATE_CODE, clientRequest.getCode());
-            }
-        }
-
-        clientMapper.updateEntity(existingClient, clientRequest);
-        Client updated = clientRepository.save(existingClient);
-        return clientMapper.toResponse(updated);
-    }
-
-    @Transactional
-    @Override
     public void deleteClient(Integer id) {
-        Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
+        clientRepository.delete(findClient(id));
+    }
 
-        clientRepository.delete(client);
+    private Client findClient(Integer id) {
+        return clientRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
+    }
+
+    private void requireUnusedCode(Integer code) {
+        if (clientRepository.existsByCode(code)) {
+            throw new BusinessException(ErrorCode.CLIENT_DUPLICATE_CODE, code);
+        }
     }
 }

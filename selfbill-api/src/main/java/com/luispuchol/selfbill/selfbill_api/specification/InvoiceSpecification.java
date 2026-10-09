@@ -4,20 +4,21 @@ import java.time.LocalDateTime;
 
 import org.springframework.data.jpa.domain.Specification;
 
-import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceFilter;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
 
-public class InvoiceSpecification {
+public final class InvoiceSpecification {
 
-    private InvoiceSpecification() {}
+    private InvoiceSpecification() {
+    }
 
     public static Specification<Invoice> withFilter(InvoiceFilter filter) {
         return Specification.<Invoice>unrestricted()
                 .and(codeFrom(filter.getCodeFrom()))
                 .and(codeTo(filter.getCodeTo()))
                 .and(clientId(filter.getClientId()))
-                .and(deliveryNoteId(filter.getDeliveryNoteId()))
+                .and(containsDeliveryNote(filter.getDeliveryNoteId()))
                 .and(status(filter.getStatus()))
                 .and(dateFrom(filter.getDateFrom()))
                 .and(dateTo(filter.getDateTo()));
@@ -43,8 +44,7 @@ public class InvoiceSpecification {
                 : cb.equal(root.get("status"), status);
     }
 
-    // Finds invoices that contain the given delivery note
-    private static Specification<Invoice> deliveryNoteId(Integer deliveryNoteId) {
+    private static Specification<Invoice> containsDeliveryNote(Integer deliveryNoteId) {
         return (root, query, cb) -> {
             if (deliveryNoteId == null) return null;
             if (query != null) query.distinct(true);

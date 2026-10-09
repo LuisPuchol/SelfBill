@@ -9,8 +9,10 @@ import org.springframework.data.jpa.repository.Query;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
 
 public interface InvoiceRepository extends JpaRepository<Invoice, Integer>, JpaSpecificationExecutor<Invoice> {
+
     Optional<Invoice> findByCode(Integer code);
 
-    @Query("SELECT MAX(i.code) FROM Invoice i")
+    // Native so it also counts soft-deleted invoices: their numbers stay taken by the unique constraint
+    @Query(value = "SELECT MAX(code) FROM invoices", nativeQuery = true)
     Optional<Integer> findMaxCode();
 }

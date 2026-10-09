@@ -1,99 +1,80 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
-import java.util.Optional;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleFilter;
-import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.articleDTO.ArticleResponse;
-import com.luispuchol.selfbill.selfbill_api.specification.ArticleSpecification;
+import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.Article;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.ArticleMapper;
 import com.luispuchol.selfbill.selfbill_api.repository.ArticleRepository;
+import com.luispuchol.selfbill.selfbill_api.specification.ArticleSpecification;
 
-import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ArticleService implements IArticleService {
+@Transactional(readOnly = true)
+public class ArticleService {
 
     private final ArticleRepository articleRepository;
     private final ArticleMapper articleMapper;
 
-    @Transactional(readOnly = true)
-    @Override
     public Page<ArticleResponse> getAllArticles(ArticleFilter filter, Pageable pageable) {
         return articleRepository.findAll(ArticleSpecification.withFilter(filter), pageable)
                 .map(articleMapper::toResponse);
     }
 
-    @Transactional(readOnly = true)
-    @Override
     public ArticleResponse getArticleById(Integer id) {
-        Article article = articleRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, id));
-        return articleMapper.toResponse(article);
+        return articleMapper.toResponse(findArticle(id));
     }
 
-    @Transactional(readOnly = true)
-    @Override
     public ArticleResponse getArticleByCode(Integer code) {
-        Article article = articleRepository.findByCode(code)
+        return articleRepository.findByCode(code)
+                .map(articleMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, code));
-        return articleMapper.toResponse(article);
     }
 
-    @Transactional(readOnly = true)
-    @Override
     public ArticleResponse getArticleByName(String name) {
-        Article article = articleRepository.findByNameIgnoreCase(name)
+        return articleRepository.findByNameIgnoreCase(name)
+                .map(articleMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, name));
-        return articleMapper.toResponse(article);
     }
 
     @Transactional
-    @Override
-    public ArticleResponse createArticle(ArticleRequest articleRequest) {
-        Optional<Article> existingByCode = articleRepository.findByCode(articleRequest.getCode());
-        if (existingByCode.isPresent()) {
-            throw new BusinessException(ErrorCode.ARTICLE_DUPLICATE_CODE, articleRequest.getCode());
+    public ArticleResponse createArticle(ArticleRequest request) {
+        requireUnusedCode(request.getCode());
+        return articleMapper.toResponse(articleRepository.save(articleMapper.toEntity(request)));
+    }
+
+    @Transactional
+    public ArticleResponse updateArticle(Integer id, ArticleRequest request) {
+        Article article = findArticle(id);
+        if (!article.getCode().equals(request.getCode())) {
+            requireUnusedCode(request.getCode());
         }
-
-        Article article = articleMapper.toEntity(articleRequest);
-        Article saved = articleRepository.save(article);
-        return articleMapper.toResponse(saved);
+        articleMapper.updateEntity(article, request);
+        return articleMapper.toResponse(articleRepository.save(article));
     }
 
     @Transactional
-    @Override
-    public ArticleResponse updateArticle(Integer id, ArticleRequest articleRequest) {
-        Article existingArticle = articleRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, id));
-
-        if (!existingArticle.getCode().equals(articleRequest.getCode())) {
-            Optional<Article> articleWithSameCode = articleRepository.findByCode(articleRequest.getCode());
-            if (articleWithSameCode.isPresent()) {
-                throw new BusinessException(ErrorCode.ARTICLE_DUPLICATE_CODE, articleRequest.getCode());
-            }
-        }
-
-        articleMapper.updateEntity(existingArticle, articleRequest);
-        Article saved = articleRepository.save(existingArticle);
-        return articleMapper.toResponse(saved);
-    }
-
-    @Transactional
-    @Override
     public void deleteArticle(Integer id) {
-        Article article = articleRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, id));
+        articleRepository.delete(findArticle(id));
+    }
 
-        articleRepository.delete(article);
+    private Article findArticle(Integer id) {
+        return articleRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, id));
+    }
+
+    private void requireUnusedCode(Integer code) {
+        if (articleRepository.existsByCode(code)) {
+            throw new BusinessException(ErrorCode.ARTICLE_DUPLICATE_CODE, code);
+        }
     }
 }

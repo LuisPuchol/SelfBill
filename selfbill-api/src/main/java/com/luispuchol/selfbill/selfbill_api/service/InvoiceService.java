@@ -2,31 +2,33 @@ package com.luispuchol.selfbill.selfbill_api.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceFilter;
-import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceResponse;
-import com.luispuchol.selfbill.selfbill_api.dto.invoiceDTO.InvoiceSectionResponse;
-import com.luispuchol.selfbill.selfbill_api.dto.userProfileDTO.UserProfileResponse;
+import com.luispuchol.selfbill.selfbill_api.dto.PdfFile;
+import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceResponse;
+import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceSectionResponse;
+import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
 import com.luispuchol.selfbill.selfbill_api.entity.InvoiceLine;
 import com.luispuchol.selfbill.selfbill_api.entity.TaxConfig;
+import com.luispuchol.selfbill.selfbill_api.enums.DocumentType;
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
 import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.enums.VatType;
-import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.InvoiceMapper;
@@ -39,248 +41,240 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class InvoiceService implements IInvoiceService {
+@Transactional(readOnly = true)
+public class InvoiceService {
 
-        private final InvoiceRepository invoiceRepository;
-        private final DeliveryNoteRepository deliveryNoteRepository;
-        private final ClientRepository clientRepository;
-        private final InvoiceMapper invoiceMapper;
-        private final ITaxConfigService taxConfigService;
-        private final PdfService pdfService;
-        private final IEmailService emailService;
-        private final IUserProfileService userProfileService;
-        private final MessageSource messageSource;
+    private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
-        @Transactional(readOnly = true)
-        @Override
-        public Page<InvoiceResponse> getAllInvoices(InvoiceFilter filter, Pageable pageable) {
-                return invoiceRepository.findAll(InvoiceSpecification.withFilter(filter), pageable)
-                                .map(invoiceMapper::toResponse);
+    private final InvoiceRepository invoiceRepository;
+    private final DeliveryNoteRepository deliveryNoteRepository;
+    private final ClientRepository clientRepository;
+    private final InvoiceMapper invoiceMapper;
+    private final TaxConfigService taxConfigService;
+    private final PdfService pdfService;
+    private final EmailService emailService;
+    private final DocumentMessages documentMessages;
+    private final Clock clock;
+
+    public Page<InvoiceResponse> getAllInvoices(InvoiceFilter filter, Pageable pageable) {
+        return invoiceRepository.findAll(InvoiceSpecification.withFilter(filter), pageable)
+                .map(invoiceMapper::toResponse);
+    }
+
+    public InvoiceResponse getInvoiceById(Integer id) {
+        return toResponseWithSections(findInvoice(id));
+    }
+
+    public InvoiceResponse getInvoiceByCode(Integer code) {
+        return invoiceRepository.findByCode(code)
+                .map(this::toResponseWithSections)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, code));
+    }
+
+    @Transactional
+    public InvoiceResponse createInvoice(InvoiceRequest request) {
+        Client client = findClient(request.getClientId());
+        List<DeliveryNote> deliveryNotes = findInvoiceableDeliveryNotes(request, null);
+
+        Invoice invoice = invoiceRepository.save(Invoice.builder().client(client).build());
+        include(invoice, deliveryNotes);
+        return toResponseWithSections(invoice);
+    }
+
+    @Transactional
+    public InvoiceResponse updateInvoice(Integer id, InvoiceRequest request) {
+        Invoice invoice = findInvoice(id);
+        requireDraft(invoice);
+        Client client = findClient(request.getClientId());
+        List<DeliveryNote> deliveryNotes = findInvoiceableDeliveryNotes(request, invoice.getId());
+
+        releaseDeliveryNotesNotIn(invoice, deliveryNotes);
+        invoice.setClient(client);
+        include(invoice, deliveryNotes);
+        return toResponseWithSections(invoiceRepository.save(invoice));
+    }
+
+    @Transactional
+    public InvoiceResponse issueInvoice(Integer id) {
+        Invoice invoice = findInvoice(id);
+        requireDraft(invoice);
+
+        // Numbered only on issue so a discarded draft never consumes a number (CONCEPTO.md §5)
+        invoice.setCode(invoiceRepository.findMaxCode().orElse(0) + 1);
+        invoice.setDate(LocalDateTime.now(clock));
+        invoice.setStatus(InvoiceStatus.ISSUED);
+        freezeClientData(invoice);
+        return toResponseWithSections(invoiceRepository.save(invoice));
+    }
+
+    @Transactional
+    public void recalculateDraft(Invoice invoice) {
+        requireDraft(invoice);
+        recalculate(invoice, invoice.getDeliveryNotes());
+    }
+
+    // Until Verifactu, deleting an issued invoice is the available correction path (CONCEPTO.md §5)
+    @Transactional
+    public void deleteInvoice(Integer id) {
+        Invoice invoice = findInvoice(id);
+        invoice.getDeliveryNotes().forEach(deliveryNote -> deliveryNote.setInvoice(null));
+        invoiceRepository.delete(invoice);
+    }
+
+    public PdfFile exportInvoicePdf(Integer id) {
+        Invoice invoice = findIssuedInvoice(id);
+        return new PdfFile(documentMessages.filename(DocumentType.INVOICE, invoice.getCode()),
+                pdfService.generateInvoicePdf(invoice));
+    }
+
+    public void sendInvoiceEmail(Integer id) {
+        Invoice invoice = findIssuedInvoice(id);
+        emailService.sendDocument(DocumentType.INVOICE, invoice.getClient(), invoice.getCode(),
+                pdfService.generateInvoicePdf(invoice));
+    }
+
+    private List<DeliveryNote> findInvoiceableDeliveryNotes(InvoiceRequest request, Integer editedInvoiceId) {
+        List<Integer> ids = request.getDeliveryNoteIds();
+        List<DeliveryNote> deliveryNotes = deliveryNoteRepository.findAllById(ids);
+        if (deliveryNotes.size() != ids.size()) {
+            throw new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, ids);
         }
 
-        @Transactional(readOnly = true)
-        @Override
-        public InvoiceResponse getInvoiceById(Integer id) {
-                Invoice invoice = invoiceRepository.findById(id)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
-                return toResponseWithSections(invoice);
+        for (DeliveryNote deliveryNote : deliveryNotes) {
+            if (!deliveryNote.getClient().getId().equals(request.getClientId())) {
+                throw new BusinessException(ErrorCode.INVOICE_MIXED_CLIENTS);
+            }
+            Invoice current = deliveryNote.getInvoice();
+            if (current != null && !current.getId().equals(editedInvoiceId)) {
+                throw new BusinessException(ErrorCode.INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED,
+                        deliveryNote.getCode());
+            }
         }
+        return deliveryNotes;
+    }
 
-        @Transactional(readOnly = true)
-        @Override
-        public InvoiceResponse getInvoiceByCode(Integer code) {
-                Invoice invoice = invoiceRepository.findByCode(code)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, code));
-                return toResponseWithSections(invoice);
+    private static void releaseDeliveryNotesNotIn(Invoice invoice, List<DeliveryNote> kept) {
+        Set<Integer> keptIds = kept.stream().map(DeliveryNote::getId).collect(Collectors.toSet());
+        invoice.getDeliveryNotes().stream()
+                .filter(deliveryNote -> !keptIds.contains(deliveryNote.getId()))
+                .forEach(deliveryNote -> deliveryNote.setInvoice(null));
+    }
+
+    private void include(Invoice invoice, List<DeliveryNote> deliveryNotes) {
+        deliveryNotes.forEach(deliveryNote -> deliveryNote.setInvoice(invoice));
+        recalculate(invoice, deliveryNotes);
+    }
+
+    private void recalculate(Invoice invoice, List<DeliveryNote> deliveryNotes) {
+        applyFinancials(invoice, deliveryNotes);
+        invoice.getLines().clear();
+        invoice.getLines().addAll(buildLines(invoice, deliveryNotes));
+    }
+
+    private void applyFinancials(Invoice invoice, List<DeliveryNote> deliveryNotes) {
+        TaxConfig taxConfig = taxConfigService.getCurrent();
+        Client client = invoice.getClient();
+
+        BigDecimal subtotal = deliveryNotes.stream()
+                .map(DeliveryNote::getTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal vatAmount = client.getVatType() == VatType.WITH_VAT
+                ? percentageOf(subtotal, taxConfig.getVatPercentage())
+                : BigDecimal.ZERO;
+        BigDecimal surchargeAmount = client.getSurchargeType() == SurchargeType.WITH_SURCHARGE
+                ? percentageOf(subtotal, taxConfig.getSurchargePercentage())
+                : BigDecimal.ZERO;
+
+        invoice.setSubtotal(subtotal);
+        invoice.setVatPercentage(taxConfig.getVatPercentage());
+        invoice.setVatAmount(vatAmount);
+        invoice.setSurchargePercentage(taxConfig.getSurchargePercentage());
+        invoice.setSurchargeAmount(surchargeAmount);
+        invoice.setTotal(subtotal.add(vatAmount).add(surchargeAmount));
+    }
+
+    private static BigDecimal percentageOf(BigDecimal amount, BigDecimal percentage) {
+        return amount.multiply(percentage).divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
+    }
+
+    private static List<InvoiceLine> buildLines(Invoice invoice, List<DeliveryNote> deliveryNotes) {
+        return deliveryNotes.stream()
+                .flatMap(deliveryNote -> deliveryNote.getLines().stream()
+                        .map(line -> InvoiceLine.builder()
+                                .invoice(invoice)
+                                .deliveryNote(deliveryNote)
+                                .deliveryNoteCode(deliveryNote.getCode())
+                                .deliveryNoteDate(deliveryNote.getDate())
+                                .article(line.getArticle())
+                                .articleName(line.getArticle().getName())
+                                .articleCode(line.getArticle().getCode())
+                                .trazabilityCode1(line.getTrazabilityCode1())
+                                .trazabilityCode2(line.getTrazabilityCode2())
+                                .trazabilityCode3(line.getTrazabilityCode3())
+                                .quantity(line.getQuantity())
+                                .price(line.getPrice())
+                                .total(line.getTotal())
+                                .build()))
+                .toList();
+    }
+
+    private static void freezeClientData(Invoice invoice) {
+        Client client = invoice.getClient();
+        invoice.setClientBusinessName(client.getBusinessName());
+        invoice.setClientNif(client.getNif());
+        invoice.setClientAddress(client.getAddress());
+        invoice.setClientCity(client.getCity());
+        invoice.setClientProvince(client.getProvince());
+        invoice.setClientPostalCode(client.getPostalCode());
+    }
+
+    private static void requireDraft(Invoice invoice) {
+        if (invoice.getStatus() != InvoiceStatus.DRAFT) {
+            throw new BusinessException(ErrorCode.INVOICE_ALREADY_ISSUED, invoice.getCode());
         }
+    }
 
-        @Transactional
-        @Override
-        public InvoiceResponse createInvoice(InvoiceRequest request) {
-                List<Integer> deliveryNoteIds = request.getDeliveryNoteIds();
-                Integer clientId = request.getClientId();
-
-                List<DeliveryNote> deliveryNotes = deliveryNoteRepository.findAllById(deliveryNoteIds);
-                Client client = clientRepository.findById(clientId)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, clientId));
-
-                validateRequest(clientId, deliveryNoteIds, deliveryNotes);
-
-                Invoice invoice = buildInvoice(client, deliveryNotes);
-                buildAndLinkLines(invoice, deliveryNotes);
-                return toResponseWithSections(invoiceRepository.save(invoice));
+    private Invoice findIssuedInvoice(Integer id) {
+        Invoice invoice = findInvoice(id);
+        if (invoice.getStatus() != InvoiceStatus.ISSUED) {
+            throw new BusinessException(ErrorCode.INVOICE_NOT_ISSUED, id);
         }
+        return invoice;
+    }
 
-        private void validateRequest(Integer clientId, List<Integer> deliveryNoteIds,
-                        List<DeliveryNote> deliveryNotes) {
-                if (deliveryNotes.size() != deliveryNoteIds.size()) {
-                        throw new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, deliveryNoteIds);
-                }
+    private Invoice findInvoice(Integer id) {
+        return invoiceRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
+    }
 
-                boolean mixedClients = deliveryNotes.stream()
-                                .anyMatch(dn -> !dn.getClient().getId().equals(clientId));
-                if (mixedClients) {
-                        throw new BusinessException(ErrorCode.INVOICE_MIXED_CLIENTS);
-                }
+    private Client findClient(Integer id) {
+        return clientRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
+    }
 
-                deliveryNotes.forEach(dn -> {
-                        if (dn.getInvoice() != null) {
-                                throw new BusinessException(ErrorCode.INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED,
-                                                dn.getCode());
-                        }
-                });
-        }
+    private InvoiceResponse toResponseWithSections(Invoice invoice) {
+        InvoiceResponse response = invoiceMapper.toResponse(invoice);
+        response.setSections(buildSections(invoice));
+        return response;
+    }
 
-        private Invoice buildInvoice(Client client, List<DeliveryNote> deliveryNotes) {
-                Invoice invoice = invoiceMapper.toEntity(client, deliveryNotes);
-                applyFinancials(invoice, client, deliveryNotes);
-                invoice.setCode(invoiceRepository.findMaxCode().orElse(0) + 1);
-                invoice.setDate(LocalDateTime.now());
-                return invoice;
-        }
+    // From the frozen lines, not the live relation: during a rectification the delivery notes
+    // point to the new draft and the original must keep its sections (CONCEPTO.md §9.1)
+    private List<InvoiceSectionResponse> buildSections(Invoice invoice) {
+        Map<Integer, List<InvoiceLine>> linesByDeliveryNote = invoice.getLines().stream()
+                .collect(Collectors.groupingBy(InvoiceLine::getDeliveryNoteCode, LinkedHashMap::new,
+                        Collectors.toList()));
 
-        private void applyFinancials(Invoice invoice, Client client, List<DeliveryNote> deliveryNotes) {
-                TaxConfig taxConfig = taxConfigService.getTaxConfigEntity();
-                BigDecimal vatPercentage = taxConfig.getVatPercentage();
-                BigDecimal surchargePercentage = taxConfig.getSurchargePercentage();
-
-                BigDecimal subtotal = deliveryNotes.stream()
-                                .map(DeliveryNote::getTotal)
-                                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                BigDecimal vatAmount = client.getVatType() == VatType.WITH_VAT
-                                ? subtotal.multiply(vatPercentage).divide(BigDecimal.valueOf(100), 2,
-                                                RoundingMode.HALF_UP)
-                                : BigDecimal.ZERO;
-
-                BigDecimal surchargeAmount = client.getSurchargeType() == SurchargeType.WITH_SURCHARGE
-                                ? subtotal.multiply(surchargePercentage).divide(BigDecimal.valueOf(100), 2,
-                                                RoundingMode.HALF_UP)
-                                : BigDecimal.ZERO;
-
-                invoice.setSubtotal(subtotal);
-                invoice.setVatPercentage(vatPercentage);
-                invoice.setVatAmount(vatAmount);
-                invoice.setSurchargePercentage(surchargePercentage);
-                invoice.setSurchargeAmount(surchargeAmount);
-                invoice.setTotal(subtotal.add(vatAmount).add(surchargeAmount));
-        }
-
-        private void buildAndLinkLines(Invoice invoice, List<DeliveryNote> deliveryNotes) {
-                invoice.setLines(buildLines(invoice, deliveryNotes));
-                deliveryNotes.forEach(dn -> dn.setInvoice(invoice));
-        }
-
-        private List<InvoiceLine> buildLines(Invoice invoice, List<DeliveryNote> deliveryNotes) {
-                return deliveryNotes.stream()
-                                .flatMap(dn -> dn.getDeliveryNoteArticles().stream()
-                                                .map(dna -> InvoiceLine.builder()
-                                                                .invoice(invoice)
-                                                                .deliveryNote(dn)
-                                                                .deliveryNoteCode(dn.getCode())
-                                                                .deliveryNoteDate(dn.getDate())
-                                                                .article(dna.getArticle())
-                                                                .articleName(dna.getArticle().getName())
-                                                                .articleCode(dna.getArticle().getCode())
-                                                                .trazabilityCode1(dna.getTrazabilityCode1())
-                                                                .trazabilityCode2(dna.getTrazabilityCode2())
-                                                                .trazabilityCode3(dna.getTrazabilityCode3())
-                                                                .quantity(dna.getQuantity())
-                                                                .price(dna.getPrice())
-                                                                .total(dna.getTotal())
-                                                                .build()))
-                                .toList();
-        }
-
-        @Transactional
-        @Override
-        public InvoiceResponse updateInvoice(Integer id, InvoiceRequest request) {
-                /**
-                 * 
-                 * TODO: Solución que tengo que valorar para saber que hacer
-                 * 
-                 * Invoice existing = invoiceRepository.findById(id)
-                 * .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
-                 * 
-                 * List<Integer> deliveryNoteIds = request.getDeliveryNoteIds();
-                 * Integer clientId = request.getClientId();
-                 * 
-                 * List<DeliveryNote> deliveryNotes =
-                 * deliveryNoteRepository.findAllById(deliveryNoteIds);
-                 * Client client = clientRepository.findById(clientId)
-                 * .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND,
-                 * clientId));
-                 * 
-                 * validateRequest(clientId, deliveryNoteIds, deliveryNotes, existing.getId());
-                 * 
-                 * // Detach delivery notes that were part of this invoice but were removed from
-                 * // the request
-                 * Set<Integer> newDeliveryNoteIds =
-                 * deliveryNotes.stream().map(DeliveryNote::getId)
-                 * .collect(Collectors.toSet());
-                 * List.copyOf(existing.getDeliveryNotes()).stream()
-                 * .filter(dn -> !newDeliveryNoteIds.contains(dn.getId()))
-                 * .forEach(dn -> dn.setInvoice(null));
-                 * 
-                 * existing.setClient(client);
-                 * applyFinancials(existing, client, deliveryNotes);
-                 * 
-                 * existing.getLines().clear();
-                 * existing.getLines().addAll(buildLines(existing, deliveryNotes));
-                 * deliveryNotes.forEach(dn -> dn.setInvoice(existing));
-                 * 
-                 * return toResponseWithSections(invoiceRepository.save(existing));
-                 */
-
-                return null;
-        }
-
-        @Transactional
-        @Override
-        public void deleteInvoice(Integer id) {
-                Invoice invoice = invoiceRepository.findById(id)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
-
-                invoice.getDeliveryNotes().forEach(dn -> dn.setInvoice(null));
-
-                invoiceRepository.delete(invoice);
-        }
-
-        private InvoiceResponse toResponseWithSections(Invoice invoice) {
-                InvoiceResponse response = invoiceMapper.toResponse(invoice);
-                response.setSections(buildSections(invoice));
-                return response;
-        }
-
-        private List<InvoiceSectionResponse> buildSections(Invoice invoice) {
-                Map<Integer, List<InvoiceLine>> byDn = invoice.getLines().stream()
-                                .collect(Collectors.groupingBy(InvoiceLine::getDeliveryNoteCode));
-
-                return invoice.getDeliveryNotes().stream()
-                                .map(dn -> InvoiceSectionResponse.builder()
-                                                .deliveryNoteId(dn.getId())
-                                                .deliveryNoteCode(dn.getCode())
-                                                .deliveryNoteDate(dn.getDate())
-                                                .lines(byDn.getOrDefault(dn.getCode(), List.of()).stream()
-                                                                .map(invoiceMapper::toLineResponse)
-                                                                .toList())
-                                                .build())
-                                .toList();
-        }
-
-        @Transactional(readOnly = true)
-        @Override
-        public byte[] generateInvoicePdf(Integer id) {
-                Invoice invoice = invoiceRepository.findById(id)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
-                return pdfService.generateInvoicePdf(invoice);
-        }
-
-        @Transactional(readOnly = true)
-        @Override
-        public void sendInvoiceEmail(Integer id) {
-                Invoice invoice = invoiceRepository.findById(id)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, id));
-
-                String clientEmail = invoice.getClient().getEmail();
-                if (clientEmail == null || clientEmail.isBlank()) {
-                        throw new BusinessException(ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED, invoice.getClient().getId());
-                }
-
-                UserProfileResponse senderProfile = userProfileService.getConfiguredSenderProfile();
-                MailSender sender = new MailSender(senderProfile.getEmail(), senderProfile.getSmtpHost(),
-                                senderProfile.getSmtpPort(), senderProfile.getMailPassword());
-
-                Locale locale = LocaleContextHolder.getLocale();
-                Object[] codeArg = { invoice.getCode() };
-                String subject = messageSource.getMessage("invoice.email.subject", codeArg, locale);
-                String body = messageSource.getMessage("invoice.email.body",
-                                new Object[] { invoice.getClient().getName(), invoice.getCode() }, locale);
-                String pdfFilename = messageSource.getMessage("invoice.pdf.filename", codeArg, locale);
-
-                byte[] pdfBytes = pdfService.generateInvoicePdf(invoice);
-
-                emailService.sendEmail(sender, clientEmail, subject, body, pdfBytes, pdfFilename);
-        }
-
+        return linesByDeliveryNote.values().stream()
+                .map(lines -> {
+                    InvoiceLine first = lines.get(0);
+                    return InvoiceSectionResponse.builder()
+                            .deliveryNoteId(first.getDeliveryNote() != null ? first.getDeliveryNote().getId() : null)
+                            .deliveryNoteCode(first.getDeliveryNoteCode())
+                            .deliveryNoteDate(first.getDeliveryNoteDate())
+                            .lines(lines.stream().map(invoiceMapper::toLineResponse).toList())
+                            .build();
+                })
+                .toList();
+    }
 }

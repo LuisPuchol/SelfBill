@@ -4,14 +4,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import com.luispuchol.selfbill.selfbill_api.dto.userProfileDTO.UserProfileLogoResponse;
-import com.luispuchol.selfbill.selfbill_api.dto.userProfileDTO.UserProfileRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.userProfileDTO.UserProfileResponse;
-import com.luispuchol.selfbill.selfbill_api.service.IUserProfileService;
+
+import com.luispuchol.selfbill.selfbill_api.dto.userprofile.UserProfileLogoResponse;
+import com.luispuchol.selfbill.selfbill_api.dto.userprofile.UserProfileRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.userprofile.UserProfileResponse;
+import com.luispuchol.selfbill.selfbill_api.service.UserProfileService;
+
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,36 +31,32 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserProfileController {
 
-    private final IUserProfileService userProfileService;
+    private final UserProfileService userProfileService;
 
     @Operation(summary = "Get user profile")
-    @ApiResponse(responseCode = "200", description = "Successful operation")
     @GetMapping
-    public ResponseEntity<UserProfileResponse> getUserProfile() {
-        return ResponseEntity.ok(userProfileService.getUserProfile());
+    public UserProfileResponse getUserProfile() {
+        return userProfileService.getUserProfile();
     }
 
     @Operation(summary = "Create user profile")
     @PostMapping
-    public ResponseEntity<UserProfileResponse> createUserProfile(
-            @RequestBody @Valid UserProfileRequest request) {
-        UserProfileResponse created = userProfileService.createUserProfile(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserProfileResponse createUserProfile(@RequestBody @Valid UserProfileRequest request) {
+        return userProfileService.createUserProfile(request);
     }
 
     @Operation(summary = "Update user profile")
     @PutMapping
-    public ResponseEntity<UserProfileResponse> updateUserProfile(
-            @RequestBody @Valid UserProfileRequest request) {
-        return ResponseEntity.ok(userProfileService.updateUserProfile(request));
+    public UserProfileResponse updateUserProfile(@RequestBody @Valid UserProfileRequest request) {
+        return userProfileService.updateUserProfile(request);
     }
 
     @Operation(summary = "Upload profile logo (JPEG or PNG)")
     @PostMapping(value = "/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Void> uploadLogo(
-            @RequestParam("file") MultipartFile file) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void uploadLogo(@RequestParam("file") MultipartFile file) {
         userProfileService.uploadLogo(file);
-        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Get profile logo")

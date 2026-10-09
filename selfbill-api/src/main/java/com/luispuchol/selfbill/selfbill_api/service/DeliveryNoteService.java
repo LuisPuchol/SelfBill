@@ -1,25 +1,26 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
 import java.math.BigDecimal;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.List;
 
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteArticlesRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteFilter;
-import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.deliveryNoteDTO.DeliveryNoteResponse;
-import com.luispuchol.selfbill.selfbill_api.dto.userProfileDTO.UserProfileResponse;
+import com.luispuchol.selfbill.selfbill_api.dto.PdfFile;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteLineRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteResponse;
 import com.luispuchol.selfbill.selfbill_api.entity.Article;
 import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
-import com.luispuchol.selfbill.selfbill_api.enums.InvoiceMode;
+import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNoteLine;
+import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
+import com.luispuchol.selfbill.selfbill_api.entity.TaxConfig;
+import com.luispuchol.selfbill.selfbill_api.enums.DocumentType;
+import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.DeliveryNoteMapper;
@@ -32,153 +33,137 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class DeliveryNoteService implements IDeliveryNoteService {
+@Transactional(readOnly = true)
+public class DeliveryNoteService {
 
     private final DeliveryNoteRepository deliveryNoteRepository;
     private final ClientRepository clientRepository;
     private final ArticleRepository articleRepository;
     private final DeliveryNoteMapper deliveryNoteMapper;
+    private final TaxConfigService taxConfigService;
+    private final InvoiceService invoiceService;
     private final PdfService pdfService;
-    private final IEmailService emailService;
-    private final IUserProfileService userProfileService;
-    private final MessageSource messageSource;
+    private final EmailService emailService;
+    private final DocumentMessages documentMessages;
 
-    @Transactional(readOnly = true)
-    @Override
     public Page<DeliveryNoteResponse> getAllDeliveryNotes(DeliveryNoteFilter filter, Pageable pageable) {
         return deliveryNoteRepository.findAll(DeliveryNoteSpecification.withFilter(filter), pageable)
                 .map(deliveryNoteMapper::toResponse);
     }
 
-    @Transactional(readOnly = true)
-    @Override
     public DeliveryNoteResponse getDeliveryNoteById(Integer id) {
-        DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
-        return deliveryNoteMapper.toResponse(deliveryNote);
+        return deliveryNoteMapper.toResponse(findDeliveryNote(id));
     }
 
     @Transactional
-    @Override
     public DeliveryNoteResponse createDeliveryNote(DeliveryNoteRequest request) {
-        if (deliveryNoteRepository.findByCode(request.getCode()).isPresent()) {
-            throw new BusinessException(ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE, request.getCode());
-        }
+        requireUnusedCode(request.getCode());
+        Client client = findClient(request.getClientId());
 
-        Client client = clientRepository.findById(request.getClientId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, request.getClientId()));
-
-        DeliveryNote note = deliveryNoteMapper.toEntity(request, client);
-        addLines(request, note);
-
-        recalculateTotals(note);
-
-        return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(note));
+        DeliveryNote deliveryNote = deliveryNoteMapper.toEntity(request, client);
+        deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
+        freezeTaxRates(deliveryNote);
+        replaceLines(deliveryNote, request.getLines());
+        return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(deliveryNote));
     }
 
     @Transactional
-    @Override
     public DeliveryNoteResponse updateDeliveryNote(Integer id, DeliveryNoteRequest request) {
-        DeliveryNote existing = deliveryNoteRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
-
-        if (existing.getInvoice() != null) {
-            throw new BusinessException(ErrorCode.DELIVERY_NOTE_ALREADY_INVOICED, existing.getCode());
+        DeliveryNote deliveryNote = findDeliveryNote(id);
+        requireEditable(deliveryNote, request.getClientId());
+        if (!deliveryNote.getCode().equals(request.getCode())) {
+            requireUnusedCode(request.getCode());
         }
 
-        if (!existing.getCode().equals(request.getCode())) {
-            Optional<DeliveryNote> noteWithSameCode = deliveryNoteRepository.findByCode(request.getCode());
-            if (noteWithSameCode.isPresent()) {
-                throw new BusinessException(ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE, request.getCode());
-            }
+        boolean clientChanged = !deliveryNote.getClient().getId().equals(request.getClientId());
+        Client client = findClient(request.getClientId());
+        deliveryNoteMapper.updateEntity(deliveryNote, request, client);
+        if (clientChanged) {
+            deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
         }
+        replaceLines(deliveryNote, request.getLines());
 
-        Client client = clientRepository.findById(request.getClientId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, request.getClientId()));
-
-        deliveryNoteMapper.updateEntity(existing, request, client);
-        existing.getDeliveryNoteArticles().clear();
-        addLines(request, existing);
-
-        recalculateTotals(existing);
-
-        return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(existing));
+        Invoice invoice = deliveryNote.getInvoice();
+        if (invoice != null) {
+            invoiceService.recalculateDraft(invoice);
+        }
+        return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(deliveryNote));
     }
 
     @Transactional
-    @Override
     public void deleteDeliveryNote(Integer id) {
-        DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
-
+        DeliveryNote deliveryNote = findDeliveryNote(id);
         if (deliveryNote.getInvoice() != null) {
             throw new BusinessException(ErrorCode.DELIVERY_NOTE_ALREADY_INVOICED, deliveryNote.getCode());
         }
-
         deliveryNoteRepository.delete(deliveryNote);
     }
 
-    private void addLines(DeliveryNoteRequest request, DeliveryNote note) {
-        if (request.getLines() == null)
-            return;
-        for (DeliveryNoteArticlesRequest lineReq : request.getLines()) {
-            Article article = articleRepository.findById(lineReq.getArticleId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, lineReq.getArticleId()));
-            note.getDeliveryNoteArticles().add(deliveryNoteMapper.lineToEntity(lineReq, article, note));
-        }
+    public PdfFile exportDeliveryNotePdf(Integer id) {
+        DeliveryNote deliveryNote = findDeliveryNote(id);
+        return new PdfFile(documentMessages.filename(DocumentType.DELIVERY_NOTE, deliveryNote.getCode()),
+                pdfService.generateDeliveryNotePdf(deliveryNote));
     }
 
-    private void recalculateTotals(DeliveryNote note) {
-        BigDecimal total = note.getDeliveryNoteArticles().stream()
-                .map(line -> {
-                    BigDecimal totalLine = line.getQuantity().multiply(line.getPrice());
-                    line.setTotal(totalLine);
-                    return totalLine;
-                })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        note.setTotal(total);
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public byte[] exportDeliveryNotePdf(Integer id) {
-        DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
-        return generatePdf(deliveryNote);
-    }
-
-    private byte[] generatePdf(DeliveryNote deliveryNote) {
-        if (deliveryNote.getClient().getInvoiceMode() == InvoiceMode.PER_DELIVERY_NOTE) {
-            return pdfService.generateDeliveryNoteWithTaxesPdf(deliveryNote);
-        }
-        return pdfService.generateDeliveryNotePdf(deliveryNote);
-    }
-
-    @Transactional(readOnly = true)
-    @Override
     public void sendDeliveryNoteEmail(Integer id) {
-        DeliveryNote deliveryNote = deliveryNoteRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
-
-        String clientEmail = deliveryNote.getClient().getEmail();
-        if (clientEmail == null || clientEmail.isBlank()) {
-            throw new BusinessException(ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED, deliveryNote.getClient().getId());
-        }
-
-        UserProfileResponse senderProfile = userProfileService.getConfiguredSenderProfile();
-        MailSender sender = new MailSender(senderProfile.getEmail(), senderProfile.getSmtpHost(),
-                senderProfile.getSmtpPort(), senderProfile.getMailPassword());
-
-        Locale locale = LocaleContextHolder.getLocale();
-        Object[] codeArg = { deliveryNote.getCode() };
-        String subject = messageSource.getMessage("deliveryNote.email.subject", codeArg, locale);
-        String body = messageSource.getMessage("deliveryNote.email.body",
-                new Object[] { deliveryNote.getClient().getName(), deliveryNote.getCode() }, locale);
-        String pdfFilename = messageSource.getMessage("deliveryNote.pdf.filename", codeArg, locale);
-
-        byte[] pdfBytes = generatePdf(deliveryNote);
-
-        emailService.sendEmail(sender, clientEmail, subject, body, pdfBytes, pdfFilename);
+        DeliveryNote deliveryNote = findDeliveryNote(id);
+        emailService.sendDocument(DocumentType.DELIVERY_NOTE, deliveryNote.getClient(), deliveryNote.getCode(),
+                pdfService.generateDeliveryNotePdf(deliveryNote));
     }
 
+    private static void requireEditable(DeliveryNote deliveryNote, Integer requestedClientId) {
+        Invoice invoice = deliveryNote.getInvoice();
+        if (invoice == null) {
+            return;
+        }
+        if (invoice.getStatus() == InvoiceStatus.ISSUED) {
+            throw new BusinessException(ErrorCode.DELIVERY_NOTE_ALREADY_INVOICED, deliveryNote.getCode());
+        }
+        if (!deliveryNote.getClient().getId().equals(requestedClientId)) {
+            throw new BusinessException(ErrorCode.INVOICE_MIXED_CLIENTS);
+        }
+    }
+
+    // The rate in force on the operation date applies, so it is never refreshed on update (CONCEPTO.md §4)
+    private void freezeTaxRates(DeliveryNote deliveryNote) {
+        TaxConfig taxConfig = taxConfigService.getCurrent();
+        deliveryNote.setVatPercentage(taxConfig.getVatPercentage());
+        deliveryNote.setSurchargePercentage(taxConfig.getSurchargePercentage());
+    }
+
+    private void replaceLines(DeliveryNote deliveryNote, List<DeliveryNoteLineRequest> lineRequests) {
+        deliveryNote.getLines().clear();
+        if (lineRequests != null) {
+            for (DeliveryNoteLineRequest lineRequest : lineRequests) {
+                DeliveryNoteLine line = deliveryNoteMapper.toLineEntity(lineRequest,
+                        findArticle(lineRequest.getArticleId()), deliveryNote);
+                line.setTotal(line.getQuantity().multiply(line.getPrice()));
+                deliveryNote.getLines().add(line);
+            }
+        }
+        deliveryNote.setTotal(deliveryNote.getLines().stream()
+                .map(DeliveryNoteLine::getTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+    }
+
+    private void requireUnusedCode(Integer code) {
+        if (deliveryNoteRepository.existsByCode(code)) {
+            throw new BusinessException(ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE, code);
+        }
+    }
+
+    private DeliveryNote findDeliveryNote(Integer id) {
+        return deliveryNoteRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, id));
+    }
+
+    private Client findClient(Integer id) {
+        return clientRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
+    }
+
+    private Article findArticle(Integer id) {
+        return articleRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, id));
+    }
 }

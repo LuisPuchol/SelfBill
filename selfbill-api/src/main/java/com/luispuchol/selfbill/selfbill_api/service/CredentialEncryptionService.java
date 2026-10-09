@@ -23,6 +23,7 @@ public class CredentialEncryptionService {
     private static final String CIPHER_ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH_BITS = 128;
     private static final int GCM_IV_LENGTH_BYTES = 12;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final SecretKey secretKey;
 
@@ -33,7 +34,7 @@ public class CredentialEncryptionService {
     public String encrypt(String plainText) {
         try {
             byte[] iv = new byte[GCM_IV_LENGTH_BYTES];
-            new SecureRandom().nextBytes(iv);
+            RANDOM.nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
@@ -49,8 +50,7 @@ public class CredentialEncryptionService {
 
     public String decrypt(String encoded) {
         try {
-            byte[] data = Base64.getDecoder().decode(encoded);
-            ByteBuffer buffer = ByteBuffer.wrap(data);
+            ByteBuffer buffer = ByteBuffer.wrap(Base64.getDecoder().decode(encoded));
             byte[] iv = new byte[GCM_IV_LENGTH_BYTES];
             buffer.get(iv);
             byte[] cipherText = new byte[buffer.remaining()];
@@ -64,11 +64,8 @@ public class CredentialEncryptionService {
         }
     }
 
-    /**
-     * Stored outside the SQLite database (under the user's home directory) so that
-     * copying selfbill.db alone is not enough to recover stored credentials.
-     */
-    private SecretKey loadOrCreateKey() {
+    // Kept outside the SQLite file so copying selfbill.db alone does not expose stored credentials
+    private static SecretKey loadOrCreateKey() {
         try {
             Path keyPath = Path.of(System.getProperty("user.home"), ".selfbill", "secret.key");
             if (Files.exists(keyPath)) {
