@@ -1,69 +1,21 @@
 package com.luispuchol.selfbill.selfbill_api.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-
-import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 
-import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.client.ClientRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteLineRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteResponse;
-import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceResponse;
-import com.luispuchol.selfbill.selfbill_api.dto.taxconfig.TaxConfigRequest;
 import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceSeries;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
-import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.enums.VatType;
-import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
+import com.luispuchol.selfbill.selfbill_api.support.DomainIntegrationTest;
 
-@SpringBootTest
-@ActiveProfiles("test")
 @DisplayName("Invoice lifecycle")
-class InvoiceLifecycleTest {
-
-    @Autowired
-    private InvoiceService invoiceService;
-    @Autowired
-    private DeliveryNoteService deliveryNoteService;
-    @Autowired
-    private ClientService clientService;
-    @Autowired
-    private ArticleService articleService;
-    @Autowired
-    private TaxConfigService taxConfigService;
-    @Autowired
-    private JdbcTemplate jdbc;
-
-    private Integer clientId;
-    private Integer articleId;
-    private int nextDeliveryNoteCode = 1;
-
-    @BeforeEach
-    void setUp() {
-        for (String table : List.of("invoice_lines", "delivery_notes_articles", "delivery_notes", "invoices",
-                "clients", "articles", "tax_config")) {
-            jdbc.update("DELETE FROM " + table);
-        }
-        taxConfigService.createTaxConfig(taxes("4", "0.5"));
-        clientId = createClient(1, DeliveryNoteFormat.VALUED);
-        articleId = articleService.createArticle(ArticleRequest.builder().code(1).name("Tomate").build()).getId();
-    }
+class InvoiceLifecycleTest extends DomainIntegrationTest {
 
     @Test
     @DisplayName("An invoice is created as a draft, without number or date")
@@ -254,77 +206,5 @@ class InvoiceLifecycleTest {
         assertThat(reloaded.getFormat()).isEqualTo(DeliveryNoteFormat.VALUED);
         assertThat(reloaded.getVatPercentage()).isEqualByComparingTo("4");
         assertThat(reloaded.getSurchargePercentage()).isEqualByComparingTo("0.5");
-    }
-
-    private Integer createClient(int code, DeliveryNoteFormat format) {
-        return clientService.createClient(clientRequest(code, format, "Client " + code + " SL")).getId();
-    }
-
-    private static ClientRequest clientRequest(int code, DeliveryNoteFormat format, String businessName) {
-        return clientRequest(code, format, businessName, VatType.WITH_VAT);
-    }
-
-    private static ClientRequest clientRequest(int code, DeliveryNoteFormat format, String businessName,
-            VatType vatType) {
-        return ClientRequest.builder()
-                .code(code)
-                .businessName(businessName)
-                .name("Client " + code)
-                .nif("B0000000" + code)
-                .address("Calle Mayor " + code)
-                .city("Valencia")
-                .province("Valencia")
-                .postalCode("46001")
-                .vatType(vatType)
-                .surchargeType(SurchargeType.WITHOUT_SURCHARGE)
-                .defaultDeliveryNoteFormat(format)
-                .build();
-    }
-
-    private static TaxConfigRequest taxes(String vat, String surcharge) {
-        TaxConfigRequest request = new TaxConfigRequest();
-        request.setVatPercentage(new BigDecimal(vat));
-        request.setSurchargePercentage(new BigDecimal(surcharge));
-        return request;
-    }
-
-    private DeliveryNoteResponse createDeliveryNote(Integer client, String quantity, String price) {
-        return deliveryNoteService.createDeliveryNote(
-                deliveryNoteRequest(nextDeliveryNoteCode++, client, quantity, price));
-    }
-
-    private DeliveryNoteRequest deliveryNoteRequest(Integer code, Integer client, String quantity, String price) {
-        return DeliveryNoteRequest.builder()
-                .code(code)
-                .date(LocalDateTime.of(2026, 10, 1, 8, 0))
-                .clientId(client)
-                .lines(List.of(DeliveryNoteLineRequest.builder()
-                        .articleId(articleId)
-                        .trazabilityCode1(1)
-                        .quantity(new BigDecimal(quantity))
-                        .price(new BigDecimal(price))
-                        .build()))
-                .build();
-    }
-
-    private InvoiceResponse issue(Integer client, DeliveryNoteResponse deliveryNote) {
-        InvoiceResponse draft = invoiceService.createInvoice(InvoiceRequest.builder()
-                .clientId(client)
-                .deliveryNoteIds(List.of(deliveryNote.getId()))
-                .build());
-        return invoiceService.issueInvoice(draft.getId());
-    }
-
-    private InvoiceResponse createInvoice(Integer... deliveryNoteIds) {
-        return invoiceService.createInvoice(invoiceRequest(deliveryNoteIds));
-    }
-
-    private InvoiceRequest invoiceRequest(Integer... deliveryNoteIds) {
-        return InvoiceRequest.builder().clientId(clientId).deliveryNoteIds(List.of(deliveryNoteIds)).build();
-    }
-
-    private static void assertFails(ErrorCode expected, ThrowingCallable call) {
-        assertThatThrownBy(call).isInstanceOfSatisfying(BusinessException.class,
-                e -> assertThat(e.getErrorCode()).isEqualTo(expected));
     }
 }

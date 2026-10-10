@@ -36,11 +36,6 @@ de otros clientes. Con las facturas pasa lo mismo, porque la respuesta lee `clie
 del cliente vivo y no del snapshot. Hay que decidir si se impide borrar un cliente con
 documentos (409) o si las lecturas toleran su ausencia.
 
-### El código de un artículo, cliente o albarán borrado da un 500 al reutilizarse
-`existsByCode` no ve las filas borradas en lógico, pero la restricción `unique` sí. Crear
-uno nuevo con el código de uno borrado pasa la validación y falla al insertar. Hay que
-decidir si esos códigos quedan ocupados (y avisar con un 409) o se liberan.
-
 ---
 
 ## 3. Funcionalidad futura
@@ -52,6 +47,8 @@ Entonces hacen falta el estado `ANNULLED`, el bloqueo del borrado, `invoiceType`
 `rectifies`, el hash encadenado y el envío a la AEAT.
 
 El flujo completo y los cambios concretos están en CONCEPTO.md §9.
+
+Obligatorio desde el 1-ene-2027 (sociedades) o el 1-jul-2027 (resto), según el RDL 15/2025. Falta confirmar con la gestoría cuál aplica.
 
 ### Generación real de PDF
 `PdfService` produce un PDF de prueba con una sola línea de texto. Falta la plantilla real
@@ -80,12 +77,6 @@ poder consultar por lote. Ver CONCEPTO.md §10.
 ---
 
 ## 4. Deuda técnica
-
-### Migraciones de esquema
-El esquema lo mantiene `ddl-auto=update`, que solo añade columnas: no cambia
-restricciones `CHECK` ni `unique`, no relaja `NOT NULL` y no migra datos. Cada cambio de
-enum, de nulabilidad o de unicidad obliga a regenerar la base. Antes de tener datos
-reales conviene pasar a Flyway con un script inicial y `ddl-auto=validate`.
 
 ### Huecos en los tests
 Hay tests de servicio del ciclo de la factura y del perfil, y de controlador solo de

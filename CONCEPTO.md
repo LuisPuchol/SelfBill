@@ -177,7 +177,8 @@ Nada se elimina físicamente: el histórico es el producto.
 - `@SQLRestriction` oculta la fila borrada también desde las relaciones. Un documento que
   apunta a una fila borrada no puede cargarla; los snapshots de §6 protegen lo impreso,
   pero las lecturas que siguen la relación viva fallan (ver PENDIENTES.md).
-- Una fila borrada conserva su código y la restricción `unique` lo mantiene ocupado.
+- Una fila borrada libera su código: el índice único de `code` es parcial (`WHERE deleted_at IS NULL`), así que solo puede haber una fila viva por código. Restaurar una fila cuyo código ya está vivo obliga a cambiárselo. Los números de factura son la excepción: no se liberan nunca (§5).
+- El esquema lo gestiona Flyway (`db/migration`) y Hibernate solo lo valida. Las FKs están declaradas y activas (`foreign_keys=true`).
 - Hasta Verifactu, una factura se puede borrar en cualquier estado (§5).
 
 ---

@@ -46,7 +46,8 @@ public class DeliveryNote {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false, unique = true)
+    // Unique among live rows only: partial index in V1__init.sql (CONCEPTO.md §7)
+    @Column(nullable = false)
     private Integer code;
 
     @Column(nullable = false)
