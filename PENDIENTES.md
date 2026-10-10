@@ -1,18 +1,93 @@
-# Pendientes / a revisar en el futuro
+# Pendientes
 
-Cosas detectadas en la revisión de la API que no son bugs urgentes, pero conviene tener anotadas.
+Lista de trabajo. Las reglas del modelo y sus motivos están en [CONCEPTO.md](CONCEPTO.md).
 
-## Rectificación de facturas
-No existe forma de corregir una factura ya emitida, solo borrarla. `InvoiceStatus.RECTIFIED` está definido pero nada lo usa. Relacionado con el TODO de Verifactu que ya hay en `Invoice.java`.
+---
 
-## Seguimiento de cobro
-`Invoice` no tiene fecha de vencimiento ni estado de pago. No se puede saber qué facturas están cobradas, pendientes o vencidas.
+## 1. Lógica
 
-## Código libre para clientes/artículos/albaranes
-Solo la factura autogenera su código (`code`). Cliente, Artículo y Albarán lo piden en el request, así que el frontend tiene que adivinar cuál es el siguiente disponible.
+### Filtro de albaranes sin facturar
+El front necesita pedir los albaranes pendientes de un cliente y `DeliveryNoteFilter` no
+lo permite. Hoy habría que traerlos todos y filtrar en el cliente por `invoiceId == null`.
 
-## Estadísticas / dashboard
-No hay ningún endpoint de agregados: facturación por mes o cliente, pendiente de cobro, etc.
+### IVA por fecha de operación
+El albarán ya congela su tipo de IVA y de recargo al crearse, pero `applyFinancials()`
+sigue leyendo el `TaxConfig` global en el momento de facturar. Debe usar el de sus
+albaranes. Si una factura junta albaranes con tipos distintos, los campos escalares de
+`Invoice` no lo representan (desglose, CONCEPTO.md §8).
 
-## Exportación / backup
-No hay forma de exportar datos (por ejemplo CSV para la gestoría) ni de hacer backup de la base de datos SQLite desde la API.
+### Un borrador no se entera de los cambios en su cliente ni en el IVA
+Los importes y la serie de un borrador se calculan al crearlo, al cambiar sus albaranes y
+al editar uno de ellos. Si mientras está abierto cambia el tipo de IVA o de recargo del
+cliente, o el `TaxConfig`, el borrador conserva los valores viejos y se emite así; puede
+incluso salir en la serie equivocada. Opciones: recalcular al emitir, o recalcular los
+borradores del cliente al editarlo. Conviene resolverlo junto con el punto anterior.
+
+---
+
+## 2. Bugs conocidos
+
+### Borrar un cliente con albaranes o facturas los deja inservibles
+`deleteClient` no comprueba nada. `DeliveryNote.client` e `Invoice.client` son FK no
+nulables y `Client` tiene `@SQLRestriction`, así que tras el borrado esos documentos no
+pueden cargar su cliente y lanzan `EntityNotFoundException` (500). Comprobado: falla el
+detalle de sus albaranes y también el listado completo de albaranes, aunque el resto sean
+de otros clientes. Con las facturas pasa lo mismo, porque la respuesta lee `clientName`
+del cliente vivo y no del snapshot. Hay que decidir si se impide borrar un cliente con
+documentos (409) o si las lecturas toleran su ausencia.
+
+### El código de un artículo, cliente o albarán borrado da un 500 al reutilizarse
+`existsByCode` no ve las filas borradas en lógico, pero la restricción `unique` sí. Crear
+uno nuevo con el código de uno borrado pasa la validación y falla al insertar. Hay que
+decidir si esos códigos quedan ocupados (y avisar con un 409) o se liberan.
+
+---
+
+## 3. Funcionalidad futura
+
+### Rectificativas, anulación y Verifactu
+No antes. Hasta entonces, corregir una factura consiste en borrarla, corregir el albarán y
+refacturar. Verifactu cierra esa vía: una factura registrada no se borra ni se renumera.
+Entonces hacen falta el estado `ANNULLED`, el bloqueo del borrado, `invoiceType`,
+`rectifies`, el hash encadenado y el envío a la AEAT.
+
+El flujo completo y los cambios concretos están en CONCEPTO.md §9.
+
+### Generación real de PDF
+`PdfService` produce un PDF de prueba con una sola línea de texto. Falta la plantilla real
+de factura y las dos de albarán (simple y valorado, CONCEPTO.md §3).
+
+### Seguimiento de cobro
+`Invoice` no tiene vencimiento ni estado de pago. No se puede saber qué está cobrado,
+pendiente o vencido. Es de lo más útil para el uso diario y no depende de nada más.
+
+### Código sugerido para Cliente y Artículo
+Piden el `code` en el request y el front va a ciegas. Un endpoint que sugiera el siguiente
+libre, permitiendo sobreescribirlo. Para el albarán no hace falta: que lo asigne el
+servidor si viene vacío. Para la factura ya es server-side.
+
+### Estadísticas / dashboard
+Ningún endpoint de agregados: facturación por mes o cliente, pendiente de cobro, etc.
+
+### Exportación / backup
+No hay forma de exportar datos (CSV para la gestoría) ni de respaldar la BD SQLite desde
+la API.
+
+### Trazabilidad
+Tres enteros sueltos, indexados y sin entidad detrás. Falta decidir qué representan y
+poder consultar por lote. Ver CONCEPTO.md §10.
+
+---
+
+## 4. Deuda técnica
+
+### Migraciones de esquema
+El esquema lo mantiene `ddl-auto=update`, que solo añade columnas: no cambia
+restricciones `CHECK` ni `unique`, no relaja `NOT NULL` y no migra datos. Cada cambio de
+enum, de nulabilidad o de unicidad obliga a regenerar la base. Antes de tener datos
+reales conviene pasar a Flyway con un script inicial y `ddl-auto=validate`.
+
+### Huecos en los tests
+Hay tests de servicio del ciclo de la factura y del perfil, y de controlador solo de
+artículos y clientes. Faltan los de controlador de albaranes, facturas, IVA y perfil, y
+los de los filtros (`*Specification`).
