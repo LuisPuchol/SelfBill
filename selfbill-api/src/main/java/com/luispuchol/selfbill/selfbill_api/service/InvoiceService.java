@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -24,12 +25,9 @@ import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
 import com.luispuchol.selfbill.selfbill_api.entity.InvoiceLine;
-import com.luispuchol.selfbill.selfbill_api.entity.TaxConfig;
 import com.luispuchol.selfbill.selfbill_api.enums.DocumentType;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceSeries;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
-import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
-import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.InvoiceMapper;
@@ -51,7 +49,6 @@ public class InvoiceService {
     private final DeliveryNoteRepository deliveryNoteRepository;
     private final ClientRepository clientRepository;
     private final InvoiceMapper invoiceMapper;
-    private final TaxConfigService taxConfigService;
     private final PdfService pdfService;
     private final EmailService emailService;
     private final DocumentMessages documentMessages;
@@ -102,6 +99,8 @@ public class InvoiceService {
     public InvoiceResponse issueInvoice(Integer id) {
         Invoice invoice = findInvoice(id);
         requireDraft(invoice);
+        // Safety net: amounts and series must match the delivery notes and client being issued
+        recalculate(invoice, invoice.getDeliveryNotes());
 
         // Numbered only on issue so a discarded draft never consumes a number (CONCEPTO.md §5)
         invoice.setCode(invoiceRepository.findMaxCode(invoice.getSeries().name()).orElse(0) + 1);
@@ -177,25 +176,35 @@ public class InvoiceService {
     }
 
     private void applyFinancials(Invoice invoice, List<DeliveryNote> deliveryNotes) {
-        TaxConfig taxConfig = taxConfigService.getCurrent();
-        Client client = invoice.getClient();
+        BigDecimal vatPercentage = commonRate(deliveryNotes, DeliveryNote::getVatPercentage);
+        BigDecimal surchargePercentage = commonRate(deliveryNotes, DeliveryNote::getSurchargePercentage);
 
         BigDecimal subtotal = deliveryNotes.stream()
                 .map(DeliveryNote::getTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal vatAmount = client.getVatType() == VatType.WITH_VAT
-                ? percentageOf(subtotal, taxConfig.getVatPercentage())
-                : BigDecimal.ZERO;
-        BigDecimal surchargeAmount = client.getSurchargeType() == SurchargeType.WITH_SURCHARGE
-                ? percentageOf(subtotal, taxConfig.getSurchargePercentage())
-                : BigDecimal.ZERO;
+        BigDecimal vatAmount = percentageOf(subtotal, vatPercentage);
+        BigDecimal surchargeAmount = percentageOf(subtotal, surchargePercentage);
 
         invoice.setSubtotal(subtotal);
-        invoice.setVatPercentage(taxConfig.getVatPercentage());
+        invoice.setVatPercentage(vatPercentage);
         invoice.setVatAmount(vatAmount);
-        invoice.setSurchargePercentage(taxConfig.getSurchargePercentage());
+        invoice.setSurchargePercentage(surchargePercentage);
         invoice.setSurchargeAmount(surchargeAmount);
         invoice.setTotal(subtotal.add(vatAmount).add(surchargeAmount));
+    }
+
+    // One rate per invoice: the business never mixes them, so a mix is refused, not broken down (CONCEPTO.md §8)
+    private static BigDecimal commonRate(List<DeliveryNote> deliveryNotes, Function<DeliveryNote, BigDecimal> rate) {
+        if (deliveryNotes.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal first = rate.apply(deliveryNotes.get(0));
+        for (DeliveryNote deliveryNote : deliveryNotes) {
+            if (rate.apply(deliveryNote).compareTo(first) != 0) {
+                throw new BusinessException(ErrorCode.INVOICE_MIXED_TAX_RATES);
+            }
+        }
+        return first;
     }
 
     private static BigDecimal percentageOf(BigDecimal amount, BigDecimal percentage) {

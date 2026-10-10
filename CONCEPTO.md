@@ -99,7 +99,8 @@ al artículo manteniendo el global como valor por defecto.
 
 El tipo aplicable a una operación es el vigente en la **fecha de la operación**, no el del
 día en que se factura. El albarán congela el tipo con el que se valoró, y la factura usa
-el de sus albaranes.
+el de sus albaranes. Todos sus albaranes deben llevar el mismo tipo; si no, la factura se
+rechaza (409). El negocio no mezcla tipos en una factura, así que no hay desglose (§8).
 
 ### Precio
 
@@ -122,7 +123,8 @@ exigiría mantenerlo a mano y acabaría desincronizándose.
 
 Una factura se crea en `DRAFT` y pasa a `ISSUED` al emitirla. Mientras esté en borrador
 admite cambios sin restricción. Con Verifactu, emitir implica además registrar en la AEAT,
-lo que hace el paso irreversible.
+lo que hace el paso irreversible. Emitir recalcula la factura desde sus albaranes antes de
+numerarla.
 
 ### Numeración
 

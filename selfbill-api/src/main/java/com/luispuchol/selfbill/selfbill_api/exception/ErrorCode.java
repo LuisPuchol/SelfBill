@@ -20,6 +20,8 @@ public enum ErrorCode {
     INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED("Delivery note {0} already has an associated invoice",
             HttpStatus.CONFLICT),
     INVOICE_MIXED_CLIENTS("All delivery notes must belong to the same client", HttpStatus.CONFLICT),
+    INVOICE_MIXED_TAX_RATES("All delivery notes of an invoice must have the same VAT and surcharge rates",
+            HttpStatus.CONFLICT),
     INVOICE_ALREADY_ISSUED("Invoice {0} is already issued and cannot be modified", HttpStatus.CONFLICT),
     INVOICE_NOT_ISSUED("Invoice {0} is a draft and must be issued first", HttpStatus.CONFLICT),
 

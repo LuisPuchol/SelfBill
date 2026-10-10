@@ -6,8 +6,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteResponse;
+import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceResponse;
 import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.enums.VatType;
+import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.support.DomainIntegrationTest;
 
 @DisplayName("Tax rates")
@@ -49,5 +51,53 @@ class TaxRatesTest extends DomainIntegrationTest {
                 deliveryNoteRequest(deliveryNote.getCode(), clientId, "5", "2"));
 
         assertThat(edited.getVatPercentage()).isEqualByComparingTo("4");
+    }
+
+    @Test
+    @DisplayName("An invoice uses the rates frozen in its delivery notes, not the current ones")
+    void invoiceUsesFrozenRates() {
+        Integer withSurcharge = createClient(2, VatType.WITH_VAT, SurchargeType.WITH_SURCHARGE);
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(withSurcharge, "10", "2");
+        taxConfigService.updateTaxConfig(taxes("10", "1.4"));
+
+        InvoiceResponse invoice = createInvoiceFor(withSurcharge, deliveryNote.getId());
+
+        assertThat(invoice.getVatPercentage()).isEqualByComparingTo("4");
+        assertThat(invoice.getVatAmount()).isEqualByComparingTo("0.80");
+        assertThat(invoice.getSurchargePercentage()).isEqualByComparingTo("0.5");
+        assertThat(invoice.getSurchargeAmount()).isEqualByComparingTo("0.10");
+        assertThat(invoice.getTotal()).isEqualByComparingTo("20.90");
+    }
+
+    @Test
+    @DisplayName("Delivery notes with different rates cannot share an invoice")
+    void mixedRatesAreRejected() {
+        DeliveryNoteResponse before = createDeliveryNote(clientId, "10", "2");
+        taxConfigService.updateTaxConfig(taxes("10", "1.4"));
+        DeliveryNoteResponse after = createDeliveryNote(clientId, "10", "2");
+
+        assertFails(ErrorCode.INVOICE_MIXED_TAX_RATES, () -> createInvoice(before.getId(), after.getId()));
+    }
+
+    @Test
+    @DisplayName("Rates equal in value but written differently are not mixed")
+    void equalRatesWithDifferentScaleAreNotMixed() {
+        DeliveryNoteResponse first = createDeliveryNote(clientId, "10", "2");
+        taxConfigService.updateTaxConfig(taxes("4.00", "0.50"));
+        DeliveryNoteResponse second = createDeliveryNote(clientId, "10", "2");
+
+        assertThat(createInvoice(first.getId(), second.getId()).getVatAmount()).isEqualByComparingTo("1.60");
+    }
+
+    @Test
+    @DisplayName("Issuing recalculates a draft whose stored amounts went stale")
+    void issuingRecalculatesTheDraft() {
+        InvoiceResponse draft = createInvoice(createDeliveryNote(clientId, "10", "2").getId());
+        jdbc.update("UPDATE invoices SET vat_amount = 0, total = 0 WHERE id = ?", draft.getId());
+
+        InvoiceResponse issued = invoiceService.issueInvoice(draft.getId());
+
+        assertThat(issued.getVatAmount()).isEqualByComparingTo("0.80");
+        assertThat(issued.getTotal()).isEqualByComparingTo("20.80");
     }
 }

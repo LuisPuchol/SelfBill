@@ -10,12 +10,6 @@ Lista de trabajo. Las reglas del modelo y sus motivos están en [CONCEPTO.md](CO
 El front necesita pedir los albaranes pendientes de un cliente y `DeliveryNoteFilter` no
 lo permite. Hoy habría que traerlos todos y filtrar en el cliente por `invoiceId == null`.
 
-### IVA por fecha de operación
-El albarán ya congela su tipo de IVA y de recargo al crearse, pero `applyFinancials()`
-sigue leyendo el `TaxConfig` global en el momento de facturar. Debe usar el de sus
-albaranes. Si una factura junta albaranes con tipos distintos, los campos escalares de
-`Invoice` no lo representan (desglose, CONCEPTO.md §8).
-
 ### Un borrador no se entera de los cambios en su cliente ni en el IVA
 Los importes y la serie de un borrador se calculan al crearlo, al cambiar sus albaranes y
 al editar uno de ellos. Si mientras está abierto cambia el tipo de IVA o de recargo del
