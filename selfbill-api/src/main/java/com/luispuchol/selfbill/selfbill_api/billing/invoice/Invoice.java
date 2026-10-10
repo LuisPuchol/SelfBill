@@ -5,13 +5,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.Client;
+import com.luispuchol.selfbill.selfbill_api.shared.SoftDeletableEntity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -19,14 +18,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -34,7 +29,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "invoices", uniqueConstraints = @UniqueConstraint(columnNames = { "series", "code" }))
+@Table(name = "invoices")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -42,11 +37,7 @@ import lombok.Setter;
 @Builder
 @SQLDelete(sql = "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
-public class Invoice {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+public class Invoice extends SoftDeletableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -108,17 +99,6 @@ public class Invoice {
 
     @Column(precision = 10, scale = 2)
     private BigDecimal total;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
 
     public String getNumber() {
         return code == null ? null : series.format(code);

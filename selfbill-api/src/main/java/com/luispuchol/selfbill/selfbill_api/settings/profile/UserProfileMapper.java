@@ -12,9 +12,6 @@ public interface UserProfileMapper {
     @Mapping(target = "mailPassword", ignore = true)
     UserProfileResponse toResponse(UserProfile userProfile);
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "logoData", ignore = true)
     @Mapping(target = "logoContentType", ignore = true)
     @Mapping(target = "mailPasswordEncrypted", ignore = true)

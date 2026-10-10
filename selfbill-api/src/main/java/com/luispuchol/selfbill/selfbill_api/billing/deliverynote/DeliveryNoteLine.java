@@ -1,22 +1,16 @@
 package com.luispuchol.selfbill.selfbill_api.billing.deliverynote;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import com.luispuchol.selfbill.selfbill_api.catalog.article.Article;
+import com.luispuchol.selfbill.selfbill_api.shared.SoftDeletableEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -27,11 +21,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "delivery_notes_articles", indexes = {
-        @Index(name = "idx_trazability_code1", columnList = "trazabilityCode1"),
-        @Index(name = "idx_trazability_code2", columnList = "trazabilityCode2"),
-        @Index(name = "idx_trazability_code3", columnList = "trazabilityCode3")
-})
+@Table(name = "delivery_notes_articles")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,11 +29,7 @@ import lombok.Setter;
 @Builder
 @SQLDelete(sql = "UPDATE delivery_notes_articles SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
-public class DeliveryNoteLine {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+public class DeliveryNoteLine extends SoftDeletableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "article_id", nullable = false)
@@ -66,15 +52,4 @@ public class DeliveryNoteLine {
 
     @Column(precision = 10, scale = 2)
     private BigDecimal total;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
 }

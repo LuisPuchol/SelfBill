@@ -21,10 +21,9 @@ public interface DeliveryNoteMapper {
     @Mapping(target = "deliveryNoteId", source = "deliveryNote.id")
     DeliveryNoteLineResponse toLineResponse(DeliveryNoteLine line);
 
-    @Mapping(target = "code", source = "request.code")
+    @Mapping(target = "code", ignore = true)
     @Mapping(target = "date", source = "request.date")
     @Mapping(target = "client", source = "client")
-    @Mapping(target = "id", ignore = true)
     @Mapping(target = "total", ignore = true)
     @Mapping(target = "format", ignore = true)
     @Mapping(target = "vatPercentage", ignore = true)
@@ -33,9 +32,6 @@ public interface DeliveryNoteMapper {
     @Mapping(target = "surchargeType", ignore = true)
     @Mapping(target = "invoice", ignore = true)
     @Mapping(target = "lines", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "deletedAt", ignore = true)
     DeliveryNote toEntity(DeliveryNoteRequest request, Client client);
 
     @InheritConfiguration
@@ -43,10 +39,6 @@ public interface DeliveryNoteMapper {
 
     @Mapping(target = "article", source = "article")
     @Mapping(target = "deliveryNote", source = "deliveryNote")
-    @Mapping(target = "id", ignore = true)
     @Mapping(target = "total", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "deletedAt", ignore = true)
     DeliveryNoteLine toLineEntity(DeliveryNoteLineRequest request, Article article, DeliveryNote deliveryNote);
 }

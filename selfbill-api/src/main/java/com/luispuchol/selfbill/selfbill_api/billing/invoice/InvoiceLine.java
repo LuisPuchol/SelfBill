@@ -3,20 +3,16 @@ package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.catalog.article.Article;
+import com.luispuchol.selfbill.selfbill_api.shared.SoftDeletableEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -35,11 +31,7 @@ import lombok.Setter;
 @Builder
 @SQLDelete(sql = "UPDATE invoice_lines SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
-public class InvoiceLine {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+public class InvoiceLine extends SoftDeletableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id", nullable = false)
@@ -82,15 +74,4 @@ public class InvoiceLine {
 
     @Column(precision = 10, scale = 2)
     private BigDecimal total;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
 }
