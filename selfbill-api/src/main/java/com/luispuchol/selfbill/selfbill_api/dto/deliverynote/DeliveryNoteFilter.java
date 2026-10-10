@@ -11,4 +11,5 @@ public class DeliveryNoteFilter {
     private Integer clientId;
     private LocalDateTime dateFrom;
     private LocalDateTime dateTo;
+    private Boolean invoiced;
 }

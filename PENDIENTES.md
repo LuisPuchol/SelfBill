@@ -6,10 +6,6 @@ Lista de trabajo. Las reglas del modelo y sus motivos están en [CONCEPTO.md](CO
 
 ## 1. Lógica
 
-### Filtro de albaranes sin facturar
-El front necesita pedir los albaranes pendientes de un cliente y `DeliveryNoteFilter` no
-lo permite. Hoy habría que traerlos todos y filtrar en el cliente por `invoiceId == null`.
-
 ### `TaxConfig` sin histórico
 El albarán congela el tipo vigente cuando se crea, no el de su fecha: si se da de alta
 tarde un albarán anterior a un cambio de tipo, recibe el tipo nuevo. Lo mismo ocurre al

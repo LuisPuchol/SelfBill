@@ -18,7 +18,8 @@ public final class DeliveryNoteSpecification {
                 .and(codeTo(filter.getCodeTo()))
                 .and(clientId(filter.getClientId()))
                 .and(dateFrom(filter.getDateFrom()))
-                .and(dateTo(filter.getDateTo()));
+                .and(dateTo(filter.getDateTo()))
+                .and(invoiced(filter.getInvoiced()));
     }
 
     private static Specification<DeliveryNote> codeFrom(Integer from) {
@@ -44,5 +45,11 @@ public final class DeliveryNoteSpecification {
     private static Specification<DeliveryNote> dateTo(LocalDateTime to) {
         return (root, query, cb) -> to == null ? null
                 : cb.lessThanOrEqualTo(root.get("date"), to);
+    }
+
+    private static Specification<DeliveryNote> invoiced(Boolean invoiced) {
+        return (root, query, cb) -> invoiced == null ? null
+                : invoiced ? cb.isNotNull(root.get("invoice"))
+                        : cb.isNull(root.get("invoice"));
     }
 }
