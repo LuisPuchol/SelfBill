@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.shared;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.http.HttpStatus;
@@ -46,6 +47,6 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private static String statusText(int status) {
         HttpStatus resolved = HttpStatus.resolve(status);
-        return resolved != null ? resolved.getReasonPhrase() : "";
+        return resolved != null ? resolved.getReasonPhrase().toUpperCase(Locale.ROOT) : "";
     }
 }
