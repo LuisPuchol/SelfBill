@@ -10,6 +10,7 @@ import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceResponse;
 import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceSeries;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
+import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.support.DomainIntegrationTest;
@@ -197,9 +198,12 @@ class InvoiceLifecycleTest extends DomainIntegrationTest {
     @Test
     @DisplayName("A delivery note keeps the format and tax rates it was created with")
     void deliveryNoteKeepsItsFormatAndTaxes() {
-        DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "1", "1");
+        Integer client = clientService.createClient(
+                clientRequest(2, DeliveryNoteFormat.VALUED, "Client 2 SL", VatType.WITH_VAT, SurchargeType.WITH_SURCHARGE)).getId();
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(client, "1", "1");
 
-        clientService.updateClient(clientId, clientRequest(1, DeliveryNoteFormat.PLAIN, "Client 1 SL"));
+        clientService.updateClient(client,
+                clientRequest(2, DeliveryNoteFormat.PLAIN, "Client 2 SL", VatType.WITH_VAT, SurchargeType.WITH_SURCHARGE));
         taxConfigService.updateTaxConfig(taxes("10", "1.4"));
 
         DeliveryNoteResponse reloaded = deliveryNoteService.getDeliveryNoteById(deliveryNote.getId());

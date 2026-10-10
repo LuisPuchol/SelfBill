@@ -74,6 +74,9 @@ factura. Es un formato de impresión, no un modo de facturación.
 - `Client` guarda la **preferencia por defecto** del cliente.
 - `DeliveryNote` guarda el **valor efectivo** con el que ese albarán se emitió, junto con
   los tipos de IVA y de recargo aplicados.
+  Los tipos son los **aplicados**, con el régimen del cliente ya resuelto: el IVA es 0 si el
+  cliente no lleva IVA, y el recargo es 0 si no lleva recargo. Se fijan al crear el albarán y
+  al cambiarlo de cliente.
 
 Reimprimir un albarán antiguo reproduce así el documento exacto que recibió el cliente,
 aunque después haya cambiado su preferencia o el tipo de IVA. El generador de PDF lee lo
@@ -171,7 +174,7 @@ Los demás snapshots que el modelo exige:
 
 ## 7. Borrado
 
-Todas las entidades del dominio usan borrado lógico (`@SQLDelete` + `@SQLRestriction`).
+Todas las entidades del dominio usan borrado lógico (`@SQLDelete`). Los documentos añaden `@SQLRestriction`; el catálogo (`Client`, `Article`) no, y filtra él mismo las filas borradas (ver abajo).
 Nada se elimina físicamente: el histórico es el producto.
 
 - `Client` y `Article` no llevan `@SQLRestriction`. Un documento sigue leyendo su cliente y sus artículos aunque estén borrados, porque el albarán no guarda copia de ellos, y restaurar una fila es vaciar `deleted_at`. El catálogo filtra las filas borradas en sus consultas, y no se puede crear un documento nuevo con un cliente o artículo borrado.

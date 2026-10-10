@@ -21,6 +21,8 @@ import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
 import com.luispuchol.selfbill.selfbill_api.entity.TaxConfig;
 import com.luispuchol.selfbill.selfbill_api.enums.DocumentType;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
+import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
+import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.DeliveryNoteMapper;
@@ -62,7 +64,7 @@ public class DeliveryNoteService {
 
         DeliveryNote deliveryNote = deliveryNoteMapper.toEntity(request, client);
         deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
-        freezeTaxRates(deliveryNote);
+        applyTaxRegime(deliveryNote, client);
         replaceLines(deliveryNote, request.getLines());
         return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(deliveryNote));
     }
@@ -80,6 +82,7 @@ public class DeliveryNoteService {
         deliveryNoteMapper.updateEntity(deliveryNote, request, client);
         if (clientChanged) {
             deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
+            applyTaxRegime(deliveryNote, client);
         }
         replaceLines(deliveryNote, request.getLines());
 
@@ -125,11 +128,13 @@ public class DeliveryNoteService {
         }
     }
 
-    // The rate in force on the operation date applies, so it is never refreshed on update (CONCEPTO.md §4)
-    private void freezeTaxRates(DeliveryNote deliveryNote) {
+    // Frozen with the client's regime applied, so a reprint never consults the client (CONCEPTO.md §3, §4)
+    private void applyTaxRegime(DeliveryNote deliveryNote, Client client) {
         TaxConfig taxConfig = taxConfigService.getCurrent();
-        deliveryNote.setVatPercentage(taxConfig.getVatPercentage());
-        deliveryNote.setSurchargePercentage(taxConfig.getSurchargePercentage());
+        deliveryNote.setVatPercentage(client.getVatType() == VatType.WITH_VAT
+                ? taxConfig.getVatPercentage() : BigDecimal.ZERO);
+        deliveryNote.setSurchargePercentage(client.getSurchargeType() == SurchargeType.WITH_SURCHARGE
+                ? taxConfig.getSurchargePercentage() : BigDecimal.ZERO);
     }
 
     private void replaceLines(DeliveryNote deliveryNote, List<DeliveryNoteLineRequest> lineRequests) {
