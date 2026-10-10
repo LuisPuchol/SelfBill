@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteResponse;
 import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
 import com.luispuchol.selfbill.selfbill_api.support.DomainIntegrationTest;
 
@@ -28,5 +29,28 @@ class CodeSuggestionTest extends DomainIntegrationTest {
 
         articleService.deleteArticle(articleId);
         assertThat(articleService.getNextCode().code()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("A delivery note without code gets the next free one")
+    void deliveryNoteWithoutCodeGetsTheNextOne() {
+        deliveryNoteService.createDeliveryNote(deliveryNoteRequest(5, clientId, "1", "1"));
+
+        DeliveryNoteResponse automatic = deliveryNoteService.createDeliveryNote(
+                deliveryNoteRequest(null, clientId, "1", "1"));
+
+        assertThat(automatic.getCode()).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("Editing a delivery note without code keeps its current one")
+    void editingWithoutCodeKeepsIt() {
+        DeliveryNoteResponse deliveryNote = deliveryNoteService.createDeliveryNote(
+                deliveryNoteRequest(5, clientId, "1", "1"));
+
+        DeliveryNoteResponse edited = deliveryNoteService.updateDeliveryNote(deliveryNote.getId(),
+                deliveryNoteRequest(null, clientId, "2", "1"));
+
+        assertThat(edited.getCode()).isEqualTo(5);
     }
 }

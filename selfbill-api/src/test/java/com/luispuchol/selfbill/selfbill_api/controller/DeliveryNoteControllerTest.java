@@ -2,10 +2,15 @@ package com.luispuchol.selfbill.selfbill_api.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,10 +19,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteFilter;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteRequest;
+import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteResponse;
 import com.luispuchol.selfbill.selfbill_api.service.DeliveryNoteService;
 
 @WebMvcTest(DeliveryNoteController.class)
@@ -26,6 +35,9 @@ class DeliveryNoteControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @MockitoBean
     private DeliveryNoteService deliveryNoteService;
@@ -43,5 +55,32 @@ class DeliveryNoteControllerTest {
         verify(deliveryNoteService).getAllDeliveryNotes(filter.capture(), any(Pageable.class));
         assertThat(filter.getValue().getClientId()).isEqualTo(1);
         assertThat(filter.getValue().getInvoiced()).isFalse();
+    }
+
+    @Test
+    @DisplayName("POST /api/deliveryNotes - Debe aceptar un albarán sin código")
+    void createDeliveryNote_WithoutCode_ShouldReturnCreated() throws Exception {
+        DeliveryNoteRequest request = DeliveryNoteRequest.builder()
+                .date(LocalDateTime.of(2026, 10, 1, 8, 0)).clientId(1).build();
+        when(deliveryNoteService.createDeliveryNote(any(DeliveryNoteRequest.class)))
+                .thenReturn(DeliveryNoteResponse.builder().id(1).code(6).build());
+
+        mockMvc.perform(post("/api/deliveryNotes").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value(6));
+    }
+
+    @Test
+    @DisplayName("POST /api/deliveryNotes - Debe rechazar un código no positivo")
+    void createDeliveryNote_WithNonPositiveCode_ShouldReturnBadRequest() throws Exception {
+        DeliveryNoteRequest request = DeliveryNoteRequest.builder()
+                .code(-1).date(LocalDateTime.of(2026, 10, 1, 8, 0)).clientId(1).build();
+
+        mockMvc.perform(post("/api/deliveryNotes").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(deliveryNoteService, never()).createDeliveryNote(any());
     }
 }

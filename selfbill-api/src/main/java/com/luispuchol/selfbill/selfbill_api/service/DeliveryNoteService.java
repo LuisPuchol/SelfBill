@@ -60,10 +60,12 @@ public class DeliveryNoteService {
 
     @Transactional
     public DeliveryNoteResponse createDeliveryNote(DeliveryNoteRequest request) {
-        requireUnusedCode(request.getCode());
+        Integer code = request.getCode() != null ? request.getCode() : deliveryNoteRepository.findNextCode();
+        requireUnusedCode(code);
         Client client = findClient(request.getClientId());
 
         DeliveryNote deliveryNote = deliveryNoteMapper.toEntity(request, client);
+        deliveryNote.setCode(code);
         deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
         applyTaxRegime(deliveryNote, client);
         replaceLines(deliveryNote, request.getLines());
@@ -74,13 +76,15 @@ public class DeliveryNoteService {
     public DeliveryNoteResponse updateDeliveryNote(Integer id, DeliveryNoteRequest request) {
         DeliveryNote deliveryNote = findDeliveryNote(id);
         requireEditable(deliveryNote, request.getClientId());
-        if (!deliveryNote.getCode().equals(request.getCode())) {
-            requireUnusedCode(request.getCode());
+        Integer code = request.getCode() != null ? request.getCode() : deliveryNote.getCode();
+        if (!deliveryNote.getCode().equals(code)) {
+            requireUnusedCode(code);
         }
 
         boolean clientChanged = !deliveryNote.getClient().getId().equals(request.getClientId());
         Client client = findClient(request.getClientId());
         deliveryNoteMapper.updateEntity(deliveryNote, request, client);
+        deliveryNote.setCode(code);
         if (clientChanged) {
             deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
             applyTaxRegime(deliveryNote, client);

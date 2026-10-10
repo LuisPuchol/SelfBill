@@ -20,7 +20,6 @@ public class DeliveryNoteRequest {
     @NotNull(message = "Date cannot be null")
     private LocalDateTime date;
 
-    @NotNull(message = "Code cannot be null")
     @Positive(message = "Code must be positive")
     private Integer code;
 

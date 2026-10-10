@@ -41,11 +41,6 @@ Antes hay que decidir dos snapshots que faltan (CONCEPTO §6): los datos del cli
 `Invoice` no tiene vencimiento ni estado de pago. No se puede saber qué está cobrado,
 pendiente o vencido. Es de lo más útil para el uso diario y no depende de nada más.
 
-### Código sugerido para Cliente y Artículo
-Piden el `code` en el request y el front va a ciegas. Un endpoint que sugiera el siguiente
-libre, permitiendo sobreescribirlo. Para el albarán no hace falta: que lo asigne el
-servidor si viene vacío. Para la factura ya es server-side.
-
 ### Estadísticas / dashboard
 Ningún endpoint de agregados: facturación por mes o cliente, pendiente de cobro, etc.
 
@@ -62,6 +57,7 @@ poder consultar por lote. Ver CONCEPTO.md §10.
 ## 4. Deuda técnica
 
 ### Huecos en los tests
-Hay tests de servicio del ciclo de la factura y del perfil, y de controlador solo de
-artículos y clientes. Faltan los de controlador de albaranes, facturas, IVA y perfil, y
-los de los filtros (`*Specification`).
+Hay tests de servicio del ciclo de la factura y del perfil, y de controlador de artículos,
+clientes y parte de albaranes. Faltan los de controlador de facturas, IVA y perfil, los del
+resto de endpoints de albaranes y los de `*Specification` que no se ejercitan en los tests
+de servicio.
