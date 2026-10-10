@@ -186,13 +186,23 @@ Los demás snapshots que el modelo exige:
 
 ## 7. Borrado
 
-Todas las entidades del dominio usan borrado lógico (`@SQLDelete`). Los documentos añaden `@SQLRestriction`; el catálogo (`Client`, `Article`) no, y filtra él mismo las filas borradas (ver abajo).
-Nada se elimina físicamente: el histórico es el producto.
+Todas las entidades del dominio usan borrado lógico (`@SQLDelete`). Los documentos añaden
+`@SQLRestriction`; el catálogo (`Client`, `Article`) no, y filtra él mismo las filas
+borradas (ver abajo). Nada se elimina físicamente: el histórico es el producto.
 
-- `Client` y `Article` no llevan `@SQLRestriction`. Un documento sigue leyendo su cliente y sus artículos aunque estén borrados, porque el albarán no guarda copia de ellos, y restaurar una fila es vaciar `deleted_at`. El catálogo filtra las filas borradas en sus consultas, y no se puede crear un documento nuevo con un cliente o artículo borrado.
-- Los documentos (albarán, factura y sus líneas) sí llevan `@SQLRestriction`. Ninguna relación viva apunta a un documento borrado: un albarán facturado no se borra, y borrar una factura desvincula antes sus albaranes.
-- Una fila borrada libera su código: el índice único de `code` es parcial (`WHERE deleted_at IS NULL`), así que solo puede haber una fila viva por código. Restaurar una fila cuyo código ya está vivo obliga a cambiárselo. Los números de factura son la excepción: no se liberan nunca (§5).
-- El esquema lo gestiona Flyway (`db/migration`) y Hibernate solo lo valida. Las FKs están declaradas y activas (`foreign_keys=true`).
+- `Client` y `Article` no llevan `@SQLRestriction`. Un documento sigue leyendo su cliente
+  y sus artículos aunque estén borrados, porque el albarán no guarda copia de ellos, y
+  restaurar una fila es vaciar `deleted_at`. El catálogo filtra las filas borradas en sus
+  consultas, y no se puede crear un documento nuevo con un cliente o artículo borrado.
+- Los documentos (albarán, factura y sus líneas) sí llevan `@SQLRestriction`. Ninguna
+  relación viva apunta a un documento borrado: un albarán facturado no se borra, y borrar
+  una factura desvincula antes sus albaranes.
+- Una fila borrada libera su código: el índice único de `code` es parcial
+  (`WHERE deleted_at IS NULL`), así que solo puede haber una fila viva por código.
+  Restaurar una fila cuyo código ya está vivo obliga a cambiárselo. Los números de factura
+  son la excepción: no se liberan nunca (§5).
+- El esquema lo gestiona Flyway (`db/migration`) y Hibernate solo lo valida. Las FKs están
+  declaradas y activas (`foreign_keys=true`).
 - Hasta Verifactu, una factura se puede borrar en cualquier estado (§5).
 
 ---

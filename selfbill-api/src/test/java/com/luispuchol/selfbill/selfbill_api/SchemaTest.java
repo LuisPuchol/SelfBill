@@ -19,6 +19,12 @@ class SchemaTest extends DomainIntegrationTest {
     @DisplayName("Foreign keys are enforced")
     void foreignKeysAreEnforced() {
         assertThat(jdbc.queryForObject("PRAGMA foreign_keys", Integer.class)).isEqualTo(1);
+
+        String insert = "INSERT INTO invoices (series, status, client_id, created_at, updated_at) "
+                + "VALUES ('GENERAL', 'DRAFT', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+        assertThatThrownBy(() -> jdbc.update(insert, 999999))
+                .isInstanceOf(DataAccessException.class)
+                .hasMessageContaining("FOREIGN KEY constraint failed");
     }
 
     @Test
@@ -50,6 +56,12 @@ class SchemaTest extends DomainIntegrationTest {
         articleService.createArticle(article(10, "Pera"));
 
         assertFails(ErrorCode.ARTICLE_DUPLICATE_CODE, () -> articleService.createArticle(article(10, "Manzana")));
+
+        String insert = "INSERT INTO articles (code, name, created_at, updated_at) "
+                + "VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+        assertThatThrownBy(() -> jdbc.update(insert, 10, "Manzana"))
+                .isInstanceOf(DataAccessException.class)
+                .hasMessageContaining("UNIQUE constraint failed");
     }
 
     @Test

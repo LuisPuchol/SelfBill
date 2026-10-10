@@ -30,12 +30,15 @@ Entonces hacen falta el estado `ANNULLED`, el bloqueo del borrado, `invoiceType`
 
 El flujo completo y los cambios concretos están en CONCEPTO.md §9.
 
-Obligatorio desde el 1-ene-2027 (sociedades) o el 1-jul-2027 (resto), según el RDL 15/2025. Falta confirmar con la gestoría cuál aplica.
+Obligatorio desde el 1-ene-2027 (sociedades) o el 1-jul-2027 (resto), según el
+RDL 15/2025. Falta confirmar con la gestoría cuál aplica.
 
 ### Generación real de PDF
 `PdfService` produce un PDF de prueba con una sola línea de texto. Falta la plantilla real
 de factura y las dos de albarán (simple y valorado, CONCEPTO.md §3).
-Antes hay que decidir dos snapshots que faltan (CONCEPTO §6): los datos del cliente en el albarán y los del titular (`UserProfile`) en la factura. Sin ellos, editar un cliente o el perfil reescribe la reimpresión de documentos ya entregados.
+Antes hay que decidir dos snapshots que faltan (CONCEPTO §6): los datos del cliente en el
+albarán y los del titular (`UserProfile`) en la factura. Sin ellos, editar un cliente o el
+perfil reescribe la reimpresión de documentos ya entregados.
 
 ### Seguimiento de cobro
 `Invoice` no tiene vencimiento ni estado de pago. No se puede saber qué está cobrado,
@@ -51,6 +54,13 @@ la API.
 ### Trazabilidad
 Tres enteros sueltos, indexados y sin entidad detrás. Falta decidir qué representan y
 poder consultar por lote. Ver CONCEPTO.md §10.
+
+### Restaurar clientes y artículos borrados
+Un cliente borrado deja sus albaranes pendientes y sus borradores sin poder facturarse ni
+editarse, y un artículo borrado impide volver a guardar los albaranes pendientes que lo
+usan. Hoy solo se restaura por SQL (`deleted_at = NULL`). Opciones: un endpoint de
+restaurar, o que el front avise antes de borrar un cliente con pendientes
+(`GET /api/deliveryNotes?clientId=&invoiced=false`).
 
 ---
 
