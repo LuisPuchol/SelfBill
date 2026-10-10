@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import com.luispuchol.selfbill.selfbill_api.shared.BaseEntity_;
+
 public final class DeliveryNoteSpecification {
 
     private DeliveryNoteSpecification() {
@@ -21,32 +23,32 @@ public final class DeliveryNoteSpecification {
 
     private static Specification<DeliveryNote> codeFrom(Integer from) {
         return (root, query, cb) -> from == null ? null
-                : cb.greaterThanOrEqualTo(root.get("code"), from);
+                : cb.greaterThanOrEqualTo(root.get(DeliveryNote_.code), from);
     }
 
     private static Specification<DeliveryNote> codeTo(Integer to) {
         return (root, query, cb) -> to == null ? null
-                : cb.lessThanOrEqualTo(root.get("code"), to);
+                : cb.lessThanOrEqualTo(root.get(DeliveryNote_.code), to);
     }
 
     private static Specification<DeliveryNote> clientId(Integer clientId) {
         return (root, query, cb) -> clientId == null ? null
-                : cb.equal(root.get("client").get("id"), clientId);
+                : cb.equal(root.get(DeliveryNote_.client).get(BaseEntity_.id), clientId);
     }
 
     private static Specification<DeliveryNote> dateFrom(LocalDateTime from) {
         return (root, query, cb) -> from == null ? null
-                : cb.greaterThanOrEqualTo(root.get("date"), from);
+                : cb.greaterThanOrEqualTo(root.get(DeliveryNote_.date), from);
     }
 
     private static Specification<DeliveryNote> dateTo(LocalDateTime to) {
         return (root, query, cb) -> to == null ? null
-                : cb.lessThanOrEqualTo(root.get("date"), to);
+                : cb.lessThanOrEqualTo(root.get(DeliveryNote_.date), to);
     }
 
     private static Specification<DeliveryNote> invoiced(Boolean invoiced) {
         return (root, query, cb) -> invoiced == null ? null
-                : invoiced ? cb.isNotNull(root.get("invoice"))
-                        : cb.isNull(root.get("invoice"));
+                : invoiced ? cb.isNotNull(root.get(DeliveryNote_.invoice))
+                        : cb.isNull(root.get(DeliveryNote_.invoice));
     }
 }
