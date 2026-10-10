@@ -2,18 +2,17 @@ package com.luispuchol.selfbill.selfbill_api.settings.taxconfig;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.Builder;
 
 import java.math.BigDecimal;
 
-@Data
-public class TaxConfigRequest {
+@Builder
+public record TaxConfigRequest(
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = true)
+        BigDecimal vatPercentage,
 
-    @NotNull
-    @DecimalMin(value = "0.0", inclusive = true)
-    private BigDecimal vatPercentage;
-
-    @NotNull
-    @DecimalMin(value = "0.0", inclusive = true)
-    private BigDecimal surchargePercentage;
+        @NotNull
+        @DecimalMin(value = "0.0", inclusive = true)
+        BigDecimal surchargePercentage) {
 }

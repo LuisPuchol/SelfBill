@@ -11,12 +11,12 @@ public final class DeliveryNoteSpecification {
 
     public static Specification<DeliveryNote> withFilter(DeliveryNoteFilter filter) {
         return Specification.<DeliveryNote>unrestricted()
-                .and(codeFrom(filter.getCodeFrom()))
-                .and(codeTo(filter.getCodeTo()))
-                .and(clientId(filter.getClientId()))
-                .and(dateFrom(filter.getDateFrom()))
-                .and(dateTo(filter.getDateTo()))
-                .and(invoiced(filter.getInvoiced()));
+                .and(codeFrom(filter.codeFrom()))
+                .and(codeTo(filter.codeTo()))
+                .and(clientId(filter.clientId()))
+                .and(dateFrom(filter.dateFrom()))
+                .and(dateTo(filter.dateTo()))
+                .and(invoiced(filter.invoiced()));
     }
 
     private static Specification<DeliveryNote> codeFrom(Integer from) {

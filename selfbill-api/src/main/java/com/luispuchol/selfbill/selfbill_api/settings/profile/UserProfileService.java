@@ -32,13 +32,13 @@ public class UserProfileService {
         if (userProfileRepository.count() > 0) {
             throw new BusinessException(ErrorCode.USER_PROFILE_ALREADY_EXISTS);
         }
-        if (request.getMailPassword() == null || request.getMailPassword().isBlank()) {
+        if (request.mailPassword() == null || request.mailPassword().isBlank()) {
             throw new BusinessException(ErrorCode.USER_PROFILE_MAIL_PASSWORD_REQUIRED);
         }
 
         UserProfile profile = userProfileMapper.toEntity(request);
         applySmtpDefaults(profile, request);
-        profile.setMailPasswordEncrypted(credentialEncryptionService.encrypt(request.getMailPassword()));
+        profile.setMailPasswordEncrypted(credentialEncryptionService.encrypt(request.mailPassword()));
         return toResponse(userProfileRepository.save(profile));
     }
 
@@ -47,7 +47,7 @@ public class UserProfileService {
         UserProfile profile = findProfile();
         userProfileMapper.updateEntity(profile, request);
         applySmtpDefaults(profile, request);
-        applyMailPassword(profile, request.getMailPassword());
+        applyMailPassword(profile, request.mailPassword());
         return toResponse(userProfileRepository.save(profile));
     }
 
@@ -67,15 +67,12 @@ public class UserProfileService {
         userProfileRepository.save(profile);
     }
 
-    public UserProfileLogoResponse getLogo() {
+    public UserProfileLogo getLogo() {
         UserProfile profile = findProfile();
         if (profile.getLogoData() == null) {
             throw new BusinessException(ErrorCode.USER_PROFILE_LOGO_NOT_FOUND);
         }
-        return UserProfileLogoResponse.builder()
-                .data(profile.getLogoData())
-                .contentType(profile.getLogoContentType())
-                .build();
+        return new UserProfileLogo(profile.getLogoData(), profile.getLogoContentType());
     }
 
     public SmtpAccount getSmtpAccount() {
@@ -92,24 +89,23 @@ public class UserProfileService {
     }
 
     private UserProfileResponse toResponse(UserProfile profile) {
-        UserProfileResponse response = userProfileMapper.toResponse(profile);
-        if (profile.getMailPasswordEncrypted() != null) {
-            response.setMailPassword(credentialEncryptionService.decrypt(profile.getMailPasswordEncrypted()));
-        }
-        return response;
+        String mailPassword = profile.getMailPasswordEncrypted() != null
+                ? credentialEncryptionService.decrypt(profile.getMailPasswordEncrypted())
+                : null;
+        return userProfileMapper.toResponse(profile, mailPassword);
     }
 
     private static void applySmtpDefaults(UserProfile profile, UserProfileRequest request) {
         if (profile.getEmail() == null) {
             return;
         }
-        if (request.getSmtpHost() == null) {
+        if (request.smtpHost() == null) {
             String defaultHost = SmtpProviderDefaults.defaultHost(profile.getEmail());
             if (defaultHost != null) {
                 profile.setSmtpHost(defaultHost);
             }
         }
-        if (request.getSmtpPort() == null) {
+        if (request.smtpPort() == null) {
             Integer defaultPort = SmtpProviderDefaults.defaultPort(profile.getEmail());
             if (defaultPort != null) {
                 profile.setSmtpPort(defaultPort);

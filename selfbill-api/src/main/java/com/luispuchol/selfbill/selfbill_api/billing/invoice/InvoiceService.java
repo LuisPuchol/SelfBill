@@ -4,9 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -50,22 +48,22 @@ public class InvoiceService {
 
     public Page<InvoiceResponse> getAllInvoices(InvoiceFilter filter, Pageable pageable) {
         return invoiceRepository.findAll(InvoiceSpecification.withFilter(filter), pageable)
-                .map(invoiceMapper::toResponse);
+                .map(invoiceMapper::toSummary);
     }
 
     public InvoiceResponse getInvoiceById(Integer id) {
-        return toResponseWithSections(findInvoice(id));
+        return invoiceMapper.toResponse(findInvoice(id));
     }
 
     public InvoiceResponse getInvoiceByCode(InvoiceSeries series, Integer code) {
         return invoiceRepository.findBySeriesAndCode(series, code)
-                .map(this::toResponseWithSections)
+                .map(invoiceMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVOICE_NOT_FOUND, series.format(code)));
     }
 
     @Transactional
     public InvoiceResponse createInvoice(InvoiceRequest request) {
-        Client client = findClient(request.getClientId());
+        Client client = findClient(request.clientId());
         List<DeliveryNote> deliveryNotes = findInvoiceableDeliveryNotes(request, null);
 
         Invoice invoice = invoiceRepository.save(Invoice.builder()
@@ -73,20 +71,20 @@ public class InvoiceService {
                 .series(InvoiceSeries.forVatType(client.getVatType()))
                 .build());
         include(invoice, deliveryNotes);
-        return toResponseWithSections(invoice);
+        return invoiceMapper.toResponse(invoice);
     }
 
     @Transactional
     public InvoiceResponse updateInvoice(Integer id, InvoiceRequest request) {
         Invoice invoice = findInvoice(id);
         requireDraft(invoice);
-        Client client = findClient(request.getClientId());
+        Client client = findClient(request.clientId());
         List<DeliveryNote> deliveryNotes = findInvoiceableDeliveryNotes(request, invoice.getId());
 
         releaseDeliveryNotesNotIn(invoice, deliveryNotes);
         invoice.setClient(client);
         include(invoice, deliveryNotes);
-        return toResponseWithSections(invoiceRepository.save(invoice));
+        return invoiceMapper.toResponse(invoiceRepository.save(invoice));
     }
 
     @Transactional
@@ -99,7 +97,7 @@ public class InvoiceService {
         invoice.setDate(LocalDateTime.now(clock));
         invoice.setStatus(InvoiceStatus.ISSUED);
         freezeClientData(invoice);
-        return toResponseWithSections(invoiceRepository.save(invoice));
+        return invoiceMapper.toResponse(invoiceRepository.save(invoice));
     }
 
     @Transactional
@@ -131,14 +129,14 @@ public class InvoiceService {
     }
 
     private List<DeliveryNote> findInvoiceableDeliveryNotes(InvoiceRequest request, Integer editedInvoiceId) {
-        List<Integer> ids = request.getDeliveryNoteIds();
+        List<Integer> ids = request.deliveryNoteIds();
         List<DeliveryNote> deliveryNotes = deliveryNoteRepository.findAllById(ids);
         if (deliveryNotes.size() != ids.size()) {
             throw new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, ids);
         }
 
         for (DeliveryNote deliveryNote : deliveryNotes) {
-            if (!deliveryNote.getClient().getId().equals(request.getClientId())) {
+            if (!deliveryNote.getClient().getId().equals(request.clientId())) {
                 throw new BusinessException(ErrorCode.INVOICE_MIXED_CLIENTS);
             }
             Invoice current = deliveryNote.getInvoice();
@@ -258,29 +256,5 @@ public class InvoiceService {
     private Client findClient(Integer id) {
         return clientRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
-    }
-
-    private InvoiceResponse toResponseWithSections(Invoice invoice) {
-        InvoiceResponse response = invoiceMapper.toResponse(invoice);
-        response.setSections(buildSections(invoice));
-        return response;
-    }
-
-    private List<InvoiceSectionResponse> buildSections(Invoice invoice) {
-        Map<Integer, List<InvoiceLine>> linesByDeliveryNote = invoice.getLines().stream()
-                .collect(Collectors.groupingBy(InvoiceLine::getDeliveryNoteCode, LinkedHashMap::new,
-                        Collectors.toList()));
-
-        return linesByDeliveryNote.values().stream()
-                .map(lines -> {
-                    InvoiceLine first = lines.get(0);
-                    return InvoiceSectionResponse.builder()
-                            .deliveryNoteId(first.getDeliveryNote() != null ? first.getDeliveryNote().getId() : null)
-                            .deliveryNoteCode(first.getDeliveryNoteCode())
-                            .deliveryNoteDate(first.getDeliveryNoteDate())
-                            .lines(lines.stream().map(invoiceMapper::toLineResponse).toList())
-                            .build();
-                })
-                .toList();
     }
 }

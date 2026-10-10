@@ -24,15 +24,16 @@ class CatalogDeletionTest extends DomainIntegrationTest {
     void deletedClientKeepsItsDocumentsReadable() {
         DeliveryNoteResponse invoiced = createDeliveryNote(clientId, "1", "1");
         DeliveryNoteResponse pending = createDeliveryNote(clientId, "1", "1");
-        InvoiceResponse invoice = invoiceService.issueInvoice(createInvoice(invoiced.getId()).getId());
+        InvoiceResponse invoice = invoiceService.issueInvoice(createInvoice(invoiced.id()).id());
 
         clientService.deleteClient(clientId);
 
-        assertThat(deliveryNoteService.getDeliveryNoteById(pending.getId()).getClientName()).isEqualTo("Client 1");
-        assertThat(deliveryNoteService.getAllDeliveryNotes(new DeliveryNoteFilter(), Pageable.unpaged())
+        assertThat(deliveryNoteService.getDeliveryNoteById(pending.id()).clientName()).isEqualTo("Client 1");
+        assertThat(deliveryNoteService.getAllDeliveryNotes(DeliveryNoteFilter.builder().build(), Pageable.unpaged())
                 .getContent()).hasSize(2);
-        assertThat(invoiceService.getInvoiceById(invoice.getId()).getClientName()).isEqualTo("Client 1");
-        assertThat(invoiceService.getAllInvoices(new InvoiceFilter(), Pageable.unpaged()).getContent()).hasSize(1);
+        assertThat(invoiceService.getInvoiceById(invoice.id()).clientName()).isEqualTo("Client 1");
+        assertThat(invoiceService.getAllInvoices(InvoiceFilter.builder().build(), Pageable.unpaged()).getContent())
+                .hasSize(1);
     }
 
     @Test
@@ -42,7 +43,7 @@ class CatalogDeletionTest extends DomainIntegrationTest {
 
         articleService.deleteArticle(articleId);
 
-        assertThat(deliveryNoteService.getDeliveryNoteById(deliveryNote.getId()).getLines().get(0).getArticleName())
+        assertThat(deliveryNoteService.getDeliveryNoteById(deliveryNote.id()).lines().get(0).articleName())
                 .isEqualTo("Tomate");
     }
 
@@ -55,10 +56,12 @@ class CatalogDeletionTest extends DomainIntegrationTest {
         assertFails(ErrorCode.CLIENT_NOT_FOUND, () -> clientService.getClientById(clientId));
         assertFails(ErrorCode.CLIENT_NOT_FOUND, () -> clientService.getClientByCode(1));
         assertFails(ErrorCode.CLIENT_NOT_FOUND, () -> clientService.deleteClient(clientId));
-        assertThat(clientService.getAllClients(new ClientFilter(), Pageable.unpaged()).getContent()).isEmpty();
+        assertThat(clientService.getAllClients(ClientFilter.builder().build(), Pageable.unpaged()).getContent())
+                .isEmpty();
         assertFails(ErrorCode.ARTICLE_NOT_FOUND, () -> articleService.getArticleById(articleId));
         assertFails(ErrorCode.ARTICLE_NOT_FOUND, () -> articleService.getArticleByCode(1));
-        assertThat(articleService.getAllArticles(new ArticleFilter(), Pageable.unpaged()).getContent()).isEmpty();
+        assertThat(articleService.getAllArticles(ArticleFilter.builder().build(), Pageable.unpaged()).getContent())
+                .isEmpty();
     }
 
     @Test
@@ -71,7 +74,7 @@ class CatalogDeletionTest extends DomainIntegrationTest {
 
         clientService.deleteClient(clientId);
         assertFails(ErrorCode.CLIENT_NOT_FOUND, () -> createDeliveryNote(clientId, "1", "1"));
-        assertFails(ErrorCode.CLIENT_NOT_FOUND, () -> createInvoice(pending.getId()));
+        assertFails(ErrorCode.CLIENT_NOT_FOUND, () -> createInvoice(pending.id()));
     }
 
     @Test
@@ -80,8 +83,8 @@ class CatalogDeletionTest extends DomainIntegrationTest {
         DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "1", "1");
         articleService.deleteArticle(articleId);
 
-        assertFails(ErrorCode.ARTICLE_NOT_FOUND, () -> deliveryNoteService.updateDeliveryNote(deliveryNote.getId(),
-                deliveryNoteRequest(deliveryNote.getCode(), clientId, "2", "1")));
+        assertFails(ErrorCode.ARTICLE_NOT_FOUND, () -> deliveryNoteService.updateDeliveryNote(deliveryNote.id(),
+                deliveryNoteRequest(deliveryNote.code(), clientId, "2", "1")));
     }
 
     @Test
@@ -90,12 +93,12 @@ class CatalogDeletionTest extends DomainIntegrationTest {
         clientService.deleteClient(clientId);
         articleService.deleteArticle(articleId);
         Integer liveClient = createClient(1, DeliveryNoteFormat.PLAIN);
-        Integer liveArticle = articleService.createArticle(article(1, "Tomate")).getId();
+        Integer liveArticle = articleService.createArticle(article(1, "Tomate")).id();
 
-        assertThat(clientService.getClientByCode(1).getId()).isEqualTo(liveClient);
-        assertThat(clientService.getClientByName("Client 1").getId()).isEqualTo(liveClient);
-        assertThat(clientService.getClientByNif("B00000001").getId()).isEqualTo(liveClient);
-        assertThat(articleService.getArticleByCode(1).getId()).isEqualTo(liveArticle);
-        assertThat(articleService.getArticleByName("Tomate").getId()).isEqualTo(liveArticle);
+        assertThat(clientService.getClientByCode(1).id()).isEqualTo(liveClient);
+        assertThat(clientService.getClientByName("Client 1").id()).isEqualTo(liveClient);
+        assertThat(clientService.getClientByNif("B00000001").id()).isEqualTo(liveClient);
+        assertThat(articleService.getArticleByCode(1).id()).isEqualTo(liveArticle);
+        assertThat(articleService.getArticleByName("Tomate").id()).isEqualTo(liveArticle);
     }
 }

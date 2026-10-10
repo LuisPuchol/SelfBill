@@ -62,16 +62,16 @@ public abstract class DomainIntegrationTest {
         }
         taxConfigService.createTaxConfig(taxes("4", "0.5"));
         clientId = createClient(1, DeliveryNoteFormat.VALUED);
-        articleId = articleService.createArticle(article(1, "Tomate")).getId();
+        articleId = articleService.createArticle(article(1, "Tomate")).id();
     }
 
     protected Integer createClient(int code, DeliveryNoteFormat format) {
-        return clientService.createClient(clientRequest(code, format, "Client " + code + " SL")).getId();
+        return clientService.createClient(clientRequest(code, format, "Client " + code + " SL")).id();
     }
 
     protected Integer createClient(int code, VatType vatType, SurchargeType surchargeType) {
         return clientService.createClient(clientRequest(code, DeliveryNoteFormat.PLAIN, "Client " + code + " SL",
-                vatType, surchargeType)).getId();
+                vatType, surchargeType)).id();
     }
 
     protected static ClientRequest clientRequest(int code, DeliveryNoteFormat format, String businessName) {
@@ -105,10 +105,10 @@ public abstract class DomainIntegrationTest {
     }
 
     protected static TaxConfigRequest taxes(String vat, String surcharge) {
-        TaxConfigRequest request = new TaxConfigRequest();
-        request.setVatPercentage(new BigDecimal(vat));
-        request.setSurchargePercentage(new BigDecimal(surcharge));
-        return request;
+        return TaxConfigRequest.builder()
+                .vatPercentage(new BigDecimal(vat))
+                .surchargePercentage(new BigDecimal(surcharge))
+                .build();
     }
 
     protected DeliveryNoteResponse createDeliveryNote(Integer client, String quantity, String price) {
@@ -131,8 +131,8 @@ public abstract class DomainIntegrationTest {
     }
 
     protected InvoiceResponse issue(Integer client, DeliveryNoteResponse deliveryNote) {
-        InvoiceResponse draft = createInvoiceFor(client, deliveryNote.getId());
-        return invoiceService.issueInvoice(draft.getId());
+        InvoiceResponse draft = createInvoiceFor(client, deliveryNote.id());
+        return invoiceService.issueInvoice(draft.id());
     }
 
     protected InvoiceResponse createInvoice(Integer... deliveryNoteIds) {

@@ -1,22 +1,16 @@
 package com.luispuchol.selfbill.selfbill_api.catalog.article;
 
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ArticleResponse {
-    private Integer id;
+public record ArticleResponse(
+        Integer id,
 
-    private Integer code;
+        Integer code,
 
-    private String name;
+        String name,
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt) {
 }

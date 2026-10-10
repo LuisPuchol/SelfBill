@@ -2,31 +2,24 @@ package com.luispuchol.selfbill.selfbill_api.billing.deliverynote;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class DeliveryNoteLineResponse {
+public record DeliveryNoteLineResponse(
+        Integer id,
+        Integer deliveryNoteId,
 
-    private Integer id;
-    private Integer deliveryNoteId;
+        Integer articleId,
+        String articleName,
 
-    private Integer articleId;
-    private String articleName;
+        Integer trazabilityCode1,
+        Integer trazabilityCode2,
+        Integer trazabilityCode3,
 
-    private Integer trazabilityCode1;
-    private Integer trazabilityCode2;
-    private Integer trazabilityCode3;
+        BigDecimal quantity,
+        BigDecimal price,
+        BigDecimal total,
 
-    private BigDecimal quantity;
-    private BigDecimal price;
-    private BigDecimal total;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt) {
 }

@@ -3,20 +3,13 @@ package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class InvoiceSectionResponse {
+public record InvoiceSectionResponse(
+        Integer deliveryNoteId,
+        Integer deliveryNoteCode,
+        LocalDateTime deliveryNoteDate,
 
-    private Integer deliveryNoteId;
-    private Integer deliveryNoteCode;
-    private LocalDateTime deliveryNoteDate;
-
-    private List<InvoiceLineResponse> lines;
+        List<InvoiceLineResponse> lines) {
 }

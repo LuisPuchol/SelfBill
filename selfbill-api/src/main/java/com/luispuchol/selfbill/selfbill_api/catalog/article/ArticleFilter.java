@@ -1,10 +1,10 @@
 package com.luispuchol.selfbill.selfbill_api.catalog.article;
 
-import lombok.Data;
+import lombok.Builder;
 
-@Data
-public class ArticleFilter {
-    private String name;
-    private Integer codeFrom;
-    private Integer codeTo;
+@Builder
+public record ArticleFilter(
+        String name,
+        Integer codeFrom,
+        Integer codeTo) {
 }

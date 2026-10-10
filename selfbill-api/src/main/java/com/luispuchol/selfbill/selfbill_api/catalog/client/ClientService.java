@@ -50,18 +50,18 @@ public class ClientService {
 
     @Transactional
     public ClientResponse createClient(ClientRequest request) {
-        requireUnusedCode(request.getCode());
+        requireUnusedCode(request.code());
         return clientMapper.toResponse(clientRepository.save(clientMapper.toEntity(request)));
     }
 
     @Transactional
     public ClientResponse updateClient(Integer id, ClientRequest request) {
         Client client = findClient(id);
-        if (!client.getCode().equals(request.getCode())) {
-            requireUnusedCode(request.getCode());
+        if (!client.getCode().equals(request.code())) {
+            requireUnusedCode(request.code());
         }
-        boolean regimeChanged = client.getVatType() != request.getVatType()
-                || client.getSurchargeType() != request.getSurchargeType();
+        boolean regimeChanged = client.getVatType() != request.vatType()
+                || client.getSurchargeType() != request.surchargeType();
         clientMapper.updateEntity(client, request);
         Client saved = clientRepository.save(client);
         if (regimeChanged) {

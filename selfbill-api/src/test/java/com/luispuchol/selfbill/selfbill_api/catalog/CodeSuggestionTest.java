@@ -39,7 +39,7 @@ class CodeSuggestionTest extends DomainIntegrationTest {
         DeliveryNoteResponse automatic = deliveryNoteService.createDeliveryNote(
                 deliveryNoteRequest(null, clientId, "1", "1"));
 
-        assertThat(automatic.getCode()).isEqualTo(6);
+        assertThat(automatic.code()).isEqualTo(6);
     }
 
     @Test
@@ -48,9 +48,9 @@ class CodeSuggestionTest extends DomainIntegrationTest {
         DeliveryNoteResponse deliveryNote = deliveryNoteService.createDeliveryNote(
                 deliveryNoteRequest(5, clientId, "1", "1"));
 
-        DeliveryNoteResponse edited = deliveryNoteService.updateDeliveryNote(deliveryNote.getId(),
+        DeliveryNoteResponse edited = deliveryNoteService.updateDeliveryNote(deliveryNote.id(),
                 deliveryNoteRequest(null, clientId, "2", "1"));
 
-        assertThat(edited.getCode()).isEqualTo(5);
+        assertThat(edited.code()).isEqualTo(5);
     }
 }

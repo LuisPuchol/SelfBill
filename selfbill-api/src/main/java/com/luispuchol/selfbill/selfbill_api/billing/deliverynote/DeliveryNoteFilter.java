@@ -2,14 +2,14 @@ package com.luispuchol.selfbill.selfbill_api.billing.deliverynote;
 
 import java.time.LocalDateTime;
 
-import lombok.Data;
+import lombok.Builder;
 
-@Data
-public class DeliveryNoteFilter {
-    private Integer codeFrom;
-    private Integer codeTo;
-    private Integer clientId;
-    private LocalDateTime dateFrom;
-    private LocalDateTime dateTo;
-    private Boolean invoiced;
+@Builder
+public record DeliveryNoteFilter(
+        Integer codeFrom,
+        Integer codeTo,
+        Integer clientId,
+        LocalDateTime dateFrom,
+        LocalDateTime dateTo,
+        Boolean invoiced) {
 }

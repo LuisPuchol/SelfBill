@@ -4,36 +4,29 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class InvoiceResponse {
+public record InvoiceResponse(
+        Integer id,
+        InvoiceSeries series,
+        Integer code,
+        String number,
+        LocalDateTime date,
+        InvoiceStatus status,
 
-    private Integer id;
-    private InvoiceSeries series;
-    private Integer code;
-    private String number;
-    private LocalDateTime date;
-    private InvoiceStatus status;
+        Integer clientId,
+        String clientName,
 
-    private Integer clientId;
-    private String clientName;
+        List<InvoiceSectionResponse> sections,
 
-    private List<InvoiceSectionResponse> sections;
+        BigDecimal subtotal,
+        BigDecimal vatPercentage,
+        BigDecimal vatAmount,
+        BigDecimal surchargePercentage,
+        BigDecimal surchargeAmount,
+        BigDecimal total,
 
-    private BigDecimal subtotal;
-    private BigDecimal vatPercentage;
-    private BigDecimal vatAmount;
-    private BigDecimal surchargePercentage;
-    private BigDecimal surchargeAmount;
-    private BigDecimal total;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt) {
 }

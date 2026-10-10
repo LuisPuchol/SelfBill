@@ -11,14 +11,14 @@ public final class InvoiceSpecification {
 
     public static Specification<Invoice> withFilter(InvoiceFilter filter) {
         return Specification.<Invoice>unrestricted()
-                .and(series(filter.getSeries()))
-                .and(codeFrom(filter.getCodeFrom()))
-                .and(codeTo(filter.getCodeTo()))
-                .and(clientId(filter.getClientId()))
-                .and(containsDeliveryNote(filter.getDeliveryNoteId()))
-                .and(status(filter.getStatus()))
-                .and(dateFrom(filter.getDateFrom()))
-                .and(dateTo(filter.getDateTo()));
+                .and(series(filter.series()))
+                .and(codeFrom(filter.codeFrom()))
+                .and(codeTo(filter.codeTo()))
+                .and(clientId(filter.clientId()))
+                .and(containsDeliveryNote(filter.deliveryNoteId()))
+                .and(status(filter.status()))
+                .and(dateFrom(filter.dateFrom()))
+                .and(dateTo(filter.dateTo()));
     }
 
     private static Specification<Invoice> series(InvoiceSeries series) {

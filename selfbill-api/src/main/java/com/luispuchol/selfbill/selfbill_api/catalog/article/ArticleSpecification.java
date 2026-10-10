@@ -9,9 +9,9 @@ public final class ArticleSpecification {
 
     public static Specification<Article> withFilter(ArticleFilter filter) {
         return Specification.<Article>unrestricted()
-                .and(nameLike(filter.getName()))
-                .and(codeFrom(filter.getCodeFrom()))
-                .and(codeTo(filter.getCodeTo()))
+                .and(nameLike(filter.name()))
+                .and(codeFrom(filter.codeFrom()))
+                .and(codeTo(filter.codeTo()))
                 .and(notDeleted());
     }
 

@@ -49,8 +49,8 @@ class DeliveryNoteControllerTest {
 
         ArgumentCaptor<DeliveryNoteFilter> filter = ArgumentCaptor.forClass(DeliveryNoteFilter.class);
         verify(deliveryNoteService).getAllDeliveryNotes(filter.capture(), any(Pageable.class));
-        assertThat(filter.getValue().getClientId()).isEqualTo(1);
-        assertThat(filter.getValue().getInvoiced()).isFalse();
+        assertThat(filter.getValue().clientId()).isEqualTo(1);
+        assertThat(filter.getValue().invoiced()).isFalse();
     }
 
     @Test

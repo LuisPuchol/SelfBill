@@ -6,27 +6,20 @@ import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class DeliveryNoteRequest {
+public record DeliveryNoteRequest(
+        @NotNull(message = "Date cannot be null")
+        LocalDateTime date,
 
-    @NotNull(message = "Date cannot be null")
-    private LocalDateTime date;
+        @Positive(message = "Code must be positive")
+        Integer code,
 
-    @Positive(message = "Code must be positive")
-    private Integer code;
+        @NotNull(message = "Client ID cannot be null")
+        @Positive(message = "Client ID must be positive")
+        Integer clientId,
 
-    @NotNull(message = "Client ID cannot be null")
-    @Positive(message = "Client ID must be positive")
-    private Integer clientId;
-
-    @Valid
-    private List<DeliveryNoteLineRequest> lines;
+        @Valid
+        List<DeliveryNoteLineRequest> lines) {
 }

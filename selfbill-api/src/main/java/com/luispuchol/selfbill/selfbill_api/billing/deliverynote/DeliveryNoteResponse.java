@@ -6,34 +6,27 @@ import java.util.List;
 
 import com.luispuchol.selfbill.selfbill_api.catalog.client.DeliveryNoteFormat;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class DeliveryNoteResponse {
+public record DeliveryNoteResponse(
+        Integer id,
+        Integer code,
 
-    private Integer id;
-    private Integer code;
+        Integer invoiceId,
 
-    private Integer invoiceId;
+        LocalDateTime date,
+        BigDecimal total,
 
-    private LocalDateTime date;
-    private BigDecimal total;
+        DeliveryNoteFormat format,
+        BigDecimal vatPercentage,
+        BigDecimal surchargePercentage,
 
-    private DeliveryNoteFormat format;
-    private BigDecimal vatPercentage;
-    private BigDecimal surchargePercentage;
+        Integer clientId,
+        String clientName,
 
-    private Integer clientId;
-    private String clientName;
+        List<DeliveryNoteLineResponse> lines,
 
-    private List<DeliveryNoteLineResponse> lines;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt) {
 }

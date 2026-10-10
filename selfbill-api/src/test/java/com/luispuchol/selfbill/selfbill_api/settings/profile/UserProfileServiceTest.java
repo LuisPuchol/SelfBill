@@ -31,7 +31,7 @@ class UserProfileServiceTest {
     void nullPasswordKeepsStoredOne() {
         userProfileService.updateUserProfile(request(null));
 
-        assertThat(userProfileService.getUserProfile().getMailPassword()).isEqualTo("secret");
+        assertThat(userProfileService.getUserProfile().mailPassword()).isEqualTo("secret");
     }
 
     @Test
@@ -39,7 +39,7 @@ class UserProfileServiceTest {
     void blankPasswordClearsIt() {
         userProfileService.updateUserProfile(request(""));
 
-        assertThat(userProfileService.getUserProfile().getMailPassword()).isNull();
+        assertThat(userProfileService.getUserProfile().mailPassword()).isNull();
     }
 
     private static UserProfileRequest request(String mailPassword) {

@@ -57,9 +57,9 @@ public class UserProfileController {
     @Operation(summary = "Get profile logo")
     @GetMapping("/logo")
     public ResponseEntity<byte[]> getLogo() {
-        UserProfileLogoResponse logo = userProfileService.getLogo();
+        UserProfileLogo logo = userProfileService.getLogo();
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(logo.getContentType()))
-                .body(logo.getData());
+                .contentType(MediaType.parseMediaType(logo.contentType()))
+                .body(logo.data());
     }
 }

@@ -5,6 +5,7 @@ import com.luispuchol.selfbill.selfbill_api.catalog.NextCodeResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -17,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -293,5 +295,19 @@ class ClientControllerTest {
         mockMvc.perform(get("/api/clients/next-code"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(8));
+    }
+
+    @Test
+    @DisplayName("GET /api/clients - Debe enlazar los parámetros en el filtro")
+    void getAllClients_ShouldBindFilterRecord() throws Exception {
+        when(clientService.getAllClients(any(ClientFilter.class), any(Pageable.class))).thenReturn(Page.empty());
+
+        mockMvc.perform(get("/api/clients").param("name", "fruta").param("codeFrom", "2"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<ClientFilter> filter = ArgumentCaptor.forClass(ClientFilter.class);
+        verify(clientService).getAllClients(filter.capture(), any(Pageable.class));
+        assertThat(filter.getValue().name()).isEqualTo("fruta");
+        assertThat(filter.getValue().codeFrom()).isEqualTo(2);
     }
 }

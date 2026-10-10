@@ -42,15 +42,15 @@ public class ArticleService {
 
     @Transactional
     public ArticleResponse createArticle(ArticleRequest request) {
-        requireUnusedCode(request.getCode());
+        requireUnusedCode(request.code());
         return articleMapper.toResponse(articleRepository.save(articleMapper.toEntity(request)));
     }
 
     @Transactional
     public ArticleResponse updateArticle(Integer id, ArticleRequest request) {
         Article article = findArticle(id);
-        if (!article.getCode().equals(request.getCode())) {
-            requireUnusedCode(request.getCode());
+        if (!article.getCode().equals(request.code())) {
+            requireUnusedCode(request.code());
         }
         articleMapper.updateEntity(article, request);
         return articleMapper.toResponse(articleRepository.save(article));

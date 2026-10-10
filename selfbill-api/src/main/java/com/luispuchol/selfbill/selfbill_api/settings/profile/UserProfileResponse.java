@@ -1,28 +1,21 @@
 package com.luispuchol.selfbill.selfbill_api.settings.profile;
 
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserProfileResponse {
-
-    private Integer id;
-    private String fullName;
-    private String fiscalName;
-    private String nif;
-    private String address;
-    private String email;
-    private String phone;
-    private String smtpHost;
-    private Integer smtpPort;
-    private String mailPassword;
-    private boolean hasLogo;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+public record UserProfileResponse(
+        Integer id,
+        String fullName,
+        String fiscalName,
+        String nif,
+        String address,
+        String email,
+        String phone,
+        String smtpHost,
+        Integer smtpPort,
+        String mailPassword,
+        boolean hasLogo,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt) {
 }

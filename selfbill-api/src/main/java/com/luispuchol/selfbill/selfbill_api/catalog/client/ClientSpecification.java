@@ -9,10 +9,10 @@ public final class ClientSpecification {
 
     public static Specification<Client> withFilter(ClientFilter filter) {
         return Specification.<Client>unrestricted()
-                .and(nameLike(filter.getName()))
-                .and(businessNameLike(filter.getBusinessName()))
-                .and(codeFrom(filter.getCodeFrom()))
-                .and(codeTo(filter.getCodeTo()))
+                .and(nameLike(filter.name()))
+                .and(businessNameLike(filter.businessName()))
+                .and(codeFrom(filter.codeFrom()))
+                .and(codeTo(filter.codeTo()))
                 .and(notDeleted());
     }
 

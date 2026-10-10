@@ -22,19 +22,17 @@ class DeliveryNoteQueriesTest extends DomainIntegrationTest {
         DeliveryNoteResponse inDraft = createDeliveryNote(clientId, "1", "1");
         DeliveryNoteResponse inIssued = createDeliveryNote(clientId, "1", "1");
         createDeliveryNote(otherClient, "1", "1");
-        createInvoice(inDraft.getId());
-        invoiceService.issueInvoice(createInvoice(inIssued.getId()).getId());
+        createInvoice(inDraft.id());
+        invoiceService.issueInvoice(createInvoice(inIssued.id()).id());
 
-        assertThat(codes(clientId, false)).containsExactly(free.getCode());
-        assertThat(codes(clientId, true)).containsExactlyInAnyOrder(inDraft.getCode(), inIssued.getCode());
+        assertThat(codes(clientId, false)).containsExactly(free.code());
+        assertThat(codes(clientId, true)).containsExactlyInAnyOrder(inDraft.code(), inIssued.code());
         assertThat(codes(clientId, null)).hasSize(3);
     }
 
     private List<Integer> codes(Integer client, Boolean invoiced) {
-        DeliveryNoteFilter filter = new DeliveryNoteFilter();
-        filter.setClientId(client);
-        filter.setInvoiced(invoiced);
+        DeliveryNoteFilter filter = DeliveryNoteFilter.builder().clientId(client).invoiced(invoiced).build();
         return deliveryNoteService.getAllDeliveryNotes(filter, Pageable.unpaged())
-                .map(DeliveryNoteResponse::getCode).getContent();
+                .map(DeliveryNoteResponse::code).getContent();
     }
 }

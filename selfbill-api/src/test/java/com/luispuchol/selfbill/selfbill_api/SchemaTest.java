@@ -38,16 +38,16 @@ class SchemaTest extends DomainIntegrationTest {
     @Test
     @DisplayName("The code of a deleted article, client or delivery note can be reused")
     void deletedCodesCanBeReused() {
-        articleService.deleteArticle(articleService.createArticle(article(10, "Pera")).getId());
-        assertThat(articleService.createArticle(article(10, "Pera")).getCode()).isEqualTo(10);
+        articleService.deleteArticle(articleService.createArticle(article(10, "Pera")).id());
+        assertThat(articleService.createArticle(article(10, "Pera")).code()).isEqualTo(10);
 
         clientService.deleteClient(createClient(5, DeliveryNoteFormat.PLAIN));
         assertThat(createClient(5, DeliveryNoteFormat.PLAIN)).isNotNull();
 
         DeliveryNoteResponse deleted = createDeliveryNote(clientId, "1", "1");
-        deliveryNoteService.deleteDeliveryNote(deleted.getId());
+        deliveryNoteService.deleteDeliveryNote(deleted.id());
         assertThat(deliveryNoteService.createDeliveryNote(
-                deliveryNoteRequest(deleted.getCode(), clientId, "1", "1")).getCode()).isEqualTo(deleted.getCode());
+                deliveryNoteRequest(deleted.code(), clientId, "1", "1")).code()).isEqualTo(deleted.code());
     }
 
     @Test

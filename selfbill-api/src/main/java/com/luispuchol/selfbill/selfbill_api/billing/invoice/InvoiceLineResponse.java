@@ -3,31 +3,24 @@ package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class InvoiceLineResponse {
+public record InvoiceLineResponse(
+        Integer id,
 
-    private Integer id;
+        Integer articleId,
+        String articleName,
+        Integer articleCode,
 
-    private Integer articleId;
-    private String articleName;
-    private Integer articleCode;
+        Integer trazabilityCode1,
+        Integer trazabilityCode2,
+        Integer trazabilityCode3,
 
-    private Integer trazabilityCode1;
-    private Integer trazabilityCode2;
-    private Integer trazabilityCode3;
+        BigDecimal quantity,
+        BigDecimal price,
+        BigDecimal total,
 
-    private BigDecimal quantity;
-    private BigDecimal price;
-    private BigDecimal total;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt) {
 }

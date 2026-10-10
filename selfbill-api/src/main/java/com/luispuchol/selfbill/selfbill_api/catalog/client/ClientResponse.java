@@ -2,36 +2,29 @@ package com.luispuchol.selfbill.selfbill_api.catalog.client;
 
 import java.time.LocalDateTime;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ClientResponse {
+public record ClientResponse(
+        Integer id,
+        Integer code,
 
-    private Integer id;
-    private Integer code;
+        String businessName,
+        String name,
+        String nif,
 
-    private String businessName;
-    private String name;
-    private String nif;
+        String email,
+        String address,
+        String city,
+        String province,
+        String postalCode,
+        String phone,
+        String phone2,
 
-    private String email;
-    private String address;
-    private String city;
-    private String province;
-    private String postalCode;
-    private String phone;
-    private String phone2;
+        VatType vatType,
+        SurchargeType surchargeType,
+        DeliveryNoteFormat defaultDeliveryNoteFormat,
 
-    private VatType vatType;
-    private SurchargeType surchargeType;
-    private DeliveryNoteFormat defaultDeliveryNoteFormat;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt) {
 }

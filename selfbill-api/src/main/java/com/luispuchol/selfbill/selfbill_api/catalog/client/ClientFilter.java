@@ -1,11 +1,11 @@
 package com.luispuchol.selfbill.selfbill_api.catalog.client;
 
-import lombok.Data;
+import lombok.Builder;
 
-@Data
-public class ClientFilter {
-    private String name;
-    private String businessName;
-    private Integer codeFrom;
-    private Integer codeTo;
+@Builder
+public record ClientFilter(
+        String name,
+        String businessName,
+        Integer codeFrom,
+        Integer codeTo) {
 }

@@ -54,36 +54,36 @@ public class DeliveryNoteService {
 
     @Transactional
     public DeliveryNoteResponse createDeliveryNote(DeliveryNoteRequest request) {
-        Integer code = request.getCode() != null ? request.getCode() : deliveryNoteRepository.findNextCode();
+        Integer code = request.code() != null ? request.code() : deliveryNoteRepository.findNextCode();
         requireUnusedCode(code);
-        Client client = findClient(request.getClientId());
+        Client client = findClient(request.clientId());
 
         DeliveryNote deliveryNote = deliveryNoteMapper.toEntity(request, client);
         deliveryNote.setCode(code);
         deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
         deliveryNoteTaxRegime.apply(deliveryNote, client);
-        replaceLines(deliveryNote, request.getLines());
+        replaceLines(deliveryNote, request.lines());
         return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(deliveryNote));
     }
 
     @Transactional
     public DeliveryNoteResponse updateDeliveryNote(Integer id, DeliveryNoteRequest request) {
         DeliveryNote deliveryNote = findDeliveryNote(id);
-        requireEditable(deliveryNote, request.getClientId());
-        Integer code = request.getCode() != null ? request.getCode() : deliveryNote.getCode();
+        requireEditable(deliveryNote, request.clientId());
+        Integer code = request.code() != null ? request.code() : deliveryNote.getCode();
         if (!deliveryNote.getCode().equals(code)) {
             requireUnusedCode(code);
         }
 
-        boolean clientChanged = !deliveryNote.getClient().getId().equals(request.getClientId());
-        Client client = findClient(request.getClientId());
+        boolean clientChanged = !deliveryNote.getClient().getId().equals(request.clientId());
+        Client client = findClient(request.clientId());
         deliveryNoteMapper.updateEntity(deliveryNote, request, client);
         deliveryNote.setCode(code);
         if (clientChanged) {
             deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
             deliveryNoteTaxRegime.apply(deliveryNote, client);
         }
-        replaceLines(deliveryNote, request.getLines());
+        replaceLines(deliveryNote, request.lines());
 
         Invoice invoice = deliveryNote.getInvoice();
         if (invoice != null) {
@@ -145,7 +145,7 @@ public class DeliveryNoteService {
         if (lineRequests != null) {
             for (DeliveryNoteLineRequest lineRequest : lineRequests) {
                 DeliveryNoteLine line = deliveryNoteMapper.toLineEntity(lineRequest,
-                        findArticle(lineRequest.getArticleId()), deliveryNote);
+                        findArticle(lineRequest.articleId()), deliveryNote);
                 line.setTotal(line.getQuantity().multiply(line.getPrice()));
                 deliveryNote.getLines().add(line);
             }
