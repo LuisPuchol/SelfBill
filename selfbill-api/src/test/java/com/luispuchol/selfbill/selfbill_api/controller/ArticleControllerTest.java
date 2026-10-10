@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.luispuchol.selfbill.selfbill_api.dto.NextCodeResponse;
 import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleResponse;
@@ -257,5 +258,15 @@ class ArticleControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode", is("VALIDATION_ERROR")))
                 .andExpect(jsonPath("$.errors.code", is("Code cannot be null")));
+    }
+
+    @Test
+    @DisplayName("GET /api/articles/next-code - Debe devolver el código sugerido")
+    void getNextCode_ShouldReturnSuggestedCode() throws Exception {
+        when(articleService.getNextCode()).thenReturn(new NextCodeResponse(8));
+
+        mockMvc.perform(get("/api/articles/next-code"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(8));
     }
 }

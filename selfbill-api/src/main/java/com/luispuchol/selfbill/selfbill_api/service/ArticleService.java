@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.luispuchol.selfbill.selfbill_api.dto.NextCodeResponse;
 import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleResponse;
@@ -60,6 +61,10 @@ public class ArticleService {
         }
         articleMapper.updateEntity(article, request);
         return articleMapper.toResponse(articleRepository.save(article));
+    }
+
+    public NextCodeResponse getNextCode() {
+        return new NextCodeResponse(articleRepository.findNextCode());
     }
 
     @Transactional

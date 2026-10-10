@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.luispuchol.selfbill.selfbill_api.dto.NextCodeResponse;
 import com.luispuchol.selfbill.selfbill_api.dto.client.ClientFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.client.ClientRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.client.ClientResponse;
@@ -74,6 +75,10 @@ public class ClientService {
             deliveryNoteService.refreshTaxRegime(saved);
         }
         return clientMapper.toResponse(saved);
+    }
+
+    public NextCodeResponse getNextCode() {
+        return new NextCodeResponse(clientRepository.findNextCode());
     }
 
     @Transactional

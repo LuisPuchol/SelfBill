@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.luispuchol.selfbill.selfbill_api.dto.NextCodeResponse;
 import com.luispuchol.selfbill.selfbill_api.dto.client.ClientFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.client.ClientRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.client.ClientResponse;
@@ -290,4 +291,14 @@ class ClientControllerTest {
 
                 verify(clientService, never()).deleteClient(any());
         }
+
+    @Test
+    @DisplayName("GET /api/clients/next-code - Debe devolver el código sugerido")
+    void getNextCode_ShouldReturnSuggestedCode() throws Exception {
+        when(clientService.getNextCode()).thenReturn(new NextCodeResponse(8));
+
+        mockMvc.perform(get("/api/clients/next-code"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(8));
+    }
 }

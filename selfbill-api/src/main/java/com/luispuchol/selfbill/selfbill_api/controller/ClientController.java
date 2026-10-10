@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.luispuchol.selfbill.selfbill_api.dto.NextCodeResponse;
 import com.luispuchol.selfbill.selfbill_api.dto.client.ClientFilter;
 import com.luispuchol.selfbill.selfbill_api.dto.client.ClientRequest;
 import com.luispuchol.selfbill.selfbill_api.dto.client.ClientResponse;
@@ -42,6 +43,12 @@ public class ClientController {
     public Page<ClientResponse> getAllClients(@ParameterObject ClientFilter filter,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
         return clientService.getAllClients(filter, pageable);
+    }
+
+    @Operation(summary = "Suggest the next free code")
+    @GetMapping("/next-code")
+    public NextCodeResponse getNextCode() {
+        return clientService.getNextCode();
     }
 
     @GetMapping("/{id}")
