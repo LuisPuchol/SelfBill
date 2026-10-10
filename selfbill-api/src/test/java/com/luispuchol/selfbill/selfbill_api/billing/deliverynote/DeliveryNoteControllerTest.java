@@ -39,12 +39,12 @@ class DeliveryNoteControllerTest {
     private DeliveryNoteService deliveryNoteService;
 
     @Test
-    @DisplayName("GET /api/deliveryNotes - Debe pasar el filtro de facturado al servicio")
+    @DisplayName("GET /api/delivery-notes - Debe pasar el filtro de facturado al servicio")
     void getAllDeliveryNotes_ShouldBindInvoicedFilter() throws Exception {
         when(deliveryNoteService.getAllDeliveryNotes(any(DeliveryNoteFilter.class), any(Pageable.class)))
                 .thenReturn(Page.empty());
 
-        mockMvc.perform(get("/api/deliveryNotes").param("clientId", "1").param("invoiced", "false"))
+        mockMvc.perform(get("/api/delivery-notes").param("clientId", "1").param("invoiced", "false"))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<DeliveryNoteFilter> filter = ArgumentCaptor.forClass(DeliveryNoteFilter.class);
@@ -54,26 +54,26 @@ class DeliveryNoteControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/deliveryNotes - Debe aceptar un albarán sin código")
+    @DisplayName("POST /api/delivery-notes - Debe aceptar un albarán sin código")
     void createDeliveryNote_WithoutCode_ShouldReturnCreated() throws Exception {
         DeliveryNoteRequest request = DeliveryNoteRequest.builder()
                 .date(LocalDateTime.of(2026, 10, 1, 8, 0)).clientId(1).build();
         when(deliveryNoteService.createDeliveryNote(any(DeliveryNoteRequest.class)))
                 .thenReturn(DeliveryNoteResponse.builder().id(1).code(6).build());
 
-        mockMvc.perform(post("/api/deliveryNotes").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/delivery-notes").contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code").value(6));
     }
 
     @Test
-    @DisplayName("POST /api/deliveryNotes - Debe rechazar un código no positivo")
+    @DisplayName("POST /api/delivery-notes - Debe rechazar un código no positivo")
     void createDeliveryNote_WithNonPositiveCode_ShouldReturnBadRequest() throws Exception {
         DeliveryNoteRequest request = DeliveryNoteRequest.builder()
                 .code(-1).date(LocalDateTime.of(2026, 10, 1, 8, 0)).clientId(1).build();
 
-        mockMvc.perform(post("/api/deliveryNotes").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/delivery-notes").contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
 

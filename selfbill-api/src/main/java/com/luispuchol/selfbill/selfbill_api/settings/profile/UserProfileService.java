@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.settings.profile;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -61,7 +62,7 @@ public class UserProfileService {
         try {
             profile.setLogoData(file.getBytes());
         } catch (IOException e) {
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+            throw new UncheckedIOException(e);
         }
         profile.setLogoContentType(contentType);
         userProfileRepository.save(profile);

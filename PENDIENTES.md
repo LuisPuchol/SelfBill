@@ -60,7 +60,7 @@ Un cliente borrado deja sus albaranes pendientes y sus borradores sin poder fact
 editarse, y un artículo borrado impide volver a guardar los albaranes pendientes que lo
 usan. Hoy solo se restaura por SQL (`deleted_at = NULL`). Opciones: un endpoint de
 restaurar, o que el front avise antes de borrar un cliente con pendientes
-(`GET /api/deliveryNotes?clientId=&invoiced=false`).
+(`GET /api/delivery-notes?clientId=&invoiced=false`).
 
 ---
 

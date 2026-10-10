@@ -3,7 +3,6 @@ package com.luispuchol.selfbill.selfbill_api.settings.profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -22,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/user-profile")
 @Tag(name = "User Profile", description = "User profile management endpoints")
-@Validated
 @RequiredArgsConstructor
 public class UserProfileController {
 

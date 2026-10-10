@@ -257,6 +257,30 @@ class ArticleControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/articles/{id} - Debe informar del parámetro inválido por su nombre")
+    void getArticleById_WithNonPositiveId_ShouldReportTheParameter() throws Exception {
+        mockMvc.perform(get("/api/articles/-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors.id").exists());
+
+        verify(articleService, never()).getArticleById(any());
+    }
+
+    @Test
+    @DisplayName("PUT /api/articles/{id} - Debe informar de los campos inválidos del cuerpo")
+    void updateArticle_WithInvalidBody_ShouldReportTheFields() throws Exception {
+        mockMvc.perform(put("/api/articles/1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":null,\"name\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors.code").exists())
+                .andExpect(jsonPath("$.errors.name").exists());
+
+        verify(articleService, never()).updateArticle(any(), any());
+    }
+
+    @Test
     @DisplayName("GET /api/articles/next-code - Debe devolver el código sugerido")
     void getNextCode_ShouldReturnSuggestedCode() throws Exception {
         when(articleService.getNextCode()).thenReturn(new NextCodeResponse(8));

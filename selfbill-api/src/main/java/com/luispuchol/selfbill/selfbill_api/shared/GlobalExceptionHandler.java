@@ -1,5 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.shared;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -13,11 +14,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -31,20 +31,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(errorCode.getHttpStatus(), errorCode, ex.getMessage());
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ProblemDetail handleConstraintViolation(ConstraintViolationException ex) {
-        Map<String, String> errors = ex.getConstraintViolations().stream()
-                .collect(Collectors.toMap(violation -> violation.getPropertyPath().toString(),
-                        ConstraintViolation::getMessage, (first, second) -> first));
-        return validationProblem(errors);
-    }
-
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.toMap(FieldError::getField,
                         error -> String.valueOf(error.getDefaultMessage()), (first, second) -> first));
+        return handleExceptionInternal(ex, validationProblem(errors), headers, status, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBeanResults().stream()
+                .flatMap(result -> result.getFieldErrors().stream())
+                .forEach(error -> errors.putIfAbsent(error.getField(), String.valueOf(error.getDefaultMessage())));
+        ex.getValueResults().forEach(result -> errors.putIfAbsent(result.getMethodParameter().getParameterName(),
+                String.valueOf(result.getResolvableErrors().get(0).getDefaultMessage())));
         return handleExceptionInternal(ex, validationProblem(errors), headers, status, request);
     }
 
