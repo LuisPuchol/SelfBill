@@ -159,12 +159,12 @@ public class DeliveryNoteService {
     }
 
     private Client findClient(Integer id) {
-        return clientRepository.findById(id)
+        return clientRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
     }
 
     private Article findArticle(Integer id) {
-        return articleRepository.findById(id)
+        return articleRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, id));
     }
 }

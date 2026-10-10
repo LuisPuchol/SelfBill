@@ -15,7 +15,8 @@ public final class ClientSpecification {
                 .and(nameLike(filter.getName()))
                 .and(businessNameLike(filter.getBusinessName()))
                 .and(codeFrom(filter.getCodeFrom()))
-                .and(codeTo(filter.getCodeTo()));
+                .and(codeTo(filter.getCodeTo()))
+                .and(notDeleted());
     }
 
     private static Specification<Client> nameLike(String name) {
@@ -36,5 +37,9 @@ public final class ClientSpecification {
     private static Specification<Client> codeTo(Integer to) {
         return (root, query, cb) -> to == null ? null
                 : cb.lessThanOrEqualTo(root.get("code"), to);
+    }
+
+    private static Specification<Client> notDeleted() {
+        return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
     }
 }

@@ -35,19 +35,19 @@ public class ClientService {
     }
 
     public ClientResponse getClientByCode(Integer code) {
-        return clientRepository.findByCode(code)
+        return clientRepository.findByCodeAndDeletedAtIsNull(code)
                 .map(clientMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, code));
     }
 
     public ClientResponse getClientByName(String name) {
-        return clientRepository.findByNameIgnoreCase(name)
+        return clientRepository.findByNameIgnoreCaseAndDeletedAtIsNull(name)
                 .map(clientMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, name));
     }
 
     public ClientResponse getClientByNif(String nif) {
-        return clientRepository.findByNif(nif)
+        return clientRepository.findByNifAndDeletedAtIsNull(nif)
                 .map(clientMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, nif));
     }
@@ -74,12 +74,12 @@ public class ClientService {
     }
 
     private Client findClient(Integer id) {
-        return clientRepository.findById(id)
+        return clientRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
     }
 
     private void requireUnusedCode(Integer code) {
-        if (clientRepository.existsByCode(code)) {
+        if (clientRepository.existsByCodeAndDeletedAtIsNull(code)) {
             throw new BusinessException(ErrorCode.CLIENT_DUPLICATE_CODE, code);
         }
     }

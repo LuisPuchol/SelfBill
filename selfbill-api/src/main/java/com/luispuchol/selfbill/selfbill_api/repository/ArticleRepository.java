@@ -9,9 +9,11 @@ import com.luispuchol.selfbill.selfbill_api.entity.Article;
 
 public interface ArticleRepository extends JpaRepository<Article, Integer>, JpaSpecificationExecutor<Article> {
 
-    Optional<Article> findByCode(Integer code);
+    Optional<Article> findByIdAndDeletedAtIsNull(Integer id);
 
-    Optional<Article> findByNameIgnoreCase(String name);
+    Optional<Article> findByCodeAndDeletedAtIsNull(Integer code);
 
-    boolean existsByCode(Integer code);
+    Optional<Article> findByNameIgnoreCaseAndDeletedAtIsNull(String name);
+
+    boolean existsByCodeAndDeletedAtIsNull(Integer code);
 }

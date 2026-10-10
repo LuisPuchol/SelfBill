@@ -253,7 +253,7 @@ public class InvoiceService {
     }
 
     private Client findClient(Integer id) {
-        return clientRepository.findById(id)
+        return clientRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
     }
 

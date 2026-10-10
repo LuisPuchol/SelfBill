@@ -14,7 +14,8 @@ public final class ArticleSpecification {
         return Specification.<Article>unrestricted()
                 .and(nameLike(filter.getName()))
                 .and(codeFrom(filter.getCodeFrom()))
-                .and(codeTo(filter.getCodeTo()));
+                .and(codeTo(filter.getCodeTo()))
+                .and(notDeleted());
     }
 
     private static Specification<Article> nameLike(String name) {
@@ -30,5 +31,9 @@ public final class ArticleSpecification {
     private static Specification<Article> codeTo(Integer to) {
         return (root, query, cb) -> to == null ? null
                 : cb.lessThanOrEqualTo(root.get("code"), to);
+    }
+
+    private static Specification<Article> notDeleted() {
+        return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
     }
 }

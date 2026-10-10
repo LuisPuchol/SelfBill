@@ -9,11 +9,13 @@ import com.luispuchol.selfbill.selfbill_api.entity.Client;
 
 public interface ClientRepository extends JpaRepository<Client, Integer>, JpaSpecificationExecutor<Client> {
 
-    Optional<Client> findByCode(Integer code);
+    Optional<Client> findByIdAndDeletedAtIsNull(Integer id);
 
-    Optional<Client> findByNameIgnoreCase(String name);
+    Optional<Client> findByCodeAndDeletedAtIsNull(Integer code);
 
-    Optional<Client> findByNif(String nif);
+    Optional<Client> findByNameIgnoreCaseAndDeletedAtIsNull(String name);
 
-    boolean existsByCode(Integer code);
+    Optional<Client> findByNifAndDeletedAtIsNull(String nif);
+
+    boolean existsByCodeAndDeletedAtIsNull(Integer code);
 }

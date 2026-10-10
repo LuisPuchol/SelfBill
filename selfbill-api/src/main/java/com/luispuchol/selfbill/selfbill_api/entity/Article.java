@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.Column;
@@ -19,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+// No @SQLRestriction: documents must still load a deleted row; the catalog filters deleted rows itself (CONCEPTO.md §7)
 @Entity
 @Table(name = "articles")
 @Getter
@@ -27,7 +27,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 @SQLDelete(sql = "UPDATE articles SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
-@SQLRestriction("deleted_at IS NULL")
 public class Article {
 
     @Id

@@ -35,13 +35,13 @@ public class ArticleService {
     }
 
     public ArticleResponse getArticleByCode(Integer code) {
-        return articleRepository.findByCode(code)
+        return articleRepository.findByCodeAndDeletedAtIsNull(code)
                 .map(articleMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, code));
     }
 
     public ArticleResponse getArticleByName(String name) {
-        return articleRepository.findByNameIgnoreCase(name)
+        return articleRepository.findByNameIgnoreCaseAndDeletedAtIsNull(name)
                 .map(articleMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, name));
     }
@@ -68,12 +68,12 @@ public class ArticleService {
     }
 
     private Article findArticle(Integer id) {
-        return articleRepository.findById(id)
+        return articleRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, id));
     }
 
     private void requireUnusedCode(Integer code) {
-        if (articleRepository.existsByCode(code)) {
+        if (articleRepository.existsByCodeAndDeletedAtIsNull(code)) {
             throw new BusinessException(ErrorCode.ARTICLE_DUPLICATE_CODE, code);
         }
     }

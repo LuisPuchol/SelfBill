@@ -27,14 +27,7 @@ borradores del cliente al editarlo. Conviene resolverlo junto con el punto anter
 
 ## 2. Bugs conocidos
 
-### Borrar un cliente con albaranes o facturas los deja inservibles
-`deleteClient` no comprueba nada. `DeliveryNote.client` e `Invoice.client` son FK no
-nulables y `Client` tiene `@SQLRestriction`, así que tras el borrado esos documentos no
-pueden cargar su cliente y lanzan `EntityNotFoundException` (500). Comprobado: falla el
-detalle de sus albaranes y también el listado completo de albaranes, aunque el resto sean
-de otros clientes. Con las facturas pasa lo mismo, porque la respuesta lee `clientName`
-del cliente vivo y no del snapshot. Hay que decidir si se impide borrar un cliente con
-documentos (409) o si las lecturas toleran su ausencia.
+Ninguno conocido.
 
 ---
 
@@ -53,6 +46,7 @@ Obligatorio desde el 1-ene-2027 (sociedades) o el 1-jul-2027 (resto), según el 
 ### Generación real de PDF
 `PdfService` produce un PDF de prueba con una sola línea de texto. Falta la plantilla real
 de factura y las dos de albarán (simple y valorado, CONCEPTO.md §3).
+Antes hay que decidir dos snapshots que faltan (CONCEPTO §6): los datos del cliente en el albarán y los del titular (`UserProfile`) en la factura. Sin ellos, editar un cliente o el perfil reescribe la reimpresión de documentos ya entregados.
 
 ### Seguimiento de cobro
 `Invoice` no tiene vencimiento ni estado de pago. No se puede saber qué está cobrado,
