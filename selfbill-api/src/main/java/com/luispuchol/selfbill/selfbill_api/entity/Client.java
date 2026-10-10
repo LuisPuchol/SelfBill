@@ -24,7 +24,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// No @SQLRestriction: documents must still load a deleted row; the catalog filters deleted rows itself (CONCEPTO.md §7)
+// No @SQLRestriction: documents keep loading deleted rows (CONCEPTO.md §7)
 @Entity
 @Table(name = "clients")
 @Getter
@@ -39,7 +39,6 @@ public class Client {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    // Unique among live rows only: partial index in V1__init.sql (CONCEPTO.md §7)
     @Column(nullable = false)
     private Integer code;
 

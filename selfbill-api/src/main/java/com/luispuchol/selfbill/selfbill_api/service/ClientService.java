@@ -71,7 +71,6 @@ public class ClientService {
         clientMapper.updateEntity(client, request);
         Client saved = clientRepository.save(client);
         if (regimeChanged) {
-            // Usually a misconfigured client being fixed: pending documents follow it (CONCEPTO.md §3)
             deliveryNoteService.refreshTaxRegime(saved);
         }
         return clientMapper.toResponse(saved);

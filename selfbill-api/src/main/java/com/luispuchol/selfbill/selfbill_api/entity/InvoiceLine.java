@@ -42,7 +42,6 @@ public class InvoiceLine {
     @JoinColumn(name = "invoice_id", nullable = false)
     private Invoice invoice;
 
-    // The printed data lives in the frozen copies below; these FKs are only links (CONCEPTO.md §6)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "delivery_note_id")
     private DeliveryNote deliveryNote;

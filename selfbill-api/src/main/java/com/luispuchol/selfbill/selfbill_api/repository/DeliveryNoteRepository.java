@@ -17,7 +17,6 @@ public interface DeliveryNoteRepository
     @Query("SELECT COALESCE(MAX(dn.code), 0) + 1 FROM DeliveryNote dn")
     int findNextCode();
 
-    // Not locked by an issued invoice (CONCEPTO.md §5)
     @Query("SELECT dn FROM DeliveryNote dn LEFT JOIN dn.invoice i WHERE dn.client.id = :clientId "
             + "AND (i IS NULL OR i.status = com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus.DRAFT)")
     List<DeliveryNote> findEditableByClientId(@Param("clientId") Integer clientId);

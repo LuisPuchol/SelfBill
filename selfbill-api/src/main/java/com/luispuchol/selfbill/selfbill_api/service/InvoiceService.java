@@ -100,10 +100,8 @@ public class InvoiceService {
     public InvoiceResponse issueInvoice(Integer id) {
         Invoice invoice = findInvoice(id);
         requireDraft(invoice);
-        // Safety net: amounts and series must match the delivery notes and client being issued
         recalculate(invoice, invoice.getDeliveryNotes());
 
-        // Numbered only on issue so a discarded draft never consumes a number (CONCEPTO.md §5)
         invoice.setCode(invoiceRepository.findMaxCode(invoice.getSeries().name()).orElse(0) + 1);
         invoice.setDate(LocalDateTime.now(clock));
         invoice.setStatus(InvoiceStatus.ISSUED);
@@ -117,7 +115,6 @@ public class InvoiceService {
         recalculate(invoice, invoice.getDeliveryNotes());
     }
 
-    // Until Verifactu, deleting an issued invoice is the available correction path (CONCEPTO.md §5)
     @Transactional
     public void deleteInvoice(Integer id) {
         Invoice invoice = findInvoice(id);
@@ -174,7 +171,6 @@ public class InvoiceService {
 
     private void recalculate(Invoice invoice, List<DeliveryNote> deliveryNotes) {
         invoice.setSeries(InvoiceSeries.forVatType(invoice.getClient().getVatType()));
-        // Delivery notes not locked by an issued invoice follow their client's regime (CONCEPTO.md §3)
         deliveryNotes.forEach(deliveryNote -> deliveryNoteTaxRegime.apply(deliveryNote, invoice.getClient()));
         applyFinancials(invoice, deliveryNotes);
         invoice.getLines().clear();
@@ -199,7 +195,6 @@ public class InvoiceService {
         invoice.setTotal(subtotal.add(vatAmount).add(surchargeAmount));
     }
 
-    // One rate per invoice: the business never mixes them, so a mix is refused, not broken down (CONCEPTO.md §8)
     private static BigDecimal commonRate(List<DeliveryNote> deliveryNotes, Function<DeliveryNote, BigDecimal> rate) {
         if (deliveryNotes.isEmpty()) {
             return BigDecimal.ZERO;
@@ -278,8 +273,6 @@ public class InvoiceService {
         return response;
     }
 
-    // From the frozen lines, not the live relation: during a rectification the delivery notes
-    // point to the new draft and the original must keep its sections (CONCEPTO.md §9.1)
     private List<InvoiceSectionResponse> buildSections(Invoice invoice) {
         Map<Integer, List<InvoiceLine>> linesByDeliveryNote = invoice.getLines().stream()
                 .collect(Collectors.groupingBy(InvoiceLine::getDeliveryNoteCode, LinkedHashMap::new,

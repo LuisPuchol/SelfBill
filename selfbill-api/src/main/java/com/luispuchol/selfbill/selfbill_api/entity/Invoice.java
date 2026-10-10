@@ -65,7 +65,6 @@ public class Invoice {
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
-    // Frozen on issue so later client edits don't rewrite issued invoices (CONCEPTO.md §6)
     @Column(name = "client_business_name", length = 255)
     private String clientBusinessName;
 

@@ -48,7 +48,6 @@ public class DeliveryNote {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    // Unique among live rows only: partial index in V1__init.sql (CONCEPTO.md §7)
     @Column(nullable = false)
     private Integer code;
 
@@ -58,7 +57,6 @@ public class DeliveryNote {
     @Column(precision = 10, scale = 2)
     private BigDecimal total;
 
-    // Frozen at creation so a reprint reproduces what the client received (CONCEPTO.md §3, §4)
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private DeliveryNoteFormat format;
@@ -69,7 +67,6 @@ public class DeliveryNote {
     @Column(name = "surcharge_percentage", nullable = false, precision = 5, scale = 2)
     private BigDecimal surchargePercentage;
 
-    // Regime the frozen rates were computed under, so a later regime change can be detected (CONCEPTO.md §3)
     @Enumerated(EnumType.STRING)
     @Column(name = "vat_type", nullable = false)
     private VatType vatType;

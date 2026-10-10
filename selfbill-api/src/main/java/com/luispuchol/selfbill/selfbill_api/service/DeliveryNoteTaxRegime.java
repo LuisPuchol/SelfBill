@@ -12,14 +12,12 @@ import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 
 import lombok.RequiredArgsConstructor;
 
-// Frozen with the client's regime applied, so a reprint never consults the client (CONCEPTO.md §3, §4)
 @Component
 @RequiredArgsConstructor
 public class DeliveryNoteTaxRegime {
 
     private final TaxConfigService taxConfigService;
 
-    // Component by component: an unchanged regime keeps the rate of the operation date (CONCEPTO.md §3, §4)
     public void apply(DeliveryNote deliveryNote, Client client) {
         boolean vatChanged = deliveryNote.getVatType() != client.getVatType();
         boolean surchargeChanged = deliveryNote.getSurchargeType() != client.getSurchargeType();

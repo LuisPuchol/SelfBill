@@ -14,7 +14,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer>, JpaS
 
     Optional<Invoice> findBySeriesAndCode(InvoiceSeries series, Integer code);
 
-    // Native so it also counts soft-deleted invoices: their numbers stay taken (ux_invoices_series_code)
+    // Native so it also counts soft-deleted invoices, whose numbers stay taken
     @Query(value = "SELECT MAX(code) FROM invoices WHERE series = :series", nativeQuery = true)
     Optional<Integer> findMaxCode(@Param("series") String series);
 }

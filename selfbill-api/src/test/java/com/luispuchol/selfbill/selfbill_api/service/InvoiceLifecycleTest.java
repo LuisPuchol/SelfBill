@@ -173,7 +173,6 @@ class InvoiceLifecycleTest extends DomainIntegrationTest {
         DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "1", "1");
         InvoiceResponse invoice = invoiceService.issueInvoice(createInvoice(deliveryNote.getId()).getId());
 
-        // Simulates a rectifying draft taking over the delivery note (CONCEPTO.md §9.1)
         jdbc.update("UPDATE delivery_notes SET invoice_id = NULL WHERE id = ?", deliveryNote.getId());
 
         InvoiceResponse reloaded = invoiceService.getInvoiceById(invoice.getId());
