@@ -20,12 +20,12 @@ import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteRepository;
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteTaxRegime;
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentMessages;
+import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentSender;
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentType;
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfFile;
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfService;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.Client;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientRepository;
-import com.luispuchol.selfbill.selfbill_api.mail.EmailService;
 import com.luispuchol.selfbill.selfbill_api.shared.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
 
@@ -44,7 +44,7 @@ public class InvoiceService {
     private final InvoiceMapper invoiceMapper;
     private final DeliveryNoteTaxRegime deliveryNoteTaxRegime;
     private final PdfService pdfService;
-    private final EmailService emailService;
+    private final DocumentSender documentSender;
     private final DocumentMessages documentMessages;
     private final Clock clock;
 
@@ -126,7 +126,7 @@ public class InvoiceService {
 
     public void sendInvoiceEmail(Integer id) {
         Invoice invoice = findIssuedInvoice(id);
-        emailService.sendDocument(DocumentType.INVOICE, invoice.getClient(), invoice.getNumber(),
+        documentSender.send(DocumentType.INVOICE, invoice.getClient(), invoice.getNumber(),
                 pdfService.generateInvoicePdf(invoice));
     }
 

@@ -4,12 +4,14 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentMessages;
+import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentSender;
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentType;
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfFile;
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfService;
@@ -20,7 +22,7 @@ import com.luispuchol.selfbill.selfbill_api.catalog.article.Article;
 import com.luispuchol.selfbill.selfbill_api.catalog.article.ArticleRepository;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.Client;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientRepository;
-import com.luispuchol.selfbill.selfbill_api.mail.EmailService;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientTaxRegimeChanged;
 import com.luispuchol.selfbill.selfbill_api.shared.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
 
@@ -38,7 +40,7 @@ public class DeliveryNoteService {
     private final DeliveryNoteTaxRegime deliveryNoteTaxRegime;
     private final InvoiceService invoiceService;
     private final PdfService pdfService;
-    private final EmailService emailService;
+    private final DocumentSender documentSender;
     private final DocumentMessages documentMessages;
 
     public Page<DeliveryNoteResponse> getAllDeliveryNotes(DeliveryNoteFilter filter, Pageable pageable) {
@@ -90,8 +92,10 @@ public class DeliveryNoteService {
         return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(deliveryNote));
     }
 
+    @EventListener
     @Transactional
-    public void refreshTaxRegime(Client client) {
+    public void refreshTaxRegime(ClientTaxRegimeChanged event) {
+        Client client = event.client();
         List<DeliveryNote> editable = deliveryNoteRepository.findEditableByClientId(client.getId());
         editable.forEach(deliveryNote -> deliveryNoteTaxRegime.apply(deliveryNote, client));
         editable.stream()
@@ -118,7 +122,7 @@ public class DeliveryNoteService {
 
     public void sendDeliveryNoteEmail(Integer id) {
         DeliveryNote deliveryNote = findDeliveryNote(id);
-        emailService.sendDocument(DocumentType.DELIVERY_NOTE, deliveryNote.getClient(),
+        documentSender.send(DocumentType.DELIVERY_NOTE, deliveryNote.getClient(),
                 String.valueOf(deliveryNote.getCode()),
                 pdfService.generateDeliveryNotePdf(deliveryNote));
     }

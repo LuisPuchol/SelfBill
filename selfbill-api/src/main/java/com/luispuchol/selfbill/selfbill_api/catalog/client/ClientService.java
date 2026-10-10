@@ -1,11 +1,11 @@
 package com.luispuchol.selfbill.selfbill_api.catalog.client;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteService;
 import com.luispuchol.selfbill.selfbill_api.catalog.NextCodeResponse;
 import com.luispuchol.selfbill.selfbill_api.shared.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
@@ -19,7 +19,7 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
-    private final DeliveryNoteService deliveryNoteService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public Page<ClientResponse> getAllClients(ClientFilter filter, Pageable pageable) {
         return clientRepository.findAll(ClientSpecification.withFilter(filter), pageable)
@@ -65,7 +65,7 @@ public class ClientService {
         clientMapper.updateEntity(client, request);
         Client saved = clientRepository.save(client);
         if (regimeChanged) {
-            deliveryNoteService.refreshTaxRegime(saved);
+            eventPublisher.publishEvent(new ClientTaxRegimeChanged(saved));
         }
         return clientMapper.toResponse(saved);
     }

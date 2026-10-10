@@ -27,7 +27,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ProblemDetail handleBusinessException(BusinessException ex) {
         ErrorCode errorCode = ex.getErrorCode();
-        log.warn("[{}] {}", errorCode, ex.getMessage());
+        log.warn("[{}] {}", errorCode, ex.getMessage(), ex.getCause());
         return problem(errorCode.getHttpStatus(), errorCode, ex.getMessage());
     }
 

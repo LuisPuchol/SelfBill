@@ -155,6 +155,17 @@ class InvoiceLifecycleTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Sending a document to a client without email fails before contacting the mail server")
+    void sendingToClientWithoutEmailFails() {
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "1", "1");
+        InvoiceResponse invoice = invoiceService.issueInvoice(createInvoice(deliveryNote.getId()).getId());
+
+        assertFails(ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED, () -> invoiceService.sendInvoiceEmail(invoice.getId()));
+        assertFails(ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED,
+                () -> deliveryNoteService.sendDeliveryNoteEmail(deliveryNote.getId()));
+    }
+
+    @Test
     @DisplayName("The PDF of an issued invoice is named after its number")
     void pdfIsNamedAfterInvoiceNumber() {
         InvoiceResponse invoice = invoiceService.issueInvoice(
