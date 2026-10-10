@@ -24,6 +24,7 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
+    private final DeliveryNoteService deliveryNoteService;
 
     public Page<ClientResponse> getAllClients(ClientFilter filter, Pageable pageable) {
         return clientRepository.findAll(ClientSpecification.withFilter(filter), pageable)
@@ -64,8 +65,15 @@ public class ClientService {
         if (!client.getCode().equals(request.getCode())) {
             requireUnusedCode(request.getCode());
         }
+        boolean regimeChanged = client.getVatType() != request.getVatType()
+                || client.getSurchargeType() != request.getSurchargeType();
         clientMapper.updateEntity(client, request);
-        return clientMapper.toResponse(clientRepository.save(client));
+        Client saved = clientRepository.save(client);
+        if (regimeChanged) {
+            // Usually a misconfigured client being fixed: pending documents follow it (CONCEPTO.md §3)
+            deliveryNoteService.refreshTaxRegime(saved);
+        }
+        return clientMapper.toResponse(saved);
     }
 
     @Transactional

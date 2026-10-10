@@ -78,6 +78,10 @@ factura. Es un formato de impresión, no un modo de facturación.
   cliente no lleva IVA, y el recargo es 0 si no lleva recargo. Se fijan al crear el albarán y
   al cambiarlo de cliente.
 
+Cambiar el régimen de un cliente reaplica los tipos a sus albaranes editables (sin
+factura o con factura en borrador) y recalcula sus borradores. Los de facturas emitidas no
+se tocan. Cambiar el `TaxConfig` no afecta a nada que ya exista.
+
 Reimprimir un albarán antiguo reproduce así el documento exacto que recibió el cliente,
 aunque después haya cambiado su preferencia o el tipo de IVA. El generador de PDF lee lo
 que el albarán congeló, sin consultar al cliente.

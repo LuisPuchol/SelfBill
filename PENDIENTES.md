@@ -10,12 +10,11 @@ Lista de trabajo. Las reglas del modelo y sus motivos están en [CONCEPTO.md](CO
 El front necesita pedir los albaranes pendientes de un cliente y `DeliveryNoteFilter` no
 lo permite. Hoy habría que traerlos todos y filtrar en el cliente por `invoiceId == null`.
 
-### Un borrador no se entera de los cambios en su cliente ni en el IVA
-Los importes y la serie de un borrador se calculan al crearlo, al cambiar sus albaranes y
-al editar uno de ellos. Si mientras está abierto cambia el tipo de IVA o de recargo del
-cliente, o el `TaxConfig`, el borrador conserva los valores viejos y se emite así; puede
-incluso salir en la serie equivocada. Opciones: recalcular al emitir, o recalcular los
-borradores del cliente al editarlo. Conviene resolverlo junto con el punto anterior.
+### `TaxConfig` sin histórico
+El albarán congela el tipo vigente cuando se crea, no el de su fecha: si se da de alta
+tarde un albarán anterior a un cambio de tipo, recibe el tipo nuevo. Lo mismo ocurre al
+reaplicar el régimen de un cliente. Si llega a importar, `TaxConfig` necesita vigencias
+(desde/hasta).
 
 ---
 

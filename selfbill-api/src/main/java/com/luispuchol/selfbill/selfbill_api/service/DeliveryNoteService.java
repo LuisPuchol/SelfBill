@@ -2,6 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -91,6 +92,17 @@ public class DeliveryNoteService {
             invoiceService.recalculateDraft(invoice);
         }
         return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(deliveryNote));
+    }
+
+    @Transactional
+    public void refreshTaxRegime(Client client) {
+        List<DeliveryNote> editable = deliveryNoteRepository.findEditableByClientId(client.getId());
+        editable.forEach(deliveryNote -> applyTaxRegime(deliveryNote, client));
+        editable.stream()
+                .map(DeliveryNote::getInvoice)
+                .filter(Objects::nonNull)
+                .distinct()
+                .forEach(invoiceService::recalculateDraft);
     }
 
     @Transactional
