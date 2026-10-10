@@ -196,6 +196,16 @@ llega a lo pendiente.
 fechado antes de un cambio de tipo pero creado después recibe el tipo nuevo. Reaplicar el
 régimen usa el tipo vigente ese día.
 
+**Enmienda (revisión final).** La premisa "con la propagación, siempre coincide" no se
+sostenía en cuanto se borra una factura emitida: sus albaranes quedaban libres con los
+tipos del régimen anterior del cliente, y refacturarlos daba una factura `S-` con IVA o
+una general al 0 %. Regla definitiva: el albarán guarda también el régimen (`vatType`,
+`surchargeType`) con el que se calcularon sus tipos y, mientras no esté en una factura
+emitida, sigue el régimen actual de su cliente: al cambiarlo de cliente, al cambiar el
+régimen del cliente, al borrarse su factura emitida y al recalcular un borrador. Se
+reaplica componente a componente: el que no cambia de régimen conserva el tipo de la fecha
+de la operación y el que cambia toma el vigente, o 0 (migración `V2`).
+
 ### 5.4. Fase 3: API pequeña
 
 - `DeliveryNoteFilter.invoiced` (`Boolean`): `false` devuelve albaranes sin factura y

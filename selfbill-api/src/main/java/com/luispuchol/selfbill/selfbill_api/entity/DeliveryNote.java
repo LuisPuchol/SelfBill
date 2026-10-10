@@ -11,6 +11,8 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
+import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
+import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -66,6 +68,15 @@ public class DeliveryNote {
 
     @Column(name = "surcharge_percentage", nullable = false, precision = 5, scale = 2)
     private BigDecimal surchargePercentage;
+
+    // Regime the frozen rates were computed under, so a later regime change can be detected (CONCEPTO.md §3)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vat_type", nullable = false)
+    private VatType vatType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "surcharge_type", nullable = false)
+    private SurchargeType surchargeType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)

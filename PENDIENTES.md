@@ -9,8 +9,8 @@ Lista de trabajo. Las reglas del modelo y sus motivos están en [CONCEPTO.md](CO
 ### `TaxConfig` sin histórico
 El albarán congela el tipo vigente cuando se crea, no el de su fecha: si se da de alta
 tarde un albarán anterior a un cambio de tipo, recibe el tipo nuevo. Lo mismo ocurre al
-reaplicar el régimen de un cliente. Si llega a importar, `TaxConfig` necesita vigencias
-(desde/hasta).
+reaplicar el régimen de un cliente, solo en el componente (IVA o recargo) cuyo régimen
+cambia. Si llega a importar, `TaxConfig` necesita vigencias (desde/hasta).
 
 ---
 

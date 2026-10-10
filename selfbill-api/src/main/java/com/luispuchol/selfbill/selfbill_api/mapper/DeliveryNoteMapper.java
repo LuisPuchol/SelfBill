@@ -35,6 +35,8 @@ public interface DeliveryNoteMapper {
     @Mapping(target = "format", ignore = true)
     @Mapping(target = "vatPercentage", ignore = true)
     @Mapping(target = "surchargePercentage", ignore = true)
+    @Mapping(target = "vatType", ignore = true)
+    @Mapping(target = "surchargeType", ignore = true)
     @Mapping(target = "invoice", ignore = true)
     @Mapping(target = "lines", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

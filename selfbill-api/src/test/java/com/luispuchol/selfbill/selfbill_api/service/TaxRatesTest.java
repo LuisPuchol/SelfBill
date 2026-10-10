@@ -163,4 +163,79 @@ class TaxRatesTest extends DomainIntegrationTest {
         assertThat(deliveryNoteService.getDeliveryNoteById(deliveryNote.getId()).getVatPercentage())
                 .isEqualByComparingTo("10");
     }
+
+    @Test
+    @DisplayName("Deleting an issued invoice realigns its freed delivery notes with the client's regime")
+    void deletingIssuedInvoiceRealignsFreedNotesWithTheClient() {
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "10", "2");
+        InvoiceResponse issued = issue(clientId, deliveryNote);
+        clientService.updateClient(clientId, clientRequest(1, DeliveryNoteFormat.VALUED, "Client 1 SL",
+                VatType.WITHOUT_VAT, SurchargeType.WITHOUT_SURCHARGE));
+
+        invoiceService.deleteInvoice(issued.getId());
+
+        assertThat(deliveryNoteService.getDeliveryNoteById(deliveryNote.getId()).getVatPercentage())
+                .isEqualByComparingTo("0");
+        InvoiceResponse reinvoiced = issue(clientId, deliveryNote);
+        assertThat(reinvoiced.getSeries()).isEqualTo(InvoiceSeries.WITHOUT_VAT);
+        assertThat(reinvoiced.getVatAmount()).isEqualByComparingTo("0");
+        assertThat(reinvoiced.getTotal()).isEqualByComparingTo("20");
+    }
+
+    @Test
+    @DisplayName("Deleting an issued invoice realigns its freed delivery notes the other way too")
+    void deletingIssuedInvoiceRealignsInTheOtherDirection() {
+        Integer withoutVat = createClient(2, VatType.WITHOUT_VAT, SurchargeType.WITHOUT_SURCHARGE);
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(withoutVat, "10", "2");
+        InvoiceResponse issued = issue(withoutVat, deliveryNote);
+        clientService.updateClient(withoutVat, clientRequest(2, DeliveryNoteFormat.PLAIN, "Client 2 SL",
+                VatType.WITH_VAT, SurchargeType.WITHOUT_SURCHARGE));
+
+        invoiceService.deleteInvoice(issued.getId());
+
+        InvoiceResponse reinvoiced = issue(withoutVat, deliveryNote);
+        assertThat(reinvoiced.getSeries()).isEqualTo(InvoiceSeries.GENERAL);
+        assertThat(reinvoiced.getVatPercentage()).isEqualByComparingTo("4");
+        assertThat(reinvoiced.getVatAmount()).isEqualByComparingTo("0.80");
+    }
+
+    @Test
+    @DisplayName("Deleting an issued invoice keeps the frozen rates when the client's regime did not change")
+    void deletingIssuedInvoiceKeepsRatesWhenRegimeUnchanged() {
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "10", "2");
+        InvoiceResponse issued = issue(clientId, deliveryNote);
+        taxConfigService.updateTaxConfig(taxes("10", "1.4"));
+
+        invoiceService.deleteInvoice(issued.getId());
+
+        assertThat(deliveryNoteService.getDeliveryNoteById(deliveryNote.getId()).getVatPercentage())
+                .isEqualByComparingTo("4");
+    }
+
+    @Test
+    @DisplayName("Moving a delivery note to a client with the same regime keeps its frozen rates")
+    void movingToClientWithSameRegimeKeepsFrozenRate() {
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "10", "2");
+        taxConfigService.updateTaxConfig(taxes("10", "1.4"));
+        Integer sameRegime = createClient(2, VatType.WITH_VAT, SurchargeType.WITHOUT_SURCHARGE);
+
+        DeliveryNoteResponse moved = deliveryNoteService.updateDeliveryNote(deliveryNote.getId(),
+                deliveryNoteRequest(deliveryNote.getCode(), sameRegime, "10", "2"));
+
+        assertThat(moved.getVatPercentage()).isEqualByComparingTo("4");
+    }
+
+    @Test
+    @DisplayName("A surcharge-only regime change keeps the frozen VAT rate")
+    void surchargeOnlyRegimeChangeKeepsVatRate() {
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "10", "2");
+        taxConfigService.updateTaxConfig(taxes("10", "1.4"));
+
+        clientService.updateClient(clientId, clientRequest(1, DeliveryNoteFormat.VALUED, "Client 1 SL",
+                VatType.WITH_VAT, SurchargeType.WITH_SURCHARGE));
+
+        DeliveryNoteResponse refreshed = deliveryNoteService.getDeliveryNoteById(deliveryNote.getId());
+        assertThat(refreshed.getVatPercentage()).isEqualByComparingTo("4");
+        assertThat(refreshed.getSurchargePercentage()).isEqualByComparingTo("1.4");
+    }
 }

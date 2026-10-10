@@ -19,11 +19,8 @@ import com.luispuchol.selfbill.selfbill_api.entity.Client;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.entity.DeliveryNoteLine;
 import com.luispuchol.selfbill.selfbill_api.entity.Invoice;
-import com.luispuchol.selfbill.selfbill_api.entity.TaxConfig;
 import com.luispuchol.selfbill.selfbill_api.enums.DocumentType;
 import com.luispuchol.selfbill.selfbill_api.enums.InvoiceStatus;
-import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
-import com.luispuchol.selfbill.selfbill_api.enums.VatType;
 import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.mapper.DeliveryNoteMapper;
@@ -43,7 +40,7 @@ public class DeliveryNoteService {
     private final ClientRepository clientRepository;
     private final ArticleRepository articleRepository;
     private final DeliveryNoteMapper deliveryNoteMapper;
-    private final TaxConfigService taxConfigService;
+    private final DeliveryNoteTaxRegime deliveryNoteTaxRegime;
     private final InvoiceService invoiceService;
     private final PdfService pdfService;
     private final EmailService emailService;
@@ -67,7 +64,7 @@ public class DeliveryNoteService {
         DeliveryNote deliveryNote = deliveryNoteMapper.toEntity(request, client);
         deliveryNote.setCode(code);
         deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
-        applyTaxRegime(deliveryNote, client);
+        deliveryNoteTaxRegime.apply(deliveryNote, client);
         replaceLines(deliveryNote, request.getLines());
         return deliveryNoteMapper.toResponse(deliveryNoteRepository.save(deliveryNote));
     }
@@ -87,7 +84,7 @@ public class DeliveryNoteService {
         deliveryNote.setCode(code);
         if (clientChanged) {
             deliveryNote.setFormat(client.getDefaultDeliveryNoteFormat());
-            applyTaxRegime(deliveryNote, client);
+            deliveryNoteTaxRegime.apply(deliveryNote, client);
         }
         replaceLines(deliveryNote, request.getLines());
 
@@ -101,7 +98,7 @@ public class DeliveryNoteService {
     @Transactional
     public void refreshTaxRegime(Client client) {
         List<DeliveryNote> editable = deliveryNoteRepository.findEditableByClientId(client.getId());
-        editable.forEach(deliveryNote -> applyTaxRegime(deliveryNote, client));
+        editable.forEach(deliveryNote -> deliveryNoteTaxRegime.apply(deliveryNote, client));
         editable.stream()
                 .map(DeliveryNote::getInvoice)
                 .filter(Objects::nonNull)
@@ -142,15 +139,6 @@ public class DeliveryNoteService {
         if (!deliveryNote.getClient().getId().equals(requestedClientId)) {
             throw new BusinessException(ErrorCode.INVOICE_MIXED_CLIENTS);
         }
-    }
-
-    // Frozen with the client's regime applied, so a reprint never consults the client (CONCEPTO.md §3, §4)
-    private void applyTaxRegime(DeliveryNote deliveryNote, Client client) {
-        TaxConfig taxConfig = taxConfigService.getCurrent();
-        deliveryNote.setVatPercentage(client.getVatType() == VatType.WITH_VAT
-                ? taxConfig.getVatPercentage() : BigDecimal.ZERO);
-        deliveryNote.setSurchargePercentage(client.getSurchargeType() == SurchargeType.WITH_SURCHARGE
-                ? taxConfig.getSurchargePercentage() : BigDecimal.ZERO);
     }
 
     private void replaceLines(DeliveryNote deliveryNote, List<DeliveryNoteLineRequest> lineRequests) {

@@ -49,6 +49,7 @@ public class InvoiceService {
     private final DeliveryNoteRepository deliveryNoteRepository;
     private final ClientRepository clientRepository;
     private final InvoiceMapper invoiceMapper;
+    private final DeliveryNoteTaxRegime deliveryNoteTaxRegime;
     private final PdfService pdfService;
     private final EmailService emailService;
     private final DocumentMessages documentMessages;
@@ -120,7 +121,10 @@ public class InvoiceService {
     @Transactional
     public void deleteInvoice(Integer id) {
         Invoice invoice = findInvoice(id);
-        invoice.getDeliveryNotes().forEach(deliveryNote -> deliveryNote.setInvoice(null));
+        invoice.getDeliveryNotes().forEach(deliveryNote -> {
+            deliveryNote.setInvoice(null);
+            deliveryNoteTaxRegime.apply(deliveryNote, deliveryNote.getClient());
+        });
         invoiceRepository.delete(invoice);
     }
 
@@ -170,6 +174,8 @@ public class InvoiceService {
 
     private void recalculate(Invoice invoice, List<DeliveryNote> deliveryNotes) {
         invoice.setSeries(InvoiceSeries.forVatType(invoice.getClient().getVatType()));
+        // Delivery notes not locked by an issued invoice follow their client's regime (CONCEPTO.md §3)
+        deliveryNotes.forEach(deliveryNote -> deliveryNoteTaxRegime.apply(deliveryNote, invoice.getClient()));
         applyFinancials(invoice, deliveryNotes);
         invoice.getLines().clear();
         invoice.getLines().addAll(buildLines(invoice, deliveryNotes));
