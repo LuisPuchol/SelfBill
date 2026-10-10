@@ -2,6 +2,8 @@ package com.luispuchol.selfbill.selfbill_api.settings.profile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.file.Path;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +42,12 @@ class UserProfileServiceTest {
         userProfileService.updateUserProfile(request(""));
 
         assertThat(userProfileService.getUserProfile().mailPassword()).isNull();
+    }
+
+    @Test
+    @DisplayName("Tests keep the encryption key under target/, not in the user's home")
+    void testsUseTheConfiguredKeyFile() {
+        assertThat(Path.of("target/test-secret.key")).exists();
     }
 
     private static UserProfileRequest request(String mailPassword) {

@@ -27,8 +27,8 @@ public class CredentialEncryptionService {
 
     private final SecretKey secretKey;
 
-    public CredentialEncryptionService() {
-        this.secretKey = loadOrCreateKey();
+    public CredentialEncryptionService(CredentialProperties properties) {
+        this.secretKey = loadOrCreateKey(properties.keyFile());
     }
 
     public String encrypt(String plainText) {
@@ -64,16 +64,14 @@ public class CredentialEncryptionService {
         }
     }
 
-    // Kept outside the SQLite file so copying selfbill.db alone does not expose stored credentials
-    private static SecretKey loadOrCreateKey() {
+    private static SecretKey loadOrCreateKey(Path keyPath) {
         try {
-            Path keyPath = Path.of(System.getProperty("user.home"), ".selfbill", "secret.key");
             if (Files.exists(keyPath)) {
                 byte[] keyBytes = Base64.getDecoder().decode(Files.readString(keyPath).trim());
                 return new SecretKeySpec(keyBytes, "AES");
             }
 
-            Files.createDirectories(keyPath.getParent());
+            Files.createDirectories(keyPath.toAbsolutePath().getParent());
             KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
             keyGenerator.init(256);
             SecretKey newKey = keyGenerator.generateKey();
