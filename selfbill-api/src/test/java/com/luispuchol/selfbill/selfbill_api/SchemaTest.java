@@ -7,9 +7,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessException;
 
-import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteResponse;
-import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
-import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
+import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteResponse;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.DeliveryNoteFormat;
+import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.support.DomainIntegrationTest;
 
 @DisplayName("Schema")

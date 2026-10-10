@@ -14,24 +14,24 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import com.luispuchol.selfbill.selfbill_api.dto.article.ArticleRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.client.ClientRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteLineRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.deliverynote.DeliveryNoteResponse;
-import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceRequest;
-import com.luispuchol.selfbill.selfbill_api.dto.invoice.InvoiceResponse;
-import com.luispuchol.selfbill.selfbill_api.dto.taxconfig.TaxConfigRequest;
-import com.luispuchol.selfbill.selfbill_api.enums.DeliveryNoteFormat;
-import com.luispuchol.selfbill.selfbill_api.enums.SurchargeType;
-import com.luispuchol.selfbill.selfbill_api.enums.VatType;
-import com.luispuchol.selfbill.selfbill_api.exception.BusinessException;
-import com.luispuchol.selfbill.selfbill_api.exception.ErrorCode;
-import com.luispuchol.selfbill.selfbill_api.service.ArticleService;
-import com.luispuchol.selfbill.selfbill_api.service.ClientService;
-import com.luispuchol.selfbill.selfbill_api.service.DeliveryNoteService;
-import com.luispuchol.selfbill.selfbill_api.service.InvoiceService;
-import com.luispuchol.selfbill.selfbill_api.service.TaxConfigService;
+import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteLineRequest;
+import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteRequest;
+import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteResponse;
+import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteService;
+import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceRequest;
+import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceResponse;
+import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceService;
+import com.luispuchol.selfbill.selfbill_api.catalog.article.ArticleRequest;
+import com.luispuchol.selfbill.selfbill_api.catalog.article.ArticleService;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientRequest;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientService;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.DeliveryNoteFormat;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.SurchargeType;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.VatType;
+import com.luispuchol.selfbill.selfbill_api.settings.taxconfig.TaxConfigRequest;
+import com.luispuchol.selfbill.selfbill_api.settings.taxconfig.TaxConfigService;
+import com.luispuchol.selfbill.selfbill_api.shared.BusinessException;
+import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
 
 @SpringBootTest
 @ActiveProfiles("test")
