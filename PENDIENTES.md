@@ -12,6 +12,10 @@ tarde un albarán anterior a un cambio de tipo, recibe el tipo nuevo. Lo mismo o
 reaplicar el régimen de un cliente, solo en el componente (IVA o recargo) cuyo régimen
 cambia. Si llega a importar, `TaxConfig` necesita vigencias (desde/hasta).
 
+### Filtros de fecha exigen fecha y hora
+`dateFrom` y `dateTo` en los filtros de albaranes y facturas son `LocalDateTime`: una fecha
+sola (`2026-10-02`) da 400. Para el front convendría aceptar también fechas sin hora.
+
 ---
 
 ## 2. Bugs conocidos
@@ -70,4 +74,5 @@ restaurar, o que el front avise antes de borrar un cliente con pendientes
 Hay tests de servicio del ciclo de la factura y del perfil, y de controlador de artículos,
 clientes y parte de albaranes. Faltan los de controlador de facturas, IVA y perfil, los del
 resto de endpoints de albaranes y los de `*Specification` que no se ejercitan en los tests
-de servicio.
+de servicio. Tampoco hay tests del envío de email (`DocumentSender`/`EmailService`: asunto,
+cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.

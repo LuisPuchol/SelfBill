@@ -238,4 +238,15 @@ class TaxRatesTest extends DomainIntegrationTest {
         assertThat(refreshed.vatPercentage()).isEqualByComparingTo("4");
         assertThat(refreshed.surchargePercentage()).isEqualByComparingTo("1.4");
     }
+
+    @Test
+    @DisplayName("A regime change that cannot reach its pending delivery notes is not saved")
+    void failedRegimeRefreshRollsBackTheClientUpdate() {
+        createDeliveryNote(clientId, "10", "2");
+        jdbc.update("DELETE FROM tax_config");
+
+        assertFails(ErrorCode.TAX_CONFIG_NOT_FOUND, () -> clientService.updateClient(clientId,
+                clientRequest(1, DeliveryNoteFormat.VALUED, "Client 1 SL", VatType.WITHOUT_VAT)));
+        assertThat(clientService.getClientById(clientId).vatType()).isEqualTo(VatType.WITH_VAT);
+    }
 }

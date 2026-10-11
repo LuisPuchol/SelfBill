@@ -1,9 +1,9 @@
 package com.luispuchol.selfbill.selfbill_api.settings.taxconfig;
 
-import lombok.Builder;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import lombok.Builder;
 
 @Builder
 public record TaxConfigResponse(

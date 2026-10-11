@@ -8,7 +8,7 @@ import org.mapstruct.MappingTarget;
 @Mapper
 public interface UserProfileMapper {
 
-    @Mapping(target = "hasLogo", expression = "java(userProfile.getLogoData() != null)")
+    @Mapping(target = "hasLogo", expression = "java(userProfile != null && userProfile.getLogoData() != null)")
     @Mapping(target = "mailPassword", source = "mailPassword")
     UserProfileResponse toResponse(UserProfile userProfile, String mailPassword);
 

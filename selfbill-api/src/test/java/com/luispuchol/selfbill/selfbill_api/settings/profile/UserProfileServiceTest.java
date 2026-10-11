@@ -21,6 +21,8 @@ class UserProfileServiceTest {
     private UserProfileService userProfileService;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private CredentialProperties credentialProperties;
 
     @BeforeEach
     void setUp() {
@@ -47,7 +49,7 @@ class UserProfileServiceTest {
     @Test
     @DisplayName("Tests keep the encryption key under target/, not in the user's home")
     void testsUseTheConfiguredKeyFile() {
-        assertThat(Path.of("target/test-secret.key")).exists();
+        assertThat(credentialProperties.keyFile()).isEqualTo(Path.of("target/test-secret.key"));
     }
 
     private static UserProfileRequest request(String mailPassword) {

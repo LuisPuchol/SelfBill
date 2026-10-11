@@ -1,10 +1,10 @@
 package com.luispuchol.selfbill.selfbill_api.settings.taxconfig;
 
+import java.math.BigDecimal;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
-
-import java.math.BigDecimal;
 
 @Builder
 public record TaxConfigRequest(

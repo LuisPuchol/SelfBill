@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.catalog.article;
 
 import java.time.LocalDateTime;
+
 import lombok.Builder;
 
 @Builder

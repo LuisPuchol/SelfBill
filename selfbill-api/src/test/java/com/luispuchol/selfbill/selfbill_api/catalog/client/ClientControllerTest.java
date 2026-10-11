@@ -297,17 +297,17 @@ class ClientControllerTest {
                 .andExpect(jsonPath("$.code").value(8));
     }
 
-    @Test
-    @DisplayName("GET /api/clients - Debe enlazar los parámetros en el filtro")
-    void getAllClients_ShouldBindFilterRecord() throws Exception {
-        when(clientService.getAllClients(any(ClientFilter.class), any(Pageable.class))).thenReturn(Page.empty());
+        @Test
+        @DisplayName("GET /api/clients - Debe enlazar los parámetros en el filtro")
+        void getAllClients_ShouldBindFilterRecord() throws Exception {
+            when(clientService.getAllClients(any(ClientFilter.class), any(Pageable.class))).thenReturn(Page.empty());
 
-        mockMvc.perform(get("/api/clients").param("name", "fruta").param("codeFrom", "2"))
-                .andExpect(status().isOk());
+            mockMvc.perform(get("/api/clients").param("name", "fruta").param("codeFrom", "2"))
+                    .andExpect(status().isOk());
 
-        ArgumentCaptor<ClientFilter> filter = ArgumentCaptor.forClass(ClientFilter.class);
-        verify(clientService).getAllClients(filter.capture(), any(Pageable.class));
-        assertThat(filter.getValue().name()).isEqualTo("fruta");
-        assertThat(filter.getValue().codeFrom()).isEqualTo(2);
-    }
+            ArgumentCaptor<ClientFilter> filter = ArgumentCaptor.forClass(ClientFilter.class);
+            verify(clientService).getAllClients(filter.capture(), any(Pageable.class));
+            assertThat(filter.getValue().name()).isEqualTo("fruta");
+            assertThat(filter.getValue().codeFrom()).isEqualTo(2);
+        }
 }
