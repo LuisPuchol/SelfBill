@@ -7,6 +7,7 @@ public enum ErrorCode {
     CLIENT_NOT_FOUND("Client not found: {0}", HttpStatus.NOT_FOUND),
     CLIENT_DUPLICATE_CODE("Already exists a client with code: {0}", HttpStatus.CONFLICT),
     CLIENT_EMAIL_NOT_CONFIGURED("Client {0} has no email address configured", HttpStatus.BAD_REQUEST),
+    CLIENT_FISCAL_DATA_MISSING("Client {0} is missing {1}, required to issue an invoice", HttpStatus.BAD_REQUEST),
 
     ARTICLE_NOT_FOUND("Article not found: {0}", HttpStatus.NOT_FOUND),
     ARTICLE_DUPLICATE_CODE("Already exists an article with code: {0}", HttpStatus.CONFLICT),
@@ -22,6 +23,7 @@ public enum ErrorCode {
     INVOICE_MIXED_CLIENTS("All delivery notes must belong to the same client", HttpStatus.CONFLICT),
     INVOICE_MIXED_TAX_RATES("All delivery notes of an invoice must have the same VAT and surcharge rates",
             HttpStatus.CONFLICT),
+    INVOICE_MIXED_MONTHS("All delivery notes of an invoice must be from the same month", HttpStatus.CONFLICT),
     INVOICE_ALREADY_ISSUED("Invoice {0} is already issued and cannot be modified", HttpStatus.CONFLICT),
     INVOICE_NOT_ISSUED("Invoice {0} is a draft and must be issued first", HttpStatus.CONFLICT),
 

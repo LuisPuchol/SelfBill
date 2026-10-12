@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -12,7 +15,9 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteRepository;
@@ -20,10 +25,12 @@ import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteTax
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentMessages;
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentSender;
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentType;
+import com.luispuchol.selfbill.selfbill_api.billing.document.OutgoingDocument;
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfFile;
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfService;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.Client;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientRepository;
+import com.luispuchol.selfbill.selfbill_api.settings.profile.UserProfileService;
 import com.luispuchol.selfbill.selfbill_api.shared.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
 
@@ -39,6 +46,7 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final DeliveryNoteRepository deliveryNoteRepository;
     private final ClientRepository clientRepository;
+    private final UserProfileService userProfileService;
     private final InvoiceMapper invoiceMapper;
     private final DeliveryNoteTaxRegime deliveryNoteTaxRegime;
     private final PdfService pdfService;
@@ -91,6 +99,7 @@ public class InvoiceService {
     public InvoiceResponse issueInvoice(Integer id) {
         Invoice invoice = findInvoice(id);
         requireDraft(invoice);
+        requireIssuable(invoice.getClient());
         recalculate(invoice, invoice.getDeliveryNotes());
 
         invoice.setCode(invoiceRepository.findMaxCode(invoice.getSeries().name()).orElse(0) + 1);
@@ -122,17 +131,25 @@ public class InvoiceService {
                 pdfService.generateInvoicePdf(invoice));
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void sendInvoiceEmail(Integer id) {
-        Invoice invoice = findIssuedInvoice(id);
-        documentSender.send(DocumentType.INVOICE, invoice.getClient(), invoice.getNumber(),
-                pdfService.generateInvoicePdf(invoice));
+        documentSender.send(DocumentType.INVOICE, () -> {
+            Invoice invoice = findIssuedInvoice(id);
+            return new OutgoingDocument(invoice.getClient(), invoice.getNumber(),
+                    pdfService.generateInvoicePdf(invoice));
+        });
     }
 
     private List<DeliveryNote> findInvoiceableDeliveryNotes(InvoiceRequest request, Integer editedInvoiceId) {
-        List<Integer> ids = request.deliveryNoteIds();
+        List<Integer> ids = request.deliveryNoteIds().stream().distinct().toList();
         List<DeliveryNote> deliveryNotes = deliveryNoteRepository.findAllById(ids);
         if (deliveryNotes.size() != ids.size()) {
-            throw new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, ids);
+            Set<Integer> foundIds = deliveryNotes.stream().map(DeliveryNote::getId).collect(Collectors.toSet());
+            String missingIds = ids.stream()
+                    .filter(id -> !foundIds.contains(id))
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(", "));
+            throw new BusinessException(ErrorCode.DELIVERY_NOTE_NOT_FOUND, missingIds);
         }
 
         for (DeliveryNote deliveryNote : deliveryNotes) {
@@ -161,11 +178,23 @@ public class InvoiceService {
     }
 
     private void recalculate(Invoice invoice, List<DeliveryNote> deliveryNotes) {
+        requireSingleMonth(deliveryNotes);
         invoice.setSeries(InvoiceSeries.forVatType(invoice.getClient().getVatType()));
         deliveryNotes.forEach(deliveryNote -> deliveryNoteTaxRegime.apply(deliveryNote, invoice.getClient()));
         applyFinancials(invoice, deliveryNotes);
         invoice.getLines().clear();
         invoice.getLines().addAll(buildLines(invoice, deliveryNotes));
+    }
+
+    // A recapitulative invoice groups operations of one calendar month (CONCEPTO.md §2)
+    private static void requireSingleMonth(List<DeliveryNote> deliveryNotes) {
+        long months = deliveryNotes.stream()
+                .map(deliveryNote -> YearMonth.from(deliveryNote.getDate()))
+                .distinct()
+                .count();
+        if (months > 1) {
+            throw new BusinessException(ErrorCode.INVOICE_MIXED_MONTHS);
+        }
     }
 
     private void applyFinancials(Invoice invoice, List<DeliveryNote> deliveryNotes) {
@@ -205,6 +234,7 @@ public class InvoiceService {
 
     private static List<InvoiceLine> buildLines(Invoice invoice, List<DeliveryNote> deliveryNotes) {
         return deliveryNotes.stream()
+                .sorted(Comparator.comparing(DeliveryNote::getDate).thenComparing(DeliveryNote::getCode))
                 .flatMap(deliveryNote -> deliveryNote.getLines().stream()
                         .map(line -> InvoiceLine.builder()
                                 .invoice(invoice)
@@ -232,6 +262,33 @@ public class InvoiceService {
         invoice.setClientCity(client.getCity());
         invoice.setClientProvince(client.getProvince());
         invoice.setClientPostalCode(client.getPostalCode());
+    }
+
+    // A complete invoice shows the issuer's and the client's NIF and address (RD 1619/2012, art. 6)
+    private void requireIssuable(Client client) {
+        if (client.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.CLIENT_NOT_FOUND, client.getId());
+        }
+        List<String> missing = new ArrayList<>();
+        if (!StringUtils.hasText(client.getNif())) {
+            missing.add("nif");
+        }
+        if (!StringUtils.hasText(client.getAddress())) {
+            missing.add("address");
+        }
+        if (!StringUtils.hasText(client.getPostalCode())) {
+            missing.add("postalCode");
+        }
+        if (!StringUtils.hasText(client.getCity())) {
+            missing.add("city");
+        }
+        if (!missing.isEmpty()) {
+            throw new BusinessException(ErrorCode.CLIENT_FISCAL_DATA_MISSING, client.getId(),
+                    String.join(", ", missing));
+        }
+        if (!userProfileService.hasProfile()) {
+            throw new BusinessException(ErrorCode.USER_PROFILE_NOT_FOUND);
+        }
     }
 
     private static void requireDraft(Invoice invoice) {

@@ -74,6 +74,20 @@ class TaxRatesTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Line amounts are rounded half up to cents before they add up")
+    void lineAmountsAreRoundedToCents() {
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "2.5", "1.25");
+
+        InvoiceResponse invoice = createInvoice(deliveryNote.id());
+
+        assertThat(deliveryNote.lines().get(0).total()).isEqualByComparingTo("3.13");
+        assertThat(deliveryNote.total()).isEqualByComparingTo("3.13");
+        assertThat(invoice.subtotal()).isEqualByComparingTo("3.13");
+        assertThat(invoice.vatAmount()).isEqualByComparingTo("0.13");
+        assertThat(invoice.total()).isEqualByComparingTo("3.26");
+    }
+
+    @Test
     @DisplayName("Delivery notes with different rates cannot share an invoice")
     void mixedRatesAreRejected() {
         DeliveryNoteResponse before = createDeliveryNote(clientId, "10", "2");

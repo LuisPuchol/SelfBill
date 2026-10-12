@@ -29,6 +29,8 @@ import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientService;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.DeliveryNoteFormat;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.VatType;
+import com.luispuchol.selfbill.selfbill_api.settings.profile.UserProfileRequest;
+import com.luispuchol.selfbill.selfbill_api.settings.profile.UserProfileService;
 import com.luispuchol.selfbill.selfbill_api.settings.taxconfig.TaxConfigRequest;
 import com.luispuchol.selfbill.selfbill_api.settings.taxconfig.TaxConfigService;
 import com.luispuchol.selfbill.selfbill_api.shared.BusinessException;
@@ -49,6 +51,8 @@ public abstract class DomainIntegrationTest {
     @Autowired
     protected TaxConfigService taxConfigService;
     @Autowired
+    protected UserProfileService userProfileService;
+    @Autowired
     protected JdbcTemplate jdbc;
 
     protected Integer clientId;
@@ -58,9 +62,10 @@ public abstract class DomainIntegrationTest {
     @BeforeEach
     void setUp() {
         for (String table : List.of("invoice_lines", "delivery_notes_articles", "delivery_notes", "invoices",
-                "clients", "articles", "tax_config")) {
+                "clients", "articles", "tax_config", "user_profile")) {
             jdbc.update("DELETE FROM " + table);
         }
+        userProfileService.createUserProfile(profileRequest().build());
         taxConfigService.createTaxConfig(taxes("4", "0.5"));
         clientId = createClient(1, DeliveryNoteFormat.VALUED);
         articleId = articleService.createArticle(article(1, "Tomate")).id();
@@ -101,6 +106,16 @@ public abstract class DomainIntegrationTest {
                 .build();
     }
 
+    protected static UserProfileRequest.UserProfileRequestBuilder profileRequest() {
+        return UserProfileRequest.builder()
+                .fullName("Luis")
+                .fiscalName("Luis SL")
+                .nif("B00000009")
+                .address("Mercavalencia, nave 3")
+                .email("luis@gmail.com")
+                .mailPassword("secret");
+    }
+
     protected static ArticleRequest article(int code, String name) {
         return ArticleRequest.builder().code(code).name(name).build();
     }
@@ -122,10 +137,20 @@ public abstract class DomainIntegrationTest {
                 deliveryNoteRequest(nextDeliveryNoteCode++, client, quantity, price));
     }
 
+    protected DeliveryNoteResponse createDeliveryNoteOn(LocalDateTime date) {
+        return deliveryNoteService.createDeliveryNote(
+                deliveryNoteRequest(nextDeliveryNoteCode++, clientId, "1", "1", date));
+    }
+
     protected DeliveryNoteRequest deliveryNoteRequest(Integer code, Integer client, String quantity, String price) {
+        return deliveryNoteRequest(code, client, quantity, price, LocalDateTime.of(2026, 10, 1, 8, 0));
+    }
+
+    protected DeliveryNoteRequest deliveryNoteRequest(Integer code, Integer client, String quantity, String price,
+            LocalDateTime date) {
         return DeliveryNoteRequest.builder()
                 .code(code)
-                .date(LocalDateTime.of(2026, 10, 1, 8, 0))
+                .date(date)
                 .clientId(client)
                 .lines(List.of(DeliveryNoteLineRequest.builder()
                         .articleId(articleId)

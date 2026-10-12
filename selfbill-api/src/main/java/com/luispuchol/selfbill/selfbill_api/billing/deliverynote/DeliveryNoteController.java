@@ -8,6 +8,7 @@ import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DELIVERY_NOT
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DELIVERY_NOTE_NOT_FOUND;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.EMAIL_SEND_FAILED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_MIXED_CLIENTS;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_MIXED_MONTHS;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.MAIL_NOT_CONFIGURED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.TAX_CONFIG_NOT_FOUND;
 
@@ -78,10 +79,11 @@ public class DeliveryNoteController {
 
     @Operation(summary = "Update a delivery note", description = """
             Replaces its data and all its lines. Not allowed once its invoice is issued.
-            Inside a draft invoice the client cannot change, and the invoice is recalculated.
+            Inside a draft invoice neither the client nor the month can change, and the invoice is recalculated.
             Changing the client takes the new client's print format and tax regime.""")
     @ApiErrors({ DELIVERY_NOTE_NOT_FOUND, DELIVERY_NOTE_ALREADY_INVOICED, INVOICE_MIXED_CLIENTS,
-            DELIVERY_NOTE_DUPLICATE_CODE, CLIENT_NOT_FOUND, ARTICLE_NOT_FOUND, TAX_CONFIG_NOT_FOUND })
+            INVOICE_MIXED_MONTHS, DELIVERY_NOTE_DUPLICATE_CODE, CLIENT_NOT_FOUND, ARTICLE_NOT_FOUND,
+            TAX_CONFIG_NOT_FOUND })
     @PutMapping("/{id}")
     public DeliveryNoteResponse updateDeliveryNote(@PathVariable @Positive Integer id,
             @RequestBody @Valid DeliveryNoteRequest request) {

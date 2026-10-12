@@ -76,6 +76,10 @@ public class UserProfileService {
         return new UserProfileLogo(profile.getLogoData(), profile.getLogoContentType());
     }
 
+    public boolean hasProfile() {
+        return userProfileRepository.count() > 0;
+    }
+
     public SmtpAccount getSmtpAccount() {
         UserProfile profile = userProfileRepository.findFirstBy()
                 .filter(UserProfileService::isMailConfigured)

@@ -1,6 +1,17 @@
 package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,6 +21,7 @@ import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteRes
 import com.luispuchol.selfbill.selfbill_api.catalog.client.DeliveryNoteFormat;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.SurchargeType;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.VatType;
+import com.luispuchol.selfbill.selfbill_api.shared.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.support.DomainIntegrationTest;
 
@@ -83,6 +95,31 @@ class InvoiceLifecycleTest extends DomainIntegrationTest {
                 createInvoice(createDeliveryNote(clientId, "1", "1").id()).id());
 
         assertThat(next.code()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Invoices issued at the same time get consecutive numbers")
+    void concurrentIssuesGetConsecutiveNumbers() throws Exception {
+        List<Integer> drafts = Stream.generate(() -> createInvoice(createDeliveryNote(clientId, "1", "1").id()).id())
+                .limit(3)
+                .toList();
+        ExecutorService pool = Executors.newFixedThreadPool(drafts.size());
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<InvoiceResponse>> issuing = drafts.stream()
+                .map(id -> pool.submit(() -> {
+                    start.await();
+                    return invoiceService.issueInvoice(id);
+                }))
+                .toList();
+
+        start.countDown();
+        List<Integer> codes = new ArrayList<>();
+        for (Future<InvoiceResponse> issued : issuing) {
+            codes.add(issued.get(10, TimeUnit.SECONDS).code());
+        }
+        pool.shutdown();
+
+        assertThat(codes).containsExactlyInAnyOrder(1, 2, 3);
     }
 
     @Test
@@ -191,6 +228,44 @@ class InvoiceLifecycleTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Sections follow the dates of their delivery notes, oldest first, whatever order they were stored in")
+    void sectionsFollowDeliveryNoteDates() {
+        DeliveryNoteResponse late = createDeliveryNoteOn(LocalDateTime.of(2026, 10, 20, 8, 0));
+        DeliveryNoteResponse early = createDeliveryNoteOn(LocalDateTime.of(2026, 10, 5, 8, 0));
+
+        InvoiceResponse draft = createInvoice(late.id(), early.id());
+        InvoiceResponse issued = invoiceService.issueInvoice(draft.id());
+        jdbc.update("UPDATE invoice_lines SET id = id + 1000 WHERE delivery_note_code = ?", early.code());
+        InvoiceResponse reloaded = invoiceService.getInvoiceById(draft.id());
+
+        assertThat(sectionCodes(draft)).containsExactly(early.code(), late.code());
+        assertThat(sectionCodes(issued)).containsExactly(early.code(), late.code());
+        assertThat(sectionCodes(reloaded)).containsExactly(early.code(), late.code());
+    }
+
+    @Test
+    @DisplayName("A delivery note repeated in the request is included once")
+    void repeatedDeliveryNoteIdsCountOnce() {
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "10", "2");
+
+        InvoiceResponse invoice = createInvoice(deliveryNote.id(), deliveryNote.id());
+
+        assertThat(invoice.sections()).hasSize(1);
+        assertThat(invoice.subtotal()).isEqualByComparingTo("20");
+    }
+
+    @Test
+    @DisplayName("The not-found error names only the delivery notes that do not exist")
+    void notFoundNamesOnlyMissingDeliveryNotes() {
+        DeliveryNoteResponse deliveryNote = createDeliveryNote(clientId, "1", "1");
+
+        assertThatThrownBy(() -> createInvoice(deliveryNote.id(), 424242))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.DELIVERY_NOTE_NOT_FOUND))
+                .hasMessage("Delivery note not found: 424242");
+    }
+
+    @Test
     @DisplayName("Invoice listings carry no sections; the detail does")
     void listingsCarryNoSections() {
         InvoiceResponse invoice = createInvoice(createDeliveryNote(clientId, "1", "1").id());
@@ -228,5 +303,9 @@ class InvoiceLifecycleTest extends DomainIntegrationTest {
         assertThat(reloaded.format()).isEqualTo(DeliveryNoteFormat.VALUED);
         assertThat(reloaded.vatPercentage()).isEqualByComparingTo("4");
         assertThat(reloaded.surchargePercentage()).isEqualByComparingTo("0.5");
+    }
+
+    private static List<Integer> sectionCodes(InvoiceResponse invoice) {
+        return invoice.sections().stream().map(InvoiceSectionResponse::deliveryNoteCode).toList();
     }
 }

@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.billing.deliverynote;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Objects;
 
@@ -8,11 +9,13 @@ import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentMessages;
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentSender;
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentType;
+import com.luispuchol.selfbill.selfbill_api.billing.document.OutgoingDocument;
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfFile;
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfService;
 import com.luispuchol.selfbill.selfbill_api.billing.invoice.Invoice;
@@ -120,11 +123,13 @@ public class DeliveryNoteService {
                 pdfService.generateDeliveryNotePdf(deliveryNote));
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void sendDeliveryNoteEmail(Integer id) {
-        DeliveryNote deliveryNote = findDeliveryNote(id);
-        documentSender.send(DocumentType.DELIVERY_NOTE, deliveryNote.getClient(),
-                String.valueOf(deliveryNote.getCode()),
-                pdfService.generateDeliveryNotePdf(deliveryNote));
+        documentSender.send(DocumentType.DELIVERY_NOTE, () -> {
+            DeliveryNote deliveryNote = findDeliveryNote(id);
+            return new OutgoingDocument(deliveryNote.getClient(), String.valueOf(deliveryNote.getCode()),
+                    pdfService.generateDeliveryNotePdf(deliveryNote));
+        });
     }
 
     private static void requireEditable(DeliveryNote deliveryNote, Integer requestedClientId) {
@@ -146,7 +151,7 @@ public class DeliveryNoteService {
             for (DeliveryNoteLineRequest lineRequest : lineRequests) {
                 DeliveryNoteLine line = deliveryNoteMapper.toLineEntity(lineRequest,
                         findArticle(lineRequest.articleId()), deliveryNote);
-                line.setTotal(line.getQuantity().multiply(line.getPrice()));
+                line.setTotal(line.getQuantity().multiply(line.getPrice()).setScale(2, RoundingMode.HALF_UP));
                 deliveryNote.getLines().add(line);
             }
         }

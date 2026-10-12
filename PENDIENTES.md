@@ -12,7 +12,28 @@ Nada pendiente.
 
 ## 2. Bugs conocidos
 
-Ninguno conocido.
+### La base de datos depende del directorio de arranque
+`spring.datasource.url` apunta a `./selfbill.db`. Arrancar la app desde otra carpeta crea
+una base vacía sin avisar, y parece que se han perdido los datos. Ponerla junto a la clave:
+`${user.home}/.selfbill/selfbill.db`.
+
+### Sin la clave de cifrado, el perfil da 500
+`UserProfileService` descifra la contraseña SMTP al responder, y con otra clave el
+descifrado lanza excepción. Es lo que pasa al restaurar la base en otro equipo sin
+`secret.key`: `GET /api/user-profile` falla siempre y el front no puede ni cargar el
+formulario para reintroducirla. Tratar el fallo de descifrado como "sin contraseña".
+
+### Expuesto a la red, con la contraseña en claro
+Sin `server.address`, el API escucha en todas las interfaces, y `GET /api/user-profile`
+devuelve la contraseña SMTP descifrada. Para una app de escritorio basta con
+`server.address=127.0.0.1` y devolver `hasMailPassword` en vez de la contraseña.
+
+### Errores 500 que deberían ser 4xx
+`GlobalExceptionHandler` convierte en `INTERNAL_ERROR`:
+- `GET /api/clients/by-name` y `by-nif` cuando dos clientes comparten nombre o NIF (una
+  empresa con dos tiendas). Para el NIF, mejor devolver una lista.
+- Un `sort` con un campo que no existe.
+- Dos peticiones que chocan contra un índice único (`DataIntegrityViolationException`).
 
 ---
 
@@ -46,6 +67,10 @@ Ningún endpoint de agregados: facturación por mes o cliente, pendiente de cobr
 ### Exportación / backup
 No hay forma de exportar datos (CSV para la gestoría) ni de respaldar la BD SQLite desde
 la API.
+
+La base va en modo WAL: con la app en marcha, lo último escrito puede estar todavía en
+`selfbill.db-wal`. Copiar solo `selfbill.db` en caliente no es una copia completa; hacerlo
+con la app parada, o desde la API con `VACUUM INTO`.
 
 ### Restaurar clientes y artículos borrados
 Un cliente borrado deja sus albaranes pendientes y sus borradores sin poder facturarse ni

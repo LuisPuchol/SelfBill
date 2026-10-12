@@ -34,7 +34,7 @@ se introducen patrones multi-tenant ni de escala sin una necesidad concreta.
    cantidad, precio y códigos de trazabilidad.
 2. A fin de mes se agrupan los albaranes pendientes de un cliente y se factura.
 3. La factura agrupa N albaranes de un mismo cliente y se presenta seccionada: una
-   sección por albarán, con sus líneas dentro.
+   sección por albarán, con sus líneas dentro, del albarán más antiguo al más reciente.
 
 Corresponde a la figura de **factura recapitulativa**: una factura que recoge varias
 operaciones del mismo mes natural para el mismo cliente.
@@ -42,6 +42,8 @@ operaciones del mismo mes natural para el mismo cliente.
 ### Reglas
 
 - Una factura pertenece a un solo cliente. No se mezclan clientes.
+- Todos los albaranes de una factura son del mismo mes natural (art. 13 del RD 1619/2012).
+  Se comprueba también al editar un albarán de un borrador.
 - Un albarán pertenece a una factura vigente o a ninguna. Nunca a dos a la vez.
 - La jerarquía tiene dos niveles: factura → sección por albarán → líneas. No existen
   facturas dentro de facturas; ese objeto carece de sentido fiscal.
@@ -118,6 +120,9 @@ albaranes. Todos sus albaranes deben llevar el mismo tipo; si no, la factura se 
 es de mercado y varía a diario, así que reside en la línea del albarán, que es donde queda
 fijado en el momento de la entrega.
 
+El total de cada línea se redondea a céntimos (mitad hacia arriba) antes de sumarse, así
+que los totales del albarán y la base de la factura salen siempre con dos decimales.
+
 ---
 
 ## 5. Ciclo de vida de la factura
@@ -156,12 +161,16 @@ romper la unicidad, y ninguna de las dos cosas es aceptable en un documento ya e
 ### Reglas
 
 - Editar una factura significa cambiar qué albaranes la componen, y solo en `DRAFT`.
+- Emitir exige los datos que una factura completa tiene que mostrar (art. 6 del RD
+  1619/2012): un cliente vivo con NIF, dirección, código postal y población, y el
+  `UserProfile` del titular. Mientras tanto la factura sigue en borrador.
 - Una factura emitida no se edita.
 - Un albarán es editable mientras su factura esté en `DRAFT`. Se bloquea cuando pasa a
   `ISSUED`.
 - Borrar una factura desvincula sus albaranes, que vuelven a quedar disponibles.
 - Hasta Verifactu, una factura emitida puede borrarse; es la vía de corrección
-  disponible. Con Verifactu deja de estarlo y la sustituye la rectificativa (§9.1).
+  disponible. Con Verifactu deja de estarlo y la sustituye la rectificativa (§9.1), salvo
+  en la serie S, que queda fuera de Verifactu y conserva el borrado (§9.2).
 
 ---
 
@@ -227,7 +236,8 @@ PENDIENTES.md.
 
 ## 9. Verifactu
 
-No implementado. Campos previstos en `Invoice`:
+No implementado. Solo afecta a la serie general: la serie sin IVA queda fuera (§9.2).
+Campos previstos en `Invoice`:
 
 | Campo | Tipo | Uso |
 |---|---|---|
@@ -244,16 +254,16 @@ aditivos y no obligan a rehacer el modelo.
 
 El modelo tendrá que representar:
 
-- Serie y número de cada factura, y el encadenamiento de hash. La cadena es **una sola
-  por sistema de facturación y obligado tributario**, sea cual sea la serie: cada registro
-  enlaza con el anterior que generó el sistema, aunque sea de otra serie
+- Serie y número de cada factura, y el encadenamiento de hash. La AEAT define la cadena
+  como una sola por sistema de facturación y obligado tributario, sea cual sea la serie
   ([FAQ de la AEAT](https://sede.agenciatributaria.gob.es/Sede/iva/sistemas-informaticos-facturacion-verifactu/preguntas-frecuentes/sistemas-verifactu.html)).
-  Además, la cadena enlaza registros de facturación (altas y anulaciones), no facturas: es
-  probable que pida una tabla propia de registros en lugar de un FK entre facturas.
+  En SelfBill la cadena enlaza solo registros de la serie general; la serie S no genera
+  ninguno (§9.2). Además, la cadena enlaza registros de facturación (altas y anulaciones),
+  no facturas: es probable que pida una tabla propia de registros en lugar de un FK entre
+  facturas.
 - Tipo de factura y, en rectificativas, referencia a la original.
 - Desglose por tipo impositivo. Los campos escalares de IVA actuales bastan con un tipo
   único, pero no representan una factura con tipos mezclados.
-- Motivo en las operaciones sin IVA repercutido.
 - Estado de envío a la AEAT.
 
 El calendario de obligatoriedad aplicable al usuario debe verificarse antes de planificar:
@@ -345,7 +355,8 @@ Un único enum con `F1` y `R1`–`R5`, no un booleano más un campo de causa, co
 se factura a empresas identificadas.
 
 `InvoiceType` y `rectifies` no deben confundirse con `previousInvoice`, que apunta al
-**registro anterior de la cadena** para encadenar el hash y existe en todas las emitidas.
+**registro anterior de la cadena** para encadenar el hash y existe en todas las emitidas
+de la serie general.
 
 La relación inversa no se guarda: "rectificada por la 46" se consulta con
 `findByRectifiesId`. Para etiquetar un listado, una consulta por página, nunca una por
@@ -372,7 +383,8 @@ secciones y su PDF sale vacío. Es requisito previo de las rectificativas.
 #### Pendiente de definir
 
 - **Serie propia para las rectificativas.** Es práctica habitual numerarlas aparte (serie
-  R). Afecta a la numeración, no al encadenamiento, que es único para todas las series.
+  R). Afecta a la numeración, no al encadenamiento, que es uno solo para todas las series
+  que se envían.
 - **Tipo de rectificativa aplicable (R1–R5).** Para un error de cantidad o precio suele
   ser R1 o R4 según la clasificación de la causa. Debe confirmarse con la gestoría.
 - **Tratamiento si la factura errónea ya se cobró.** Es conciliación de cobros, no
@@ -380,6 +392,25 @@ secciones y su PDF sale vacío. Es requisito previo de las rectificativas.
 
 > Lo normativo de esta sección debe contrastarse antes de implementarse. Está recogido
 > para saber qué tocar y por dónde empezar, no como fuente de verdad fiscal.
+
+---
+
+### 9.2. La serie sin IVA queda fuera de Verifactu
+
+Es una decisión deliberada: las facturas de la serie `WITHOUT_VAT` (`S-`) no se envían a la
+AEAT ni cuentan para la cadena de hash. Solo la serie general genera registros.
+
+- Mantienen el ciclo actual de §5: borrador, emisión con su propio contador y el borrado
+  como vía de corrección. No llevan `invoiceType`, `previousInvoice` ni campos
+  `verifactu*`.
+- Lo que decide si una factura se envía es la `series` guardada en ella, nunca el
+  `vatType` actual del cliente: el cliente puede cambiar de régimen después de emitir, y la
+  factura emitida no.
+- Una rectificativa hereda la serie de la factura que rectifica, no la que tenga el cliente
+  en ese momento. Si no, rectificar una factura general de un cliente que ha pasado a sin
+  IVA sacaría la corrección de Verifactu y dejaría sin registrar el cambio de una factura
+  registrada.
+- Como no se envían, no necesitan causa de exención en ningún registro.
 
 ---
 

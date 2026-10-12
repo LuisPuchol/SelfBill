@@ -5,6 +5,7 @@ import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Builder;
@@ -26,6 +27,7 @@ public record DeliveryNoteRequest(
         Integer clientId,
 
         @Schema(description = "Replaces all the lines of the delivery note")
+        @NotEmpty(message = "At least one line is required")
         @Valid
         List<DeliveryNoteLineRequest> lines) {
 }

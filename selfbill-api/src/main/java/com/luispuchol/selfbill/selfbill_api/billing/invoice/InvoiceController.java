@@ -1,16 +1,19 @@
 package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_FISCAL_DATA_MISSING;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_NOT_FOUND;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DELIVERY_NOTE_NOT_FOUND;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.EMAIL_SEND_FAILED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_ALREADY_ISSUED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_MIXED_CLIENTS;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_MIXED_MONTHS;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_MIXED_TAX_RATES;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_NOT_FOUND;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_NOT_ISSUED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.MAIL_NOT_CONFIGURED;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_NOT_FOUND;
 
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -79,10 +82,11 @@ public class InvoiceController {
     }
 
     @Operation(summary = "Create a draft invoice", description = """
-            Groups delivery notes of the client that are not in another invoice. All of them must have the same \
-            VAT and surcharge rates. The invoice gets no number until it is issued.""")
+            Groups delivery notes of the client that are not in another invoice. All of them must be from the same \
+            month and have the same VAT and surcharge rates. Sections are ordered by delivery note date, oldest \
+            first. The invoice gets no number until it is issued.""")
     @ApiErrors({ CLIENT_NOT_FOUND, DELIVERY_NOTE_NOT_FOUND, INVOICE_MIXED_CLIENTS,
-            INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED, INVOICE_MIXED_TAX_RATES })
+            INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED, INVOICE_MIXED_MONTHS, INVOICE_MIXED_TAX_RATES })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public InvoiceResponse createInvoice(@RequestBody @Valid InvoiceRequest request) {
@@ -93,7 +97,8 @@ public class InvoiceController {
             Replaces the set of delivery notes and recalculates the invoice. \
             Delivery notes left out become free again.""")
     @ApiErrors({ INVOICE_NOT_FOUND, INVOICE_ALREADY_ISSUED, CLIENT_NOT_FOUND, DELIVERY_NOTE_NOT_FOUND,
-            INVOICE_MIXED_CLIENTS, INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED, INVOICE_MIXED_TAX_RATES })
+            INVOICE_MIXED_CLIENTS, INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED, INVOICE_MIXED_MONTHS,
+            INVOICE_MIXED_TAX_RATES })
     @PutMapping("/{id}")
     public InvoiceResponse updateInvoice(@PathVariable @Positive Integer id,
             @RequestBody @Valid InvoiceRequest request) {
@@ -102,8 +107,10 @@ public class InvoiceController {
 
     @Operation(summary = "Issue a draft invoice", description = """
             Recalculates the invoice from its delivery notes, assigns the next number of its series and today's \
-            date, and freezes its content and the client's fiscal data. Its delivery notes can no longer be edited.""")
-    @ApiErrors({ INVOICE_NOT_FOUND, INVOICE_ALREADY_ISSUED, INVOICE_MIXED_TAX_RATES })
+            date, and freezes its content and the client's fiscal data. Its delivery notes can no longer be edited. \
+            Requires a live client with NIF, address, postal code and city, and the user profile.""")
+    @ApiErrors({ INVOICE_NOT_FOUND, INVOICE_ALREADY_ISSUED, CLIENT_NOT_FOUND, CLIENT_FISCAL_DATA_MISSING,
+            USER_PROFILE_NOT_FOUND, INVOICE_MIXED_MONTHS, INVOICE_MIXED_TAX_RATES })
     @PostMapping("/{id}/issue")
     public InvoiceResponse issueInvoice(@PathVariable @Positive Integer id) {
         return invoiceService.issueInvoice(id);

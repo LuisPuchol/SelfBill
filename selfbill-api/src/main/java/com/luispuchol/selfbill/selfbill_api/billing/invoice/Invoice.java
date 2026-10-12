@@ -21,6 +21,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -79,6 +80,7 @@ public class Invoice extends SoftDeletableEntity {
     private List<DeliveryNote> deliveryNotes = new ArrayList<>();
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("deliveryNoteDate, deliveryNoteCode, id")
     @Builder.Default
     private List<InvoiceLine> lines = new ArrayList<>();
 
