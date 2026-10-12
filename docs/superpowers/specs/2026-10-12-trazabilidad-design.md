@@ -122,6 +122,13 @@ con el volumen de un solo negocio no hace falta.
 - Hibernate (`validate`) comprueba las columnas en cada arranque de test, y un test de
   esquema comprueba que no queda `trazab` en ningún objeto de la BD.
 
+**Enmienda (revisión del usuario).** Los códigos pasan a texto de exactamente 8 dígitos para
+conservar el cero inicial: `varchar(8)` en la BD, `String` en Java y en JSON, y
+`@Pattern("\d{8}")` al crear o editar líneas y en el filtro, con 400 si no se cumple. Como la
+BD está en pruebas y se puede recrear, el esquema definitivo va directamente en `V1` y `V3`
+desaparece: una `selfbill.db` existente se borra y se regenera. Esto sustituye lo dicho en §3,
+§4.2 y esta sección sobre enteros, ceros perdidos y la migración `V3`.
+
 ---
 
 ## 5. Fuera de alcance

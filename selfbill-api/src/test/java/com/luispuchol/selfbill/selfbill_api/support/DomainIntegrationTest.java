@@ -123,7 +123,7 @@ public abstract class DomainIntegrationTest {
                 .clientId(client)
                 .lines(List.of(DeliveryNoteLineRequest.builder()
                         .articleId(articleId)
-                        .traceabilityCode1(1)
+                        .traceabilityCode1("01210426")
                         .quantity(new BigDecimal(quantity))
                         .price(new BigDecimal(price))
                         .build()))

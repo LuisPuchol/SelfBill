@@ -57,14 +57,14 @@ public class InvoiceLine extends SoftDeletableEntity {
     @Column(name = "article_code", nullable = false)
     private Integer articleCode;
 
-    @Column(name = "traceability_code1", nullable = false)
-    private Integer traceabilityCode1;
+    @Column(name = "traceability_code1", nullable = false, length = 8)
+    private String traceabilityCode1;
 
-    @Column(name = "traceability_code2")
-    private Integer traceabilityCode2;
+    @Column(name = "traceability_code2", length = 8)
+    private String traceabilityCode2;
 
-    @Column(name = "traceability_code3")
-    private Integer traceabilityCode3;
+    @Column(name = "traceability_code3", length = 8)
+    private String traceabilityCode3;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal quantity;

@@ -60,7 +60,7 @@ public final class DeliveryNoteSpecification {
     }
 
     // Delivery notes with at least one line that matches the article and the code at once (CONCEPTO.md §10)
-    private static Specification<DeliveryNote> withLine(Integer articleId, Integer traceabilityCode) {
+    private static Specification<DeliveryNote> withLine(Integer articleId, String traceabilityCode) {
         return (root, query, cb) -> {
             if (articleId == null && traceabilityCode == null) return null;
             Subquery<Integer> subquery = query.subquery(Integer.class);

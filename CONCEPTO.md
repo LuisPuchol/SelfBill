@@ -390,9 +390,9 @@ primero obligatorio, y se copian a `InvoiceLine`. Son lotes de proveedor, y los 
 son equivalentes: una misma línea de tomate puede salir de una caja que sobró ayer de un
 proveedor y de otra comprada hoy a otro. No hay entidad ni catálogo de lotes detrás.
 
-El código se teclea a mano: dos cifras de proveedor y seis de fecha. Es un entero, así que un
-proveedor `05` pierde el cero inicial; la búsqueda no se ve afectada, y mostrarlo con ocho
-cifras es cosa del front. SelfBill no registra compras: el proveedor se lee en el propio
+El código se teclea a mano: dos cifras de proveedor y seis de fecha. Se guarda como texto de
+ocho dígitos para no perder el cero inicial de un proveedor `01`–`09` (`01210426`), y el API
+rechaza cualquier otro formato. SelfBill no registra compras: el proveedor se lee en el propio
 código, y basta con encontrar los registros.
 
 La consulta típica de una inspección es "todos los tomates entre tal y tal fecha", sin

@@ -15,9 +15,9 @@ public record InvoiceLineResponse(
         String articleName,
         Integer articleCode,
 
-        Integer traceabilityCode1,
-        Integer traceabilityCode2,
-        Integer traceabilityCode3,
+        String traceabilityCode1,
+        String traceabilityCode2,
+        String traceabilityCode3,
 
         BigDecimal quantity,
         BigDecimal price,
