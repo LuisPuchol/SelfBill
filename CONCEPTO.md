@@ -404,6 +404,12 @@ los albaranes enteros, y en cada línea se ve su código.
 - Un albarán sale una vez aunque coincidan varias de sus líneas.
 - Solo cuentan las líneas vivas. Un albarán borrado no fue una entrega, y una línea
   sustituida al editar un albarán era un error corregido.
+- El front traduce el código de artículo a su id con `GET /api/articles/by-code/{code}`, que
+  devuelve el artículo vivo: buscar por un código encuentra el último artículo que lo tiene.
+  Las entregas de un artículo borrado cuyo código se ha reutilizado son un caso raro y se
+  rastrean a mano: su id sigue valiendo en `articleId`
+  (`SELECT id FROM articles WHERE code = ? AND deleted_at IS NOT NULL`). Restaurarlo no sirve
+  para esto, porque obliga a cambiarle el código (§7).
 
 ---
 
