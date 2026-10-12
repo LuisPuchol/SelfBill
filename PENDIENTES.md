@@ -62,6 +62,12 @@ usan. Hoy solo se restaura por SQL (`deleted_at = NULL`). Opciones: un endpoint 
 restaurar, o que el front avise antes de borrar un cliente con pendientes
 (`GET /api/delivery-notes?clientId=&invoiced=false`).
 
+Afecta también a la trazabilidad (CONCEPTO §10). `GET /api/delivery-notes` acepta el
+`articleId` o el `clientId` de una fila borrada, pero el front no tiene cómo obtenerlo: las
+búsquedas del catálogo solo devuelven filas vivas. Y si su código ya se ha reutilizado,
+`GET /api/articles/by-code/{code}` devuelve el artículo nuevo, y buscar por ese código deja
+fuera, sin avisar, las entregas del producto borrado.
+
 ---
 
 ## 4. Deuda técnica
