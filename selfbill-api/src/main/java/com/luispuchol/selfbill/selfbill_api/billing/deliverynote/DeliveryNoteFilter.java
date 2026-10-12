@@ -22,5 +22,13 @@ public record DeliveryNoteFilter(
         LocalDateTime dateTo,
 
         @Schema(description = "true: only delivery notes in an invoice. false: only pending ones")
-        Boolean invoiced) {
+        Boolean invoiced,
+
+        @Schema(description = "Only delivery notes with a line of this article")
+        Integer articleId,
+
+        @Schema(description = """
+                Only delivery notes with a line that carries this traceability code in any of its three slots. \
+                With articleId, both must be on the same line""", example = "12241012")
+        Integer traceabilityCode) {
 }

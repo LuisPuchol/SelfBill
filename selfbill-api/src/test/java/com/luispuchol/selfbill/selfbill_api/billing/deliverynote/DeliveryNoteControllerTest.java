@@ -54,6 +54,30 @@ class DeliveryNoteControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/delivery-notes - Debe pasar los filtros de artículo y trazabilidad, con el cero inicial en decimal")
+    void getAllDeliveryNotes_ShouldBindTraceabilityFilters() throws Exception {
+        when(deliveryNoteService.getAllDeliveryNotes(any(DeliveryNoteFilter.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        mockMvc.perform(get("/api/delivery-notes").param("articleId", "3").param("traceabilityCode", "05241012"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<DeliveryNoteFilter> filter = ArgumentCaptor.forClass(DeliveryNoteFilter.class);
+        verify(deliveryNoteService).getAllDeliveryNotes(filter.capture(), any(Pageable.class));
+        assertThat(filter.getValue().articleId()).isEqualTo(3);
+        assertThat(filter.getValue().traceabilityCode()).isEqualTo(5241012);
+    }
+
+    @Test
+    @DisplayName("GET /api/delivery-notes - Debe rechazar un código de trazabilidad no numérico")
+    void getAllDeliveryNotes_WithNonNumericTraceabilityCode_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/delivery-notes").param("traceabilityCode", "L-24"))
+                .andExpect(status().isBadRequest());
+
+        verify(deliveryNoteService, never()).getAllDeliveryNotes(any(), any());
+    }
+
+    @Test
     @DisplayName("POST /api/delivery-notes - Debe aceptar un albarán sin código")
     void createDeliveryNote_WithoutCode_ShouldReturnCreated() throws Exception {
         DeliveryNoteRequest request = DeliveryNoteRequest.builder()
