@@ -1,0 +1,40 @@
+package com.luispuchol.selfbill.selfbill_api.billing.deliverynote;
+
+import java.math.BigDecimal;
+
+import org.springframework.stereotype.Component;
+
+import com.luispuchol.selfbill.selfbill_api.catalog.client.Client;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.SurchargeType;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.VatType;
+import com.luispuchol.selfbill.selfbill_api.settings.taxconfig.TaxConfig;
+import com.luispuchol.selfbill.selfbill_api.settings.taxconfig.TaxConfigService;
+
+import lombok.RequiredArgsConstructor;
+
+@Component
+@RequiredArgsConstructor
+public class DeliveryNoteTaxRegime {
+
+    private final TaxConfigService taxConfigService;
+
+    public void apply(DeliveryNote deliveryNote, Client client) {
+        boolean vatChanged = deliveryNote.getVatType() != client.getVatType();
+        boolean surchargeChanged = deliveryNote.getSurchargeType() != client.getSurchargeType();
+        if (!vatChanged && !surchargeChanged) {
+            return;
+        }
+
+        TaxConfig taxConfig = taxConfigService.getCurrent();
+        if (vatChanged) {
+            deliveryNote.setVatType(client.getVatType());
+            deliveryNote.setVatPercentage(client.getVatType() == VatType.WITH_VAT
+                    ? taxConfig.getVatPercentage() : BigDecimal.ZERO);
+        }
+        if (surchargeChanged) {
+            deliveryNote.setSurchargeType(client.getSurchargeType());
+            deliveryNote.setSurchargePercentage(client.getSurchargeType() == SurchargeType.WITH_SURCHARGE
+                    ? taxConfig.getSurchargePercentage() : BigDecimal.ZERO);
+        }
+    }
+}

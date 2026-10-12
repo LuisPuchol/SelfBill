@@ -1,0 +1,20 @@
+package com.luispuchol.selfbill.selfbill_api.shared;
+
+public class BusinessException extends RuntimeException {
+
+    private final ErrorCode errorCode;
+
+    public BusinessException(ErrorCode errorCode, Object... params) {
+        super(errorCode.format(params));
+        this.errorCode = errorCode;
+    }
+
+    public BusinessException(ErrorCode errorCode, Throwable cause, Object... params) {
+        super(errorCode.format(params), cause);
+        this.errorCode = errorCode;
+    }
+
+    public ErrorCode getErrorCode() {
+        return errorCode;
+    }
+}
