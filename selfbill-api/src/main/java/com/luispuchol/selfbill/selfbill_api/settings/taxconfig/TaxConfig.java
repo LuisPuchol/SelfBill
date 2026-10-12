@@ -1,6 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.settings.taxconfig;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import com.luispuchol.selfbill.selfbill_api.shared.BaseEntity;
 
@@ -21,6 +22,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class TaxConfig extends BaseEntity {
+
+    @Column(name = "valid_from", nullable = false)
+    private LocalDate validFrom;
 
     @Column(name = "vat_percentage", nullable = false, precision = 5, scale = 2)
     private BigDecimal vatPercentage;

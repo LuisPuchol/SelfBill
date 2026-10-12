@@ -83,8 +83,8 @@ Se fija al crearlo y se reaplica al cambiarlo de cliente, al cambiar el régimen
 cliente (que además recalcula sus borradores), al borrarse la factura emitida que lo
 contenía y al recalcular un borrador. Se reaplica componente a componente: el IVA o el
 recargo cuyo régimen no ha cambiado conserva su tipo, y el que ha cambiado toma el tipo
-vigente en ese momento, o 0. Los albaranes de facturas emitidas no se tocan. Cambiar el
-`TaxConfig` no afecta a nada que ya exista.
+vigente en la fecha del albarán, o 0. Los albaranes de facturas emitidas no se tocan.
+Cambiar el `TaxConfig` no afecta a nada que ya exista.
 
 Reimprimir un albarán antiguo reproduce así el documento exacto que recibió el cliente,
 aunque después haya cambiado su preferencia o el tipo de IVA. El generador de PDF lee lo
@@ -94,8 +94,9 @@ que el albarán congeló, sin consultar al cliente.
 
 ## 4. IVA
 
-`TaxConfig` es un singleton global con un único tipo de IVA y un único recargo de
-equivalencia.
+`TaxConfig` es global, con un único tipo de IVA y un único recargo de equivalencia, y tiene
+vigencias: cada configuración se aplica desde su fecha (`validFrom`) hasta que empieza la
+siguiente.
 
 El negocio opera en un solo sector y todos sus productos llevan el mismo IVA. Lo que
 cambia es ese tipo a lo largo del tiempo: el IVA de la alimentación pasó por 0%, 5%, 2% y
@@ -106,11 +107,10 @@ cambio normativo; un tipo global se cambia en un sitio.
 al artículo manteniendo el global como valor por defecto.
 
 El tipo aplicable a una operación es el vigente en la **fecha de la operación**, no el del
-día en que se factura. En la práctica es el vigente cuando se crea el albarán, porque
-`TaxConfig` no tiene histórico (ver PENDIENTES.md, "`TaxConfig` sin histórico"). El
-albarán congela el tipo con el que se valoró, y la factura usa el de sus albaranes. Todos
-sus albaranes deben llevar el mismo tipo; si no, la factura se rechaza (409). El negocio
-no mezcla tipos en una factura, así que no hay desglose (§8).
+día en que se factura ni el del día en que se da de alta el albarán: es el de la fecha del
+albarán. El albarán congela el tipo con el que se valoró, y la factura usa el de sus
+albaranes. Todos sus albaranes deben llevar el mismo tipo; si no, la factura se rechaza
+(409). El negocio no mezcla tipos en una factura, así que no hay desglose (§8).
 
 ### Precio
 

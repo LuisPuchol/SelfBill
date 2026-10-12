@@ -6,15 +6,7 @@ Lista de trabajo. Las reglas del modelo y sus motivos están en [CONCEPTO.md](CO
 
 ## 1. Lógica
 
-### `TaxConfig` sin histórico
-El albarán congela el tipo vigente cuando se crea, no el de su fecha: si se da de alta
-tarde un albarán anterior a un cambio de tipo, recibe el tipo nuevo. Lo mismo ocurre al
-reaplicar el régimen de un cliente, solo en el componente (IVA o recargo) cuyo régimen
-cambia. Si llega a importar, `TaxConfig` necesita vigencias (desde/hasta).
-
-### Filtros de fecha exigen fecha y hora
-`dateFrom` y `dateTo` en los filtros de albaranes y facturas son `LocalDateTime`: una fecha
-sola (`2026-10-02`) da 400. Para el front convendría aceptar también fechas sin hora.
+Nada pendiente.
 
 ---
 

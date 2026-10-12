@@ -25,8 +25,8 @@ public enum ErrorCode {
     INVOICE_ALREADY_ISSUED("Invoice {0} is already issued and cannot be modified", HttpStatus.CONFLICT),
     INVOICE_NOT_ISSUED("Invoice {0} is a draft and must be issued first", HttpStatus.CONFLICT),
 
-    TAX_CONFIG_NOT_FOUND("Tax configuration not found", HttpStatus.NOT_FOUND),
-    TAX_CONFIG_ALREADY_EXISTS("Tax configuration already exists", HttpStatus.CONFLICT),
+    TAX_CONFIG_NOT_FOUND("No tax configuration in force on {0}", HttpStatus.NOT_FOUND),
+    TAX_CONFIG_ALREADY_EXISTS("A tax configuration from {0} already exists", HttpStatus.CONFLICT),
 
     USER_PROFILE_NOT_FOUND("User profile not found", HttpStatus.NOT_FOUND),
     USER_PROFILE_ALREADY_EXISTS("A user profile already exists", HttpStatus.CONFLICT),

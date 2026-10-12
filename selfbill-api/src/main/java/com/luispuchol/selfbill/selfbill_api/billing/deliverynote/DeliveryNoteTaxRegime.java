@@ -25,7 +25,7 @@ public class DeliveryNoteTaxRegime {
             return;
         }
 
-        TaxConfig taxConfig = taxConfigService.getCurrent();
+        TaxConfig taxConfig = taxConfigService.getInForceOn(deliveryNote.getDate().toLocalDate());
         if (vatChanged) {
             deliveryNote.setVatType(client.getVatType());
             deliveryNote.setVatPercentage(client.getVatType() == VatType.WITH_VAT

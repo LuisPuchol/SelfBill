@@ -21,20 +21,24 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/tax-config")
-@Tag(name = "Tax Config", description = "Global VAT and equivalence surcharge rates, shared by every article")
+@Tag(name = "Tax Config", description = """
+        Global VAT and equivalence surcharge rates, shared by every article. Each configuration applies from its \
+        date until the next one starts.""")
 @RequiredArgsConstructor
 public class TaxConfigController {
 
     private final TaxConfigService taxConfigService;
 
-    @Operation(summary = "Get current tax configuration")
+    @Operation(summary = "Get the tax configuration in force today")
     @ApiErrors(TAX_CONFIG_NOT_FOUND)
     @GetMapping
     public TaxConfigResponse getTaxConfig() {
         return taxConfigService.getTaxConfig();
     }
 
-    @Operation(summary = "Create tax configuration (only one allowed)")
+    @Operation(summary = "Add a tax configuration from a date", description = """
+            Delivery notes take the rates in force on their own date. Existing delivery notes and invoices keep \
+            the rates they were valued with.""")
     @ApiErrors(TAX_CONFIG_ALREADY_EXISTS)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -42,9 +46,8 @@ public class TaxConfigController {
         return taxConfigService.createTaxConfig(request);
     }
 
-    @Operation(summary = "Update tax configuration", description = """
-            The new rates apply to delivery notes from now on. Existing delivery notes and invoices keep \
-            the rates they were valued with.""")
+    @Operation(summary = "Correct the rates of the tax configuration that starts on a date",
+            description = "Existing delivery notes and invoices keep the rates they were valued with.")
     @ApiErrors(TAX_CONFIG_NOT_FOUND)
     @PutMapping
     public TaxConfigResponse updateTaxConfig(@RequestBody @Valid TaxConfigRequest request) {

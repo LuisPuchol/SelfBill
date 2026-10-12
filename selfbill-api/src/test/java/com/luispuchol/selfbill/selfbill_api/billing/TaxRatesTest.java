@@ -2,6 +2,8 @@ package com.luispuchol.selfbill.selfbill_api.billing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -151,17 +153,25 @@ class TaxRatesTest extends DomainIntegrationTest {
     }
 
     @Test
-    @DisplayName("A regime change applies today's rate, even to older delivery notes (no rate history)")
-    void regimeChangeUsesTodaysRate() {
+    @DisplayName("A delivery note created late takes the rates in force on its date")
+    void lateDeliveryNoteTakesRatesOfItsDate() {
+        taxConfigService.createTaxConfig(taxes(LocalDate.of(2026, 10, 2), "10", "1.4"));
+
+        assertThat(createDeliveryNote(clientId, "10", "2").vatPercentage()).isEqualByComparingTo("4");
+    }
+
+    @Test
+    @DisplayName("A regime change applies the rate in force on the delivery note's date")
+    void regimeChangeUsesRateOfItsDate() {
         Integer withoutVat = createClient(2, VatType.WITHOUT_VAT, SurchargeType.WITHOUT_SURCHARGE);
         DeliveryNoteResponse deliveryNote = createDeliveryNote(withoutVat, "10", "2");
-        taxConfigService.updateTaxConfig(taxes("10", "1.4"));
+        taxConfigService.createTaxConfig(taxes(LocalDate.of(2026, 10, 2), "10", "1.4"));
 
         clientService.updateClient(withoutVat, clientRequest(2, DeliveryNoteFormat.PLAIN, "Client 2 SL",
                 VatType.WITH_VAT, SurchargeType.WITHOUT_SURCHARGE));
 
         assertThat(deliveryNoteService.getDeliveryNoteById(deliveryNote.id()).vatPercentage())
-                .isEqualByComparingTo("10");
+                .isEqualByComparingTo("4");
     }
 
     @Test

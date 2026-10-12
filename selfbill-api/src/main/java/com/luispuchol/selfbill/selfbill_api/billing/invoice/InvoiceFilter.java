@@ -1,6 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -22,9 +22,9 @@ public record InvoiceFilter(
 
         InvoiceStatus status,
 
-        @Schema(description = "Earliest issue date, inclusive. Drafts have no date", example = "2026-10-01T00:00:00")
-        LocalDateTime dateFrom,
+        @Schema(description = "Earliest issue date, inclusive. Drafts have no date", example = "2026-10-01")
+        LocalDate dateFrom,
 
-        @Schema(description = "Latest issue date, inclusive. Drafts have no date", example = "2026-10-31T23:59:59")
-        LocalDateTime dateTo) {
+        @Schema(description = "Latest issue date, inclusive. Drafts have no date", example = "2026-10-31")
+        LocalDate dateTo) {
 }

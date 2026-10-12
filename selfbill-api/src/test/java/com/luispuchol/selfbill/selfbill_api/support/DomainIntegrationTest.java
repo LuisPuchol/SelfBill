@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -105,7 +106,12 @@ public abstract class DomainIntegrationTest {
     }
 
     protected static TaxConfigRequest taxes(String vat, String surcharge) {
+        return taxes(LocalDate.of(2026, 1, 1), vat, surcharge);
+    }
+
+    protected static TaxConfigRequest taxes(LocalDate validFrom, String vat, String surcharge) {
         return TaxConfigRequest.builder()
+                .validFrom(validFrom)
                 .vatPercentage(new BigDecimal(vat))
                 .surchargePercentage(new BigDecimal(surcharge))
                 .build();

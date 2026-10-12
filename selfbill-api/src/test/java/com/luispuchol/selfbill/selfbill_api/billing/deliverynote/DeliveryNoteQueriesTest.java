@@ -47,7 +47,7 @@ class DeliveryNoteQueriesTest extends DomainIntegrationTest {
         deliver(105, clientId, OCT_1.plusDays(2), line(articleId, "01210406"));
 
         DeliveryNoteFilter.DeliveryNoteFilterBuilder tomatoes = DeliveryNoteFilter.builder()
-                .articleId(articleId).dateFrom(OCT_1).dateTo(OCT_1.plusDays(1));
+                .articleId(articleId).dateFrom(OCT_1.toLocalDate()).dateTo(OCT_1.plusDays(1).toLocalDate());
         assertThat(codes(tomatoes.build())).containsExactlyInAnyOrder(101, 103, 104);
         assertThat(codes(tomatoes.clientId(clientId).build())).containsExactlyInAnyOrder(101, 103);
     }

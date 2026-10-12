@@ -1,6 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.billing.deliverynote;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,14 +43,14 @@ public final class DeliveryNoteSpecification {
                 : cb.equal(root.get(DeliveryNote_.client).get(BaseEntity_.id), clientId);
     }
 
-    private static Specification<DeliveryNote> dateFrom(LocalDateTime from) {
+    private static Specification<DeliveryNote> dateFrom(LocalDate from) {
         return (root, query, cb) -> from == null ? null
-                : cb.greaterThanOrEqualTo(root.get(DeliveryNote_.date), from);
+                : cb.greaterThanOrEqualTo(root.get(DeliveryNote_.date), from.atStartOfDay());
     }
 
-    private static Specification<DeliveryNote> dateTo(LocalDateTime to) {
+    private static Specification<DeliveryNote> dateTo(LocalDate to) {
         return (root, query, cb) -> to == null ? null
-                : cb.lessThanOrEqualTo(root.get(DeliveryNote_.date), to);
+                : cb.lessThan(root.get(DeliveryNote_.date), to.plusDays(1).atStartOfDay());
     }
 
     private static Specification<DeliveryNote> invoiced(Boolean invoiced) {

@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -68,6 +69,21 @@ class DeliveryNoteControllerTest {
         verify(deliveryNoteService).getAllDeliveryNotes(filter.capture(), any(Pageable.class));
         assertThat(filter.getValue().articleId()).isEqualTo(3);
         assertThat(filter.getValue().traceabilityCode()).isEqualTo("05241012");
+    }
+
+    @Test
+    @DisplayName("GET /api/delivery-notes - Debe aceptar fechas sin hora")
+    void getAllDeliveryNotes_ShouldBindDatesWithoutTime() throws Exception {
+        when(deliveryNoteService.getAllDeliveryNotes(any(DeliveryNoteFilter.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        mockMvc.perform(get("/api/delivery-notes").param("dateFrom", "2026-10-01").param("dateTo", "2026-10-31"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<DeliveryNoteFilter> filter = ArgumentCaptor.forClass(DeliveryNoteFilter.class);
+        verify(deliveryNoteService).getAllDeliveryNotes(filter.capture(), any(Pageable.class));
+        assertThat(filter.getValue().dateFrom()).isEqualTo(LocalDate.of(2026, 10, 1));
+        assertThat(filter.getValue().dateTo()).isEqualTo(LocalDate.of(2026, 10, 31));
     }
 
     @Test

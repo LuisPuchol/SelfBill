@@ -68,7 +68,7 @@ public class DeliveryNoteController {
 
     @Operation(summary = "Create a delivery note", description = """
             Takes the print format from the client's default, and the VAT and surcharge rates from the client's \
-            regime and the current tax configuration.""")
+            regime and the tax configuration in force on its date.""")
     @ApiErrors({ DELIVERY_NOTE_DUPLICATE_CODE, CLIENT_NOT_FOUND, ARTICLE_NOT_FOUND, TAX_CONFIG_NOT_FOUND })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

@@ -1,6 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 import org.springframework.data.jpa.domain.Specification;
 
@@ -56,13 +56,13 @@ public final class InvoiceSpecification {
         };
     }
 
-    private static Specification<Invoice> dateFrom(LocalDateTime from) {
+    private static Specification<Invoice> dateFrom(LocalDate from) {
         return (root, query, cb) -> from == null ? null
-                : cb.greaterThanOrEqualTo(root.get(Invoice_.date), from);
+                : cb.greaterThanOrEqualTo(root.get(Invoice_.date), from.atStartOfDay());
     }
 
-    private static Specification<Invoice> dateTo(LocalDateTime to) {
+    private static Specification<Invoice> dateTo(LocalDate to) {
         return (root, query, cb) -> to == null ? null
-                : cb.lessThanOrEqualTo(root.get(Invoice_.date), to);
+                : cb.lessThan(root.get(Invoice_.date), to.plusDays(1).atStartOfDay());
     }
 }
