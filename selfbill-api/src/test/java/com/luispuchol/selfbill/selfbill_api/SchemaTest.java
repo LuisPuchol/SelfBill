@@ -65,6 +65,17 @@ class SchemaTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Traceability columns and indexes use the English name")
+    void traceabilityUsesTheEnglishName() {
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM sqlite_master WHERE sql LIKE '%trazab%'",
+                Integer.class)).isZero();
+        assertThat(jdbc.queryForList("SELECT name FROM sqlite_master WHERE type = 'index' "
+                + "AND tbl_name = 'delivery_notes_articles' AND sql LIKE '%traceability_code%'", String.class))
+                .containsExactlyInAnyOrder("idx_traceability_code1", "idx_traceability_code2",
+                        "idx_traceability_code3");
+    }
+
+    @Test
     @DisplayName("Invoice numbers are unique within a series")
     void invoiceNumbersAreUniqueWithinASeries() {
         String insert = "INSERT INTO invoices (series, code, status, client_id, created_at, updated_at) "

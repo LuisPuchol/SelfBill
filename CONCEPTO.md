@@ -385,7 +385,7 @@ secciones y su PDF sale vacío. Es requisito previo de las rectificativas.
 
 ## 10. Trazabilidad
 
-`DeliveryNoteLine` tiene `trazabilityCode1/2/3`, el primero obligatorio, indexados, y
+`DeliveryNoteLine` tiene `traceabilityCode1/2/3`, el primero obligatorio, indexados, y
 se copian a `InvoiceLine`. Son tres enteros sueltos: no hay entidad ni catálogo detrás, ni
 consulta por lote.
 

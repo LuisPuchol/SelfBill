@@ -15,14 +15,14 @@ public record DeliveryNoteLineRequest(
         Integer articleId,
 
         @Schema(description = "Traceability code, such as a lot number", example = "241012")
-        @NotNull(message = "Trazability code 1 cannot be null")
-        Integer trazabilityCode1,
+        @NotNull(message = "Traceability code 1 cannot be null")
+        Integer traceabilityCode1,
 
         @Schema(description = "Optional second traceability code")
-        Integer trazabilityCode2,
+        Integer traceabilityCode2,
 
         @Schema(description = "Optional third traceability code")
-        Integer trazabilityCode3,
+        Integer traceabilityCode3,
 
         @Schema(example = "12.5")
         @NotNull(message = "Quantity cannot be null")

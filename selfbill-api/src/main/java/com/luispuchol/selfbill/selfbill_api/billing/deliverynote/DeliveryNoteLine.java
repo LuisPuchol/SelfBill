@@ -40,9 +40,9 @@ public class DeliveryNoteLine extends SoftDeletableEntity {
     private DeliveryNote deliveryNote;
 
     @Column(nullable = false)
-    private Integer trazabilityCode1;
-    private Integer trazabilityCode2;
-    private Integer trazabilityCode3;
+    private Integer traceabilityCode1;
+    private Integer traceabilityCode2;
+    private Integer traceabilityCode3;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal quantity;
