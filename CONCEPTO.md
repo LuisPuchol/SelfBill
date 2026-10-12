@@ -385,12 +385,31 @@ secciones y su PDF sale vacío. Es requisito previo de las rectificativas.
 
 ## 10. Trazabilidad
 
-`DeliveryNoteLine` tiene `trazabilityCode1/2/3`, el primero obligatorio, indexados, y
-se copian a `InvoiceLine`. Son tres enteros sueltos: no hay entidad ni catálogo detrás, ni
-consulta por lote.
+Cada línea de albarán lleva hasta tres códigos de trazabilidad (`traceabilityCode1/2/3`), el
+primero obligatorio, y se copian a `InvoiceLine`. Son lotes de proveedor, y los tres huecos
+son equivalentes: una misma línea de tomate puede salir de una caja que sobró ayer de un
+proveedor y de otra comprada hoy a otro. No hay entidad ni catálogo de lotes detrás.
 
-Queda por definir qué representa cada uno y qué debe poder responderse, típicamente "dado
-un lote, qué clientes lo recibieron". Los índices están puestos con esa finalidad.
+El código se teclea a mano: dos cifras de proveedor y seis de fecha. Se guarda como texto de
+ocho dígitos para no perder el cero inicial de un proveedor `01`–`09` (`01210426`), y el API
+rechaza cualquier otro formato. SelfBill no registra compras: el proveedor se lee en el propio
+código, y basta con encontrar los registros.
+
+La consulta típica de una inspección es "todos los tomates entre tal y tal fecha", sin
+conocer el lote. `GET /api/delivery-notes` filtra por artículo (`articleId`) y por lote
+(`traceabilityCode`, en cualquiera de los tres huecos), además de por fecha y cliente. Devuelve
+los albaranes enteros, y en cada línea se ve su código.
+
+- Si se filtran artículo y lote a la vez, tienen que estar en la misma línea.
+- Un albarán sale una vez aunque coincidan varias de sus líneas.
+- Solo cuentan las líneas vivas. Un albarán borrado no fue una entrega, y una línea
+  sustituida al editar un albarán era un error corregido.
+- El front traduce el código de artículo a su id con `GET /api/articles/by-code/{code}`, que
+  devuelve el artículo vivo: buscar por un código encuentra el último artículo que lo tiene.
+  Las entregas de un artículo borrado cuyo código se ha reutilizado son un caso raro y se
+  rastrean a mano: su id sigue valiendo en `articleId`
+  (`SELECT id FROM articles WHERE code = ? AND deleted_at IS NOT NULL`). Restaurarlo no sirve
+  para esto, porque obliga a cambiarle el código (§7).
 
 ---
 

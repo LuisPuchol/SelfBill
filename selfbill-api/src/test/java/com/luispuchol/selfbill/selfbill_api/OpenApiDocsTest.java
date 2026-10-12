@@ -26,6 +26,8 @@ class OpenApiDocsTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title").value("SelfBill API"))
                 .andExpect(jsonPath("$.paths['/api/delivery-notes']").exists())
+                .andExpect(jsonPath("$.paths['/api/delivery-notes'].get.parameters[?(@.name == 'traceabilityCode')]")
+                        .exists())
                 .andExpect(jsonPath("$.paths['/api/clients'].get.parameters[?(@.name == 'codeFrom')]").exists())
                 .andExpect(jsonPath("$.paths['/api/invoices/{id}/pdf'].get.responses['200'].content['application/pdf']")
                         .exists());

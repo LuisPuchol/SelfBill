@@ -55,10 +55,6 @@ Ningún endpoint de agregados: facturación por mes o cliente, pendiente de cobr
 No hay forma de exportar datos (CSV para la gestoría) ni de respaldar la BD SQLite desde
 la API.
 
-### Trazabilidad
-Tres enteros sueltos, indexados y sin entidad detrás. Falta decidir qué representan y
-poder consultar por lote. Ver CONCEPTO.md §10.
-
 ### Restaurar clientes y artículos borrados
 Un cliente borrado deja sus albaranes pendientes y sus borradores sin poder facturarse ni
 editarse, y un artículo borrado impide volver a guardar los albaranes pendientes que lo

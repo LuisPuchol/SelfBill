@@ -54,7 +54,7 @@ public class DeliveryNoteController {
 
     @Operation(summary = "Get all delivery notes", description = "Returns paginated and filtered list of non-deleted delivery notes")
     @GetMapping
-    public Page<DeliveryNoteResponse> getAllDeliveryNotes(@ParameterObject DeliveryNoteFilter filter,
+    public Page<DeliveryNoteResponse> getAllDeliveryNotes(@ParameterObject @Valid DeliveryNoteFilter filter,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
         return deliveryNoteService.getAllDeliveryNotes(filter, pageable);
     }

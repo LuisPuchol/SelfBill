@@ -13,9 +13,9 @@ public record DeliveryNoteLineResponse(
         Integer articleId,
         String articleName,
 
-        Integer trazabilityCode1,
-        Integer trazabilityCode2,
-        Integer trazabilityCode3,
+        String traceabilityCode1,
+        String traceabilityCode2,
+        String traceabilityCode3,
 
         BigDecimal quantity,
         BigDecimal price,

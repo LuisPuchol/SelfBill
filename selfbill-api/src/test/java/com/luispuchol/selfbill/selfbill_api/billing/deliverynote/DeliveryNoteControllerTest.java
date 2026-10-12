@@ -10,7 +10,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,6 +56,45 @@ class DeliveryNoteControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/delivery-notes - Debe pasar los filtros de artículo y trazabilidad, con el cero inicial")
+    void getAllDeliveryNotes_ShouldBindTraceabilityFilters() throws Exception {
+        when(deliveryNoteService.getAllDeliveryNotes(any(DeliveryNoteFilter.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        mockMvc.perform(get("/api/delivery-notes").param("articleId", "3").param("traceabilityCode", "05241012"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<DeliveryNoteFilter> filter = ArgumentCaptor.forClass(DeliveryNoteFilter.class);
+        verify(deliveryNoteService).getAllDeliveryNotes(filter.capture(), any(Pageable.class));
+        assertThat(filter.getValue().articleId()).isEqualTo(3);
+        assertThat(filter.getValue().traceabilityCode()).isEqualTo("05241012");
+    }
+
+    @Test
+    @DisplayName("GET /api/delivery-notes - Debe rechazar un código de trazabilidad que no tenga 8 cifras")
+    void getAllDeliveryNotes_WithMalformedTraceabilityCode_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/delivery-notes").param("traceabilityCode", "L-24"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/delivery-notes").param("traceabilityCode", "5241012"))
+                .andExpect(status().isBadRequest());
+
+        verify(deliveryNoteService, never()).getAllDeliveryNotes(any(), any());
+    }
+
+    @Test
+    @DisplayName("POST /api/delivery-notes - Debe rechazar códigos de trazabilidad que no tengan 8 cifras")
+    void createDeliveryNote_WithMalformedTraceabilityCode_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(post("/api/delivery-notes").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestWithCodes("1210426", null))))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/delivery-notes").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestWithCodes("01210426", "L-24"))))
+                .andExpect(status().isBadRequest());
+
+        verify(deliveryNoteService, never()).createDeliveryNote(any());
+    }
+
+    @Test
     @DisplayName("POST /api/delivery-notes - Debe aceptar un albarán sin código")
     void createDeliveryNote_WithoutCode_ShouldReturnCreated() throws Exception {
         DeliveryNoteRequest request = DeliveryNoteRequest.builder()
@@ -78,5 +119,19 @@ class DeliveryNoteControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(deliveryNoteService, never()).createDeliveryNote(any());
+    }
+
+    private static DeliveryNoteRequest requestWithCodes(String traceabilityCode1, String traceabilityCode2) {
+        return DeliveryNoteRequest.builder()
+                .date(LocalDateTime.of(2026, 10, 1, 8, 0))
+                .clientId(1)
+                .lines(List.of(DeliveryNoteLineRequest.builder()
+                        .articleId(1)
+                        .traceabilityCode1(traceabilityCode1)
+                        .traceabilityCode2(traceabilityCode2)
+                        .quantity(BigDecimal.ONE)
+                        .price(BigDecimal.ONE)
+                        .build()))
+                .build();
     }
 }

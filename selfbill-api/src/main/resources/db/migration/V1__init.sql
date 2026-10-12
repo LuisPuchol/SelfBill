@@ -79,9 +79,9 @@ create table delivery_notes_articles (
     id integer,
     article_id integer not null references articles (id),
     delivery_note_id integer not null references delivery_notes (id),
-    trazability_code1 integer not null,
-    trazability_code2 integer,
-    trazability_code3 integer,
+    traceability_code1 varchar(8) not null,
+    traceability_code2 varchar(8),
+    traceability_code3 varchar(8),
     quantity numeric(10,2),
     price numeric(10,2),
     total numeric(10,2),
@@ -100,9 +100,9 @@ create table invoice_lines (
     delivery_note_date timestamp not null,
     article_name varchar(255) not null,
     article_code integer not null,
-    trazability_code1 integer not null,
-    trazability_code2 integer,
-    trazability_code3 integer,
+    traceability_code1 varchar(8) not null,
+    traceability_code2 varchar(8),
+    traceability_code3 varchar(8),
     quantity numeric(10,2),
     price numeric(10,2),
     total numeric(10,2),
@@ -147,6 +147,6 @@ create unique index ux_delivery_notes_code_live on delivery_notes (code) where d
 -- Invoice numbers are never freed, deleted rows included (CONCEPTO.md §5)
 create unique index ux_invoices_series_code on invoices (series, code);
 
-create index idx_trazability_code1 on delivery_notes_articles (trazability_code1);
-create index idx_trazability_code2 on delivery_notes_articles (trazability_code2);
-create index idx_trazability_code3 on delivery_notes_articles (trazability_code3);
+create index idx_traceability_code1 on delivery_notes_articles (traceability_code1);
+create index idx_traceability_code2 on delivery_notes_articles (traceability_code2);
+create index idx_traceability_code3 on delivery_notes_articles (traceability_code3);
