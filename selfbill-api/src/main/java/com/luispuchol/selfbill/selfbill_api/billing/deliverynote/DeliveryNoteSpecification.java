@@ -59,7 +59,7 @@ public final class DeliveryNoteSpecification {
                         : cb.isNull(root.get(DeliveryNote_.invoice));
     }
 
-    // Article and code on the same line: "tomatoes of lot X" (CONCEPTO.md §10)
+    // Delivery notes with at least one line that matches the article and the code at once (CONCEPTO.md §10)
     private static Specification<DeliveryNote> withLine(Integer articleId, Integer traceabilityCode) {
         return (root, query, cb) -> {
             if (articleId == null && traceabilityCode == null) return null;

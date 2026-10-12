@@ -1,5 +1,4 @@
--- English name for the traceability codes. V1 keeps the old one: an applied migration does not change.
--- Renaming a column rewrites the indexes on it, but not their names.
+-- SQLite cannot rename an index: renaming a column keeps the old index names, so the indexes are recreated
 alter table delivery_notes_articles rename column trazability_code1 to traceability_code1;
 alter table delivery_notes_articles rename column trazability_code2 to traceability_code2;
 alter table delivery_notes_articles rename column trazability_code3 to traceability_code3;
