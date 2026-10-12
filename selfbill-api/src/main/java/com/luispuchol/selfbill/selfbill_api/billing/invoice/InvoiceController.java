@@ -1,10 +1,23 @@
 package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_NOT_FOUND;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DELIVERY_NOTE_NOT_FOUND;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.EMAIL_SEND_FAILED;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_ALREADY_ISSUED;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_MIXED_CLIENTS;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_MIXED_TAX_RATES;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_NOT_FOUND;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_NOT_ISSUED;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.MAIL_NOT_CONFIGURED;
+
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,10 +31,14 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfResponses;
+import com.luispuchol.selfbill.selfbill_api.shared.ApiErrors;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -29,59 +46,83 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/invoices")
-@Tag(name = "Invoices", description = "Invoice management endpoints")
+@Tag(name = "Invoices", description = """
+        An invoice groups delivery notes of one client, in one section per delivery note. It is created as `DRAFT`, \
+        where only its set of delivery notes can change, and gets its number when it is issued.""")
 @RequiredArgsConstructor
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
 
-    @Operation(summary = "Get all invoices", description = "Returns paginated and filtered list of non-deleted invoices")
+    @Operation(summary = "Get all invoices", description = """
+            Returns paginated and filtered list of non-deleted invoices, without their sections: \
+            get an invoice by id to read them.""")
     @GetMapping
     public Page<InvoiceResponse> getAllInvoices(@ParameterObject InvoiceFilter filter,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
         return invoiceService.getAllInvoices(filter, pageable);
     }
 
+    @Operation(summary = "Get an invoice by id")
+    @ApiErrors(INVOICE_NOT_FOUND)
     @GetMapping("/{id}")
     public InvoiceResponse getInvoiceById(@PathVariable @Positive Integer id) {
         return invoiceService.getInvoiceById(id);
     }
 
     @Operation(summary = "Get an invoice by its number within a series")
+    @ApiErrors(INVOICE_NOT_FOUND)
     @GetMapping("/by-code/{code}")
     public InvoiceResponse getInvoiceByCode(@PathVariable @Positive Integer code,
             @RequestParam(defaultValue = "GENERAL") InvoiceSeries series) {
         return invoiceService.getInvoiceByCode(series, code);
     }
 
-    @Operation(summary = "Create a draft invoice")
+    @Operation(summary = "Create a draft invoice", description = """
+            Groups delivery notes of the client that are not in another invoice. All of them must have the same \
+            VAT and surcharge rates. The invoice gets no number until it is issued.""")
+    @ApiErrors({ CLIENT_NOT_FOUND, DELIVERY_NOTE_NOT_FOUND, INVOICE_MIXED_CLIENTS,
+            INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED, INVOICE_MIXED_TAX_RATES })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public InvoiceResponse createInvoice(@RequestBody @Valid InvoiceRequest request) {
         return invoiceService.createInvoice(request);
     }
 
-    @Operation(summary = "Change the delivery notes of a draft invoice")
+    @Operation(summary = "Change the delivery notes of a draft invoice", description = """
+            Replaces the set of delivery notes and recalculates the invoice. \
+            Delivery notes left out become free again.""")
+    @ApiErrors({ INVOICE_NOT_FOUND, INVOICE_ALREADY_ISSUED, CLIENT_NOT_FOUND, DELIVERY_NOTE_NOT_FOUND,
+            INVOICE_MIXED_CLIENTS, INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED, INVOICE_MIXED_TAX_RATES })
     @PutMapping("/{id}")
     public InvoiceResponse updateInvoice(@PathVariable @Positive Integer id,
             @RequestBody @Valid InvoiceRequest request) {
         return invoiceService.updateInvoice(id, request);
     }
 
-    @Operation(summary = "Issue a draft invoice", description = "Assigns the next invoice number and the date, and freezes its content")
+    @Operation(summary = "Issue a draft invoice", description = """
+            Recalculates the invoice from its delivery notes, assigns the next number of its series and today's \
+            date, and freezes its content and the client's fiscal data. Its delivery notes can no longer be edited.""")
+    @ApiErrors({ INVOICE_NOT_FOUND, INVOICE_ALREADY_ISSUED, INVOICE_MIXED_TAX_RATES })
     @PostMapping("/{id}/issue")
     public InvoiceResponse issueInvoice(@PathVariable @Positive Integer id) {
         return invoiceService.issueInvoice(id);
     }
 
+    @Operation(summary = "Delete an invoice", description = """
+            Allowed in any status, as the way to correct an issued invoice. Its delivery notes become free again. \
+            An issued invoice keeps its number, which is never reused.""")
+    @ApiErrors(INVOICE_NOT_FOUND)
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteInvoice(@PathVariable @Positive Integer id) {
         invoiceService.deleteInvoice(id);
     }
 
-    @Operation(summary = "Send an issued invoice by email")
+    @Operation(summary = "Send an issued invoice by email", description = "Sends the PDF to the client's email address")
     @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
+    @ApiErrors({ INVOICE_NOT_FOUND, INVOICE_NOT_ISSUED, CLIENT_EMAIL_NOT_CONFIGURED, MAIL_NOT_CONFIGURED,
+            EMAIL_SEND_FAILED })
     @PostMapping("/{id}/email")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void sendInvoiceEmail(@PathVariable @Positive Integer id) {
@@ -90,6 +131,9 @@ public class InvoiceController {
 
     @Operation(summary = "Export an issued invoice as PDF")
     @Parameter(name = "Accept-Language", in = ParameterIn.HEADER, description = "Language (es, en)", example = "en")
+    @ApiResponse(responseCode = "200", description = "The PDF, as an attachment",
+            content = @Content(mediaType = MediaType.APPLICATION_PDF_VALUE, schema = @Schema(type = "string", format = "binary")))
+    @ApiErrors({ INVOICE_NOT_FOUND, INVOICE_NOT_ISSUED })
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> exportInvoicePdf(@PathVariable @Positive Integer id) {
         return PdfResponses.attachment(invoiceService.exportInvoicePdf(id));
