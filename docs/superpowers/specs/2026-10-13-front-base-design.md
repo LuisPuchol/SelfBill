@@ -30,7 +30,9 @@ es todavía una página vacía.
 | Cómo se abre | Un icono arranca la API y abre Edge en modo aplicación | Usuario |
 | Sistema operativo | Windows | Asumido, confirmado |
 | Idioma | Solo español. Los textos en inglés de la API son de los PDF y correos | Asumido, confirmado |
-| Pantalla | Tema claro, desde 1366×768 | Asumido, confirmado |
+| Pantalla | Monitor genérico de 1920×1080 | Usuario |
+| Tema | Claro | Asumido, confirmado |
+| Ayuda de teclas | Siempre visible, pequeña y abajo, sin estorbar: qué tecla del pad hace qué | Usuario |
 
 Todo lo que se teclea en un albarán es numérico: código de cliente y de artículo (enteros),
 cantidad y precio (decimales) y lote (8 dígitos). Por eso el pad numérico basta para el
@@ -40,12 +42,12 @@ trabajo diario. El pad no tiene Tab ni Esc: Enter hace de Tab.
 
 ## 3. Estado actual
 
+El front se genera desde cero. Lo que existe es la API:
+
 | Dónde | Qué hay |
 |---|---|
-| `front/` | La plantilla de `sv create` de agosto de 2025: SvelteKit 2.27, `adapter-auto`, Tailwind 4 y Vitest. Solo la página de bienvenida |
-| SvelteKit | La 3.0.0 salió el 2026-10-01 y la 3.0.1 el 2026-10-06. Pide Vite 8 y TypeScript 6. Mantiene `adapter-static` (4.0) y el router por hash |
-| API | Seis recursos bajo `/api`, OpenAPI con springdoc en `/v3/api-docs` y todas las respuestas con tipo concreto |
-| Errores de la API | `ProblemDetail` con `errorCode` y, en validación, `errors: {campo: mensaje}`. Los mensajes están en inglés, escritos en el código |
+| Recursos | Seis recursos bajo `/api`, OpenAPI con springdoc en `/v3/api-docs` y todas las respuestas con tipo concreto |
+| Errores | `ProblemDetail` con `errorCode` y, en validación, `errors: {campo: mensaje}`. Los mensajes están en inglés, escritos en el código |
 | Servido | La API no sirve ficheros estáticos, no tiene CORS y escucha en todas las interfaces |
 
 ---
@@ -55,13 +57,14 @@ trabajo diario. El pad no tiene Tab ni Esc: Enter hace de Tab.
 | Tema | Decisión | Origen |
 |---|---|---|
 | Cómo se sirve | SPA estática dentro del jar de la API: un proceso, un puerto y sin CORS | Usuario (§5.1) |
-| Proyecto | Regenerar `front/` con `sv create` en SvelteKit 3. Si alguna dependencia falla, SvelteKit 2.70 | Diseño (§5.1) |
+| Proyecto | Generar `front/` desde cero con `sv create` en SvelteKit 3. Si alguna dependencia falla, SvelteKit 2.70 | Diseño (§5.1) |
 | Router | Por ruta, no por hash, con un fallback en Spring | Diseño (§5.1) |
 | Tipos de la API | Generados con `openapi-typescript` y guardados en git | Diseño (§5.2) |
 | Cliente | `openapi-fetch`, envuelto | Diseño (§5.2) |
 | `ErrorCode` | Se expone en el OpenAPI para que la traducción sea exhaustiva | Diseño (§5.2) |
 | Carga de datos | `load` de cada página e `invalidate`. Sin store global ni caché | Diseño (§5.2) |
 | Teclado | Acciones declaradas por pantalla, en capas, y una barra de teclas generada de ellas | Diseño (§5.3) |
+| Barra de teclas | Franja fina y discreta abajo; las acciones principales tienen además su botón en la pantalla | Usuario (§5.3) |
 | Guardar | `NumpadAdd`, por código de tecla. El "+" del teclado principal escribe | Diseño (§5.3) |
 | Salir sin guardar | Diálogo con F8. Un segundo Esc no descarta nada | Diseño (§5.3) |
 | Componentes | Propios, con Tailwind y `<dialog>` nativo. Solo Lucide como dependencia de interfaz | Diseño (§5.4) |
@@ -73,9 +76,10 @@ trabajo diario. El pad no tiene Tab ni Esc: Enter hace de Tab.
 
 ### 5.1. Estructura y servido
 
-**Proyecto.** Se regenera `front/` con `sv create`: SvelteKit 3, Svelte 5, Vite 8,
+**Proyecto.** Se genera `front/` desde cero con `sv create`: SvelteKit 3, Svelte 5, Vite 8,
 TypeScript, Tailwind 4, Vitest y Playwright. `adapter-static` con `fallback: 'index.html'`, y
-`ssr = false` en `src/routes/+layout.ts`.
+`ssr = false` en `src/routes/+layout.ts`. SvelteKit 3.0.0 salió el 2026-10-01 y la 3.0.1 el
+2026-10-06; pide Vite 8 y TypeScript 6, y mantiene `adapter-static` (4.0).
 
 **Router por ruta.** El router por hash obliga a que todos los enlaces empiecen por `#/`, y la
 documentación de SvelteKit lo reserva para cuando no se controla el servidor. Aquí el servidor
@@ -206,8 +210,12 @@ useKeys([
 - Un único `keydown` en `window`, en el layout raíz, despacha la tecla a la capa de arriba.
 - Las capas se apilan: un diálogo abierto pone las suyas encima y desactiva las de debajo
   hasta cerrarse.
-- La barra de teclas, fija abajo, se dibuja a partir de las acciones de la capa de arriba. Cada
-  entrada es un botón: se puede hacer clic en "+ Guardar".
+- La barra de teclas es una franja fina fija abajo, con letra pequeña, que no compite con el
+  contenido. Muestra qué tecla hace qué en la pantalla actual:
+  `Enter Siguiente · + Guardar · Esc Salir`. Se dibuja a partir de las acciones de la capa de
+  arriba, así que siempre está al día.
+- La barra es una chuleta, no la forma de usar el ratón: las acciones principales tienen
+  además su botón grande en la propia pantalla.
 
 **Navegación con Enter.** Un formulario recorre sus campos en el orden del DOM. Un campo puede
 validar al salir, también de forma asíncrona: el código de artículo consulta
@@ -247,14 +255,16 @@ nativo. La única dependencia de interfaz es `@lucide/svelte` para los iconos.
 | `ChoiceField` | Opciones numeradas, sin desplegable: "1 Simple · 2 Valorado" |
 | `DataTable` | Fila seleccionada con ↑↓ o clic, Enter para abrirla, y paginación |
 | `Dialog` | `<dialog>` nativo con su capa de teclas |
-| `KeyBar`, `TopBar`, `Tile` | Barra de teclas, barra superior, botones del inicio |
+| `KeyBar` | Franja fina abajo, letra pequeña: tecla y función en la pantalla actual |
+| `TopBar`, `Tile` | Barra superior y botones del inicio |
 | `Toast` | Aviso breve que desaparece solo |
 
 Los campos llevan la etiqueta siempre visible encima, nunca solo un placeholder.
 
 **Estilo.**
 
-- Letra base de 18 px, campos de al menos 48 px de alto y botones grandes.
+- Letra base de 18 px, campos de al menos 48 px de alto y botones grandes. La barra de
+  teclas es la excepción: pequeña y discreta.
 - El campo activo lleva un borde grueso de color y el fondo resaltado.
 - Contraste alto y tema claro. El rojo solo para errores y acciones destructivas.
 - Los estados (borrador, emitida, pendiente) tienen color y siempre texto.
@@ -284,7 +294,7 @@ tanto el `detail` como los de validación (`"NIF cannot be blank"`), y no se mue
 | Nivel | Herramienta | Qué cubre en esta pieza |
 |---|---|---|
 | Unitario | Vitest (node) | Formatos es-ES, total en céntimos, interpretación de `10,5` / `10.5` / `121026`, `ProblemDetail` → `ApiError`, pila de capas de teclas |
-| Componente | Vitest en modo navegador (Chromium) | Cada campo de §5.4, navegación con Enter, `CodeField` con la API simulada, `KeyBar` pinta y ejecuta las acciones declaradas, diálogo de cambios sin guardar |
+| Componente | Vitest en modo navegador (Chromium) | Cada campo de §5.4, navegación con Enter, `CodeField` con la API simulada, `KeyBar` muestra las acciones de la capa de arriba y cambia al abrir un diálogo, diálogo de cambios sin guardar |
 | Punta a punta | Playwright contra la API real con una SQLite temporal | Inicio → sección con su número, Esc de vuelta al inicio, barra superior |
 
 - La API arranca para los tests con `--spring.datasource.url` apuntando a un fichero temporal;
