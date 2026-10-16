@@ -18,7 +18,7 @@
 </script>
 
 <div class="flex flex-col gap-1">
-	<label for={id} class="font-medium">{label}</label>
+	<label id="{id}-label" for={id} class="font-medium">{label}</label>
 	{@render children(error ? errorId : undefined)}
 	{#if error}
 		<p id={errorId} class="text-danger">{error}</p>
