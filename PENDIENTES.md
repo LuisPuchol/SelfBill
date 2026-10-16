@@ -24,9 +24,9 @@ descifrado lanza excepción. Es lo que pasa al restaurar la base en otro equipo 
 formulario para reintroducirla. Tratar el fallo de descifrado como "sin contraseña".
 
 ### Expuesto a la red, con la contraseña en claro
-Sin `server.address`, el API escucha en todas las interfaces, y `GET /api/user-profile`
-devuelve la contraseña SMTP descifrada. Para una app de escritorio basta con
-`server.address=127.0.0.1` y devolver `hasMailPassword` en vez de la contraseña.
+La API ya escucha solo en `127.0.0.1`. Queda que `GET /api/user-profile` devuelve la
+contraseña SMTP descifrada: devolver `hasMailPassword` en vez de la contraseña (bloque de
+ajustes).
 
 ### Errores 500 que deberían ser 4xx
 `GlobalExceptionHandler` convierte en `INTERNAL_ERROR`:
