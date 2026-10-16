@@ -990,10 +990,10 @@ Si `front/build` no existe se salta sin fallar, así que `mvn test` sigue sin de
 
 ```ts
 test('opens a section with its number and comes back with Esc')
-// goto(resolve('/')) → 6 tiles; press('1') → URL /delivery-notes, heading 'Albaranes'; press('Escape') → URL '/'
+// page.goto('/') → 6 tiles; press('1') → URL /delivery-notes, heading 'Albaranes'; press('Escape') → URL '/'
 test('numpad digits work too')               // press('Numpad4') → /articles, heading 'Artículos'
 test('the top bar opens any section')        // click en 'Facturas' dentro de <nav> → /invoices
-test('a section survives a reload')          // goto('/clients') → heading 'Clientes'; reload → sigue (fallback del jar)
+test('a section survives a reload')          // page.goto('/clients') → heading 'Clientes'; reload → sigue (fallback del jar)
 test('the key bar shows the keys of the screen') // en /clients el <footer> contiene 'Esc' y 'Salir'
 test('the api still answers next to the front')  // request.get('/api/articles/next-code') → ok, JSON con 'code'
 ```
