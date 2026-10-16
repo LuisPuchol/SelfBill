@@ -14,7 +14,8 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "vitest --run",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"api:types": "npx -y openapi-typescript@7.13.0 http://127.0.0.1:8080/v3/api-docs -o src/lib/api/schema.d.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -45,5 +46,8 @@
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
+	},
+	"dependencies": {
+		"openapi-fetch": "^0.17.0"
 	}
 }
