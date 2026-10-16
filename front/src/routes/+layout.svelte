@@ -4,6 +4,7 @@
 	import KeyboardRoot from '#lib/keyboard/KeyboardRoot.svelte';
 	import KeyBar from '#lib/components/KeyBar.svelte';
 	import TopBar from '#lib/components/TopBar.svelte';
+	import Toaster from '#lib/components/Toaster.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -20,4 +21,5 @@
 <main class="p-6 pb-16">
 	{@render children()}
 </main>
+<Toaster />
 <KeyBar />
