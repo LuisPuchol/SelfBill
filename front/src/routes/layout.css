@@ -1,0 +1,35 @@
+@import 'tailwindcss';
+
+@theme {
+	--font-sans: 'Segoe UI', system-ui, sans-serif;
+	--color-ink: #1a1a1a;
+	--color-muted: #4b5563;
+	--color-canvas: #f4f5f7;
+	--color-surface: #ffffff;
+	--color-line: #c9ccd1;
+	--color-accent: #1d4ed8;
+	--color-accent-ink: #ffffff;
+	--color-focus: #c2410c;
+	--color-field-active: #fff4e5;
+	--color-danger: #b91c1c;
+	--color-draft: #92400e;
+	--color-issued: #166534;
+	--color-pending: #1e40af;
+}
+
+html {
+	font-size: 112.5%;
+}
+
+body {
+	@apply bg-canvas font-sans text-ink;
+}
+
+:focus-visible {
+	outline: 3px solid var(--color-focus);
+	outline-offset: 2px;
+}
+
+.tabular {
+	font-variant-numeric: tabular-nums;
+}

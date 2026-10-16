@@ -1,12 +1,14 @@
 <script lang="ts">
-	import '../app.css';
-	import favicon from '$lib/assets/favicon.svg';
+	import './layout.css';
+	import favicon from '#lib/assets/favicon.svg';
+	import type { LayoutProps } from './$types';
 
-	let { children } = $props();
+	let { children }: LayoutProps = $props();
 </script>
 
 <svelte:head>
+	<title>SelfBill</title>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-{@render children?.()}
+{@render children()}
