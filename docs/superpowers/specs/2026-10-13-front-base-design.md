@@ -47,7 +47,7 @@ El front se genera desde cero. Lo que existe es la API:
 | Dónde | Qué hay |
 |---|---|
 | Recursos | Seis recursos bajo `/api`, OpenAPI con springdoc en `/v3/api-docs` y todas las respuestas con tipo concreto |
-| Errores | `ProblemDetail` con `errorCode` y, en validación, `errors: {campo: mensaje}`. Los mensajes están en inglés, escritos en el código |
+| Errores | `ProblemDetail` con `errorCode` y, en validación, `errors: {campo: mensaje}`. Los mensajes están en inglés, escritos en el código. El OpenAPI ya documenta esa forma como esquema `Problem`, con el enum completo de `errorCode` |
 | Servido | La API no sirve ficheros estáticos, no tiene CORS y escucha en todas las interfaces |
 
 ---
@@ -61,7 +61,7 @@ El front se genera desde cero. Lo que existe es la API:
 | Router | Por ruta, no por hash, con un fallback en Spring | Diseño (§5.1) |
 | Tipos de la API | Generados con `openapi-typescript` y guardados en git | Diseño (§5.2) |
 | Cliente | `openapi-fetch`, envuelto | Diseño (§5.2) |
-| `ErrorCode` | Se expone en el OpenAPI para que la traducción sea exhaustiva | Diseño (§5.2) |
+| `ErrorCode` | Se toma del esquema `Problem` del OpenAPI para que la traducción sea exhaustiva | Diseño (§5.2) |
 | Carga de datos | `load` de cada página e `invalidate`. Sin store global ni caché | Diseño (§5.2) |
 | Teclado | Acciones declaradas por pantalla, en capas, y una barra de teclas generada de ellas | Diseño (§5.3) |
 | Barra de teclas | Franja fina y discreta abajo; las acciones principales tienen además su botón en la pantalla | Usuario (§5.3) |
@@ -79,7 +79,9 @@ El front se genera desde cero. Lo que existe es la API:
 **Proyecto.** Se genera `front/` desde cero con `sv create`: SvelteKit 3, Svelte 5, Vite 8,
 TypeScript, Tailwind 4, Vitest y Playwright. `adapter-static` con `fallback: 'index.html'`, y
 `ssr = false` en `src/routes/+layout.ts`. SvelteKit 3.0.0 salió el 2026-10-01 y la 3.0.1 el
-2026-10-06; pide Vite 8 y TypeScript 6, y mantiene `adapter-static` (4.0).
+2026-10-06; pide Vite 8 y TypeScript 6, y mantiene `adapter-static` (4.0). En la 3 no hay
+`svelte.config.js`: la configuración va en `sveltekit({...})` dentro de `vite.config.ts`, y
+`lib/` se importa como `#lib/…`.
 
 **Router por ruta.** El router por hash obliga a que todos los enlaces empiecen por `#/`, y la
 documentación de SvelteKit lo reserva para cuando no se controla el servidor. Aquí el servidor
@@ -169,10 +171,10 @@ class ApiError {
 Un fallo de red (la API no responde) es `NETWORK`. Un `errorCode` que el front no conoce, o una
 respuesta sin él, es `UNKNOWN`.
 
-**`ErrorCode` en el OpenAPI.** La API documenta la forma de sus errores (`errorCode` como enum
-`ErrorCode` y `errors` como mapa) en las respuestas de error. Así `openapi-typescript` genera
-el enum, y `lib/api/messages.ts` es un `Record<ErrorCode, …>`: un código nuevo en Java no
-compila en el front hasta que tenga su texto en español.
+**`ErrorCode` desde el OpenAPI.** La API ya documenta sus errores como esquema `Problem`, con
+`errorCode` como enum. `openapi-typescript` genera la unión de códigos, y
+`lib/api/messages.ts` es un `Record<ErrorCode, …>`: un código nuevo en Java no compila en el
+front hasta que tenga su texto en español.
 
 **Carga de datos.** Cada página carga en su `+page.ts` (`load`) y, tras guardar, recarga con
 `invalidate`. Los listados usan la paginación de la API (`{content, page: {number, size,
@@ -284,7 +286,7 @@ tanto el `detail` como los de validación (`"NIF cannot be blank"`), y no se mue
 |---|---|
 | Dato mal puesto | Mensaje rojo bajo el campo y el cursor en el primero que falla. El front valida lo evidente antes de enviar, con su propio texto. Si la API marca un campo en `errors`, se pinta en el mismo sitio con el texto del front para ese campo o, si no lo tiene, "Revisa este dato". Las rutas de línea se resuelven: `lines[2].quantity` → línea 3, cantidad |
 | Regla de negocio (`errorCode` conocido) | Diálogo con el texto de `messages.ts`: qué ha pasado y qué hacer. Enter lo cierra y el cursor vuelve donde estaba |
-| La API no responde (`NETWORK`) | Pantalla completa: "No se puede conectar con SelfBill". Al arrancar reintenta sola unos segundos ("Arrancando…"). Después, Enter reintenta |
+| La API deja de responder con la app abierta (`NETWORK`) | Pantalla completa: "No se puede conectar con SelfBill". Reintenta sola cada pocos segundos, y Enter reintenta al momento. Al volver la conexión, la pantalla recarga sus datos |
 | Error inesperado (500, `UNKNOWN`, `INTERNAL_ERROR`) | Diálogo "Ha ocurrido un error inesperado. La operación no se ha completado.", con estado, `errorCode` y `detail` plegados |
 | Error al cargar una página (un registro borrado da 404) | `+error.svelte` con el mensaje en llano y Esc para volver |
 | Éxito | `Toast` breve: "Albarán 121 guardado" |
@@ -313,14 +315,16 @@ tanto el `detail` como los de validación (`"NIF cannot be blank"`), y no se mue
 | Servir el build del front desde `static/` del jar | §5.1 |
 | Fallback a `index.html` para rutas que no son `/api`, OpenAPI, Swagger ni ficheros | §5.1 |
 | `server.address=127.0.0.1` | §5.1, PENDIENTES "Expuesto a la red" |
-| Documentar la forma del error y el enum `ErrorCode` en el OpenAPI | §5.2 |
+| `RequestLoggingFilter` solo registra `/api`: los ficheros del front no llenan el log | §5.1 |
 
 ---
 
 ## 7. Fuera de alcance
 
 - Las pantallas de cada sección: cada bloque de §8 tiene su spec.
-- El lanzador y el instalador para Windows.
+- El lanzador y el instalador para Windows. El lanzador tendrá que esperar a que
+  `http://127.0.0.1:8080/` responda antes de abrir Edge: la página la sirve la propia API, así
+  que si Edge se abre antes, lo que aparece es el error de Edge y no la pantalla de §5.5.
 - Importar datos del programa antiguo.
 - Las plantillas de PDF del backend (PENDIENTES, "Generación real de PDF").
 - Interfaz en otros idiomas, tema oscuro y CI.
@@ -348,4 +352,5 @@ Cada bloque es un ciclo propio de spec, plan e implementación:
 | SvelteKit 3 tiene once días y alguna dependencia puede no soportarlo | Se comprueba al generar el proyecto. Si algo falla, SvelteKit 2.70 |
 | Edge en modo aplicación puede no dejar anular alguna tecla F | Prueba manual al cerrar la pieza. Si una falla, se cambia por otra libre |
 | `NumpadDecimal` da "." o "," según la configuración de Windows | `NumberField` acepta las dos y lo cubre un test de componente |
-| Edge abre antes de que la API esté lista | Reintento al arrancar (§5.5) |
+| Edge abre antes de que la API esté lista | Lo resuelve el lanzador (§7). El front no puede: sin API no hay página |
+| `openapi-typescript` 7.13 declara TypeScript 5 y el proyecto usa el 6 | Se ejecuta con `npx` y versión fija, sin instalarlo como dependencia. Comprobado: genera bien |
