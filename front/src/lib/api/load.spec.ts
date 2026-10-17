@@ -16,6 +16,12 @@ describe('loaded', () => {
 		);
 	});
 
+	it('turns an ApiError without status into a 500', async () => {
+		await expect(loaded(Promise.reject(new ApiError(0, 'UNKNOWN', 'x', {})))).rejects.toSatisfy(
+			(e) => isHttpError(e, 500)
+		);
+	});
+
 	it('passes the value through', async () => {
 		await expect(loaded(Promise.resolve(7))).resolves.toBe(7);
 	});

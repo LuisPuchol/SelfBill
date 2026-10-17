@@ -24,4 +24,21 @@ describe('request', () => {
 			code: 'NETWORK'
 		});
 	});
+
+	it('turns a timeout or abort into a NETWORK error', async () => {
+		await expect(
+			request(Promise.reject(new DOMException('t', 'TimeoutError')))
+		).rejects.toMatchObject({ code: 'NETWORK' });
+		await expect(
+			request(Promise.reject(new DOMException('a', 'AbortError')))
+		).rejects.toMatchObject({ code: 'NETWORK' });
+	});
+
+	it('does not mistake a parse error for a lost connection', async () => {
+		const failure = request(Promise.reject(new SyntaxError('Unexpected token <')));
+		await expect(failure).rejects.toMatchObject({ code: 'UNKNOWN', status: 0 });
+		await expect(failure).rejects.toMatchObject({
+			detail: expect.stringContaining('Unexpected token <')
+		});
+	});
 });

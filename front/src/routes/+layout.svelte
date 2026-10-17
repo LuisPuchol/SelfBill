@@ -18,10 +18,19 @@
 	onMount(() => {
 		const onRejection = (event: PromiseRejectionEvent) => {
 			event.preventDefault();
+			console.error(event.reason);
 			showError(event.reason);
 		};
+		// No preventDefault: the browser still logs it to the console.
+		const onError = (event: ErrorEvent) => {
+			if (event.error instanceof Error) showError(event.error);
+		};
 		window.addEventListener('unhandledrejection', onRejection);
-		return () => window.removeEventListener('unhandledrejection', onRejection);
+		window.addEventListener('error', onError);
+		return () => {
+			window.removeEventListener('unhandledrejection', onRejection);
+			window.removeEventListener('error', onError);
+		};
 	});
 </script>
 
@@ -31,9 +40,11 @@
 </svelte:head>
 
 <KeyboardRoot />
-<TopBar />
+<div inert={errorState.connectionLost}>
+	<TopBar />
+</div>
 <!-- bottom padding keeps content clear of the fixed key bar -->
-<main class="p-6 pb-16">
+<main class="p-6 pb-16" inert={errorState.connectionLost}>
 	{@render children()}
 </main>
 <Toaster />
