@@ -34,4 +34,5 @@
 </Form>
 <output data-testid="lot">{lot}</output>
 <output data-testid="date">{date}</output>
+<button type="button" onclick={() => (date = '2026-01-01')}>Poner 01/01/2026</button>
 <output data-testid="format">{String(format)}</output>

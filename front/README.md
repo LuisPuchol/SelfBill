@@ -14,3 +14,16 @@ Especificación de la base: [../docs/superpowers/specs/2026-10-13-front-base-des
 - `npm run test:e2e`: construye el jar y lanza Playwright contra él en el puerto 18080 con una BD temporal.
 - `npm run package`: build del front + jar; es el entregable.
 - `npm run check` / `npm run lint`: tipos y estilo.
+
+## Convenciones
+
+- Fuera de `lib/`, los módulos TS se importan como `#lib/<ruta>.js` (sin extensión no pasa el
+  type-check) y los componentes como `#lib/<ruta>.svelte`.
+- Todo `href`/`goto` interno pasa por `resolve()` de `$app/paths` (ESLint lo exige).
+- Cada pantalla declara sus teclas con `useKeys`: un `useKeys`/`keyLayer` por componente; las
+  capas modales, en su propio componente.
+- El "+" de guardar es `NumpadAdd` por código de tecla (el "+" del teclado principal escribe).
+- Los textos de la API (en inglés) nunca se muestran: los textos en español viven en
+  `src/lib/api/messages.ts`, y un `ErrorCode` nuevo no compila hasta tener su texto.
+- Antes de guardar, la pantalla valida todo el formulario: `<Form bind:nav>` y
+  `if (await nav.validateAll()) save()`. Así salen todos los errores y el cursor va al primero.

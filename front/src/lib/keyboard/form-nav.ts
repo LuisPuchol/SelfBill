@@ -26,7 +26,7 @@ export class FormNav {
 		this.#onLast = options.onLast;
 	}
 
-	/** True while waiting for a commit: next() does nothing meanwhile. */
+	/** True while waiting for a commit or a validateAll(): next() does nothing meanwhile. */
 	get busy(): boolean {
 		return this.#busy;
 	}
@@ -58,6 +58,26 @@ export class FormNav {
 		const following = ordered[ordered.indexOf(field) + 1];
 		if (following) following.el.focus();
 		else this.#onLast?.();
+	}
+
+	/**
+	 * Before saving: runs every field's commit in page order, so every error shows, and puts the
+	 * cursor on the first field that fails. Fields reached with the mouse, or never visited, are
+	 * only checked here. False, without checking again, while a commit is already running.
+	 */
+	async validateAll(): Promise<boolean> {
+		if (this.#busy) return false;
+		this.#busy = true;
+		try {
+			const ordered = this.#ordered();
+			// Started in page order; the async ones (lookups) are awaited together.
+			const results = await Promise.all(ordered.map(async (field) => field.commit?.() ?? true));
+			const failed = ordered.find((_, i) => !results[i]);
+			failed?.el.focus();
+			return failed === undefined;
+		} finally {
+			this.#busy = false;
+		}
 	}
 
 	prev(): void {

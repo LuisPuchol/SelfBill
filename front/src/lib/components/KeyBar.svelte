@@ -3,8 +3,9 @@
 	import { keyLabel } from '../keyboard/keys';
 </script>
 
+<!-- z-50 like the opaque connection screen, and later in the page, so the bar stays above it -->
 <footer
-	class="fixed inset-x-0 bottom-0 flex flex-wrap gap-x-6 gap-y-1 border-t border-line bg-canvas px-4 py-2 text-sm text-muted"
+	class="fixed inset-x-0 bottom-0 z-50 flex flex-wrap gap-x-6 gap-y-1 border-t border-line bg-canvas px-4 py-2 text-sm text-muted"
 >
 	{#each keymap.visible as action (`${action.shift ? 'S+' : ''}${action.key}`)}
 		<span><kbd class="font-medium text-ink">{keyLabel(action)}</kbd> {action.label}</span>

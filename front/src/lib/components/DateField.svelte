@@ -24,34 +24,36 @@
 	const nav = getFormNav();
 	let input: HTMLInputElement;
 	let ownError = $state<string>();
-	/** What the user wrote, until it is understood as a date. */
-	let typed = $state<string>();
+	/** What the user wrote and the value it gave; shown as long as `value` still is that one. */
+	let typed = $state<{ text: string; value: string }>();
 
-	const text = $derived(typed ?? (value === '' ? '' : formatDate(value)));
+	const text = $derived(
+		typed !== undefined && typed.value === value
+			? typed.text
+			: value === ''
+				? ''
+				: formatDate(value)
+	);
 
+	/** The value follows the text at once (121026 → 2026-10-12): a save may come without leaving. */
 	function write(raw: string): void {
-		typed = raw;
+		const iso = parseDateDigits(raw, todayIso()) ?? '';
+		typed = { text: raw, value: iso };
+		value = iso;
 		ownError = undefined;
 	}
 
-	/** Reads the typed digits as a date (121026 → 12/10/2026); invalid text is left as typed. */
-	function normalize(): void {
-		if (typed === undefined) return;
-		if (typed.trim() === '') {
-			value = '';
-			typed = undefined;
-			return;
-		}
-		const iso = parseDateDigits(typed, todayIso());
-		if (iso === null) return;
-		value = iso;
-		typed = undefined;
-	}
-
+	/** Shows a date as dd/mm/yyyy; invalid text is left as typed, with its error. */
 	function commit(): boolean {
-		normalize();
-		if (typed !== undefined) ownError = 'Fecha no válida';
-		else ownError = required && value === '' ? 'Este dato es obligatorio' : undefined;
+		if (value !== '') {
+			typed = undefined;
+			ownError = undefined;
+		} else if (text.trim() !== '') {
+			ownError = 'Fecha no válida';
+		} else {
+			typed = undefined;
+			ownError = required ? 'Este dato es obligatorio' : undefined;
+		}
 		return ownError === undefined;
 	}
 
@@ -71,7 +73,7 @@
 			aria-invalid={describedBy ? true : undefined}
 			aria-describedby={describedBy}
 			onfocus={() => input.select()}
-			onblur={normalize}
+			onblur={commit}
 		/>
 	{/snippet}
 </Field>

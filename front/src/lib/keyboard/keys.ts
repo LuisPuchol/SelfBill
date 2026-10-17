@@ -21,7 +21,15 @@ export interface Layer {
 
 export type KeyEventLike = Pick<
 	KeyboardEvent,
-	'key' | 'code' | 'shiftKey' | 'defaultPrevented' | 'target' | 'preventDefault'
+	| 'key'
+	| 'code'
+	| 'shiftKey'
+	| 'ctrlKey'
+	| 'altKey'
+	| 'metaKey'
+	| 'defaultPrevented'
+	| 'target'
+	| 'preventDefault'
 >;
 
 // Browser shortcuts (help, search, ...) that must never fire in the app.
@@ -110,6 +118,8 @@ function matches(a: KeyAction, event: KeyEventLike): boolean {
 
 export function dispatch(layers: readonly Layer[], event: KeyEventLike): boolean {
 	if (event.defaultPrevented) return false;
+	// Ctrl, Alt and Win combinations belong to Windows and Edge (Alt+F4 closes, Ctrl with + zooms).
+	if (event.ctrlKey || event.altKey || event.metaKey) return false;
 	const typing = isEditable(event.target);
 	for (const a of active(layers)) {
 		if (!matches(a, event)) continue;

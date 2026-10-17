@@ -127,6 +127,24 @@ describe('Form', () => {
 		await expect.element(cantidad()).toHaveValue('4');
 	});
 
+	it('the page validates every field before saving, through bind:nav', async () => {
+		const onSave = vi.fn();
+		render(FormHarness, { onLast: vi.fn(), onSave });
+		await cantidad().click();
+		await userEvent.keyboard('abc');
+		await ultimo().click();
+		await userEvent.keyboard('{NumpadAdd}');
+		await expect.element(page.getByText('Este dato es obligatorio')).toBeVisible();
+		await expect.element(page.getByText('Escribe un número')).toBeVisible();
+		await expect.element(nombre()).toHaveFocus();
+		expect(onSave).not.toHaveBeenCalled();
+
+		await userEvent.keyboard('Pepe');
+		await cantidad().click();
+		await userEvent.keyboard('5{NumpadAdd}');
+		await vi.waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+	});
+
 	it('the key bar shows Siguiente only while a field has the cursor', async () => {
 		render(FormHarness, { onLast: vi.fn() });
 		await nombre().click();

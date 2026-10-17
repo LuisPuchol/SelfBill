@@ -59,6 +59,39 @@ describe('Lot, date and choice fields', () => {
 		await expect.element(fecha()).toHaveFocus();
 	});
 
+	it('the date value follows the text while typing', async () => {
+		render(FieldsHarness);
+		await fecha().click();
+		await userEvent.keyboard('121026');
+		await expect.element(page.getByTestId('date')).toHaveTextContent('2026-10-12');
+		await expect.element(fecha()).toHaveValue('121026');
+		await expect.element(fecha()).toHaveFocus();
+	});
+
+	it('an invalid date shows its error on leaving and empties the value', async () => {
+		render(FieldsHarness);
+		await fecha().click();
+		await userEvent.keyboard('3210');
+		await lote().click();
+		await expect.element(page.getByText('Fecha no válida')).toBeVisible();
+		await expect.element(fecha()).toHaveValue('3210');
+		await expect.element(page.getByTestId('date')).toHaveTextContent(/^$/);
+	});
+
+	it('a date set from outside replaces invalid text', async () => {
+		render(FieldsHarness);
+		await fecha().click();
+		await userEvent.keyboard('3210');
+		// The page resets the date with the cursor still in the field, as after saving with "+".
+		page
+			.getByRole('button', { name: 'Poner 01/01/2026' })
+			.element()
+			.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await expect.element(fecha()).toHaveValue('01/01/2026');
+		await expect.element(page.getByTestId('date')).toHaveTextContent('2026-01-01');
+		await expect.element(fecha()).toHaveFocus();
+	});
+
 	it('a digit picks the option', async () => {
 		render(FieldsHarness);
 		focusFormato();

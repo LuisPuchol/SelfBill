@@ -14,6 +14,9 @@ function ev(over: Partial<KeyEventLike> = {}): KeyEventLike {
 		key: '',
 		code: '',
 		shiftKey: false,
+		ctrlKey: false,
+		altKey: false,
+		metaKey: false,
 		defaultPrevented: false,
 		target: null,
 		preventDefault: vi.fn(),
@@ -131,6 +134,33 @@ describe('dispatch', () => {
 		const f5 = ev({ key: 'F5', code: 'F5' });
 		expect(dispatch([], f5)).toBe(false);
 		expect(f5.preventDefault).not.toHaveBeenCalled();
+	});
+
+	it('lets Alt+F4 and Ctrl+F4 through, with or without an F4 action', () => {
+		for (const layers of [[], [layer([act('F4')])]]) {
+			for (const held of [{ altKey: true }, { ctrlKey: true }]) {
+				const e = ev({ key: 'F4', code: 'F4', ...held });
+				expect(dispatch(layers, e)).toBe(false);
+				expect(e.preventDefault).not.toHaveBeenCalled();
+			}
+		}
+		const alone = ev({ key: 'F4', code: 'F4' });
+		expect(dispatch([], alone)).toBe(false);
+		expect(alone.preventDefault).toHaveBeenCalled();
+	});
+
+	it('runs nothing while Ctrl, Alt or Win is held', () => {
+		const save = act('NumpadAdd', 'Guardar');
+		const zoom = ev({ key: '+', code: 'NumpadAdd', ctrlKey: true });
+		expect(dispatch([layer([save])], zoom)).toBe(false);
+		expect(save.run).not.toHaveBeenCalled();
+		expect(zoom.preventDefault).not.toHaveBeenCalled();
+
+		const exit = act('Escape');
+		const winEscape = ev({ key: 'Escape', code: 'Escape', metaKey: true });
+		expect(dispatch([layer([exit])], winEscape)).toBe(false);
+		expect(exit.run).not.toHaveBeenCalled();
+		expect(winEscape.preventDefault).not.toHaveBeenCalled();
 	});
 });
 

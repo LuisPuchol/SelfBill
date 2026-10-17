@@ -98,6 +98,72 @@ describe('FormNav', () => {
 		expect(document.activeElement).toBe(c);
 	});
 
+	describe('validateAll', () => {
+		it('runs every commit so every error shows, and puts the cursor on the first that fails', async () => {
+			const [a, b, c] = inputs('a', 'b', 'c');
+			const commits = [vi.fn(() => true), vi.fn(() => false), vi.fn(() => false)];
+			const nav = new FormNav();
+			// Registered out of page order: the cursor still goes to the first failing in the page.
+			nav.register({ name: 'c', el: c, commit: commits[2] });
+			nav.register({ name: 'a', el: a, commit: commits[0] });
+			nav.register({ name: 'b', el: b, commit: commits[1] });
+			a.focus();
+
+			expect(await nav.validateAll()).toBe(false);
+			for (const commit of commits) expect(commit).toHaveBeenCalledOnce();
+			expect(document.activeElement).toBe(b);
+		});
+
+		it('is true when every field passes, and leaves the cursor be', async () => {
+			const [a, b, c] = inputs('a', 'b', 'c');
+			const nav = new FormNav();
+			nav.register({ name: 'a', el: a, commit: () => true });
+			nav.register({ name: 'b', el: b });
+			nav.register({ name: 'c', el: c, commit: () => true });
+			c.focus();
+
+			expect(await nav.validateAll()).toBe(true);
+			expect(document.activeElement).toBe(c);
+		});
+
+		it('waits for an async commit', async () => {
+			const [a, b] = inputs('a', 'b');
+			let resolve!: (ok: boolean) => void;
+			const nav = new FormNav();
+			nav.register({ name: 'a', el: a, commit: () => new Promise((r) => (resolve = r)) });
+			nav.register({ name: 'b', el: b, commit: () => true });
+			b.focus();
+
+			const result = nav.validateAll();
+			resolve(false);
+			expect(await result).toBe(false);
+			expect(document.activeElement).toBe(a);
+		});
+
+		it('is busy while it runs: another validateAll is false and next() does nothing', async () => {
+			const [a, b] = inputs('a', 'b');
+			let resolve!: (ok: boolean) => void;
+			const slow = vi.fn(() => new Promise<boolean>((r) => (resolve = r)));
+			const other = vi.fn(() => true);
+			const nav = new FormNav();
+			nav.register({ name: 'a', el: a, commit: slow });
+			nav.register({ name: 'b', el: b, commit: other });
+			a.focus();
+
+			const first = nav.validateAll();
+			expect(nav.busy).toBe(true);
+			expect(await nav.validateAll()).toBe(false);
+			await nav.next();
+			expect(slow).toHaveBeenCalledOnce();
+			expect(document.activeElement).toBe(a);
+
+			resolve(true);
+			expect(await first).toBe(true);
+			expect(other).toHaveBeenCalledOnce();
+			expect(nav.busy).toBe(false);
+		});
+	});
+
 	it('knows whether the cursor is in one of its fields', () => {
 		const [a, outside] = inputs('a', 'outside');
 		const nav = new FormNav();
