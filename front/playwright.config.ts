@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
 	testDir: 'e2e',
 	testMatch: '**/*.e2e.ts',
+	fullyParallel: false,
+	workers: 1,
 	use: { baseURL: 'http://127.0.0.1:18080' },
 	webServer: {
 		command: 'node e2e/serve-jar.mjs',

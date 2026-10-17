@@ -2,10 +2,13 @@ import type { Component } from 'svelte';
 import type { RouteId } from '$app/types';
 import { FileText, Receipt, Users, Package, ScanSearch, Settings } from '@lucide/svelte';
 
+/** A route without parameters: the ones a section can point at. */
+export type SectionRoute = Exclude<RouteId, `${string}[${string}`>;
+
 export interface Section {
 	digit: string;
 	title: string;
-	href: RouteId;
+	href: SectionRoute;
 	icon: Component;
 }
 

@@ -1,5 +1,55 @@
 <script lang="ts">
-	import SectionPlaceholder from '#lib/components/SectionPlaceholder.svelte';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import ListScreen from '#lib/components/ListScreen.svelte';
+	import type { Column } from '#lib/components/table.js';
+	import { recallList, rememberList } from '#lib/records/list-memory.js';
+	import { withParams } from '#lib/url.js';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
+
+	interface Row {
+		id: number;
+		code: number;
+		name: string;
+	}
+
+	const rows = $derived<Row[]>(
+		(data.result.content ?? []).map((a) => ({ id: a.id!, code: a.code!, name: a.name ?? '' }))
+	);
+	const columns: Column<Row>[] = [
+		{ label: 'Código', value: (r) => String(r.code), align: 'right' },
+		{ label: 'Nombre', value: (r) => r.name }
+	];
 </script>
 
-<SectionPlaceholder href="/articles" />
+<ListScreen
+	title="Artículos"
+	entity={{ one: 'artículo', many: 'artículos' }}
+	{columns}
+	{rows}
+	page={{
+		number: data.result.page?.number ?? 0,
+		totalPages: data.result.page?.totalPages ?? 1
+	}}
+	search={data.q}
+	selectId={recallList('articles')?.openedId}
+	rowId={(row) => row.id}
+	onSearch={(text) =>
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same page, only the query changes
+		goto(withParams(new URL(page.url.href), { q: text || null, page: null }), {
+			replace: true,
+			reset: false
+		})}
+	onPage={(n) =>
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same page, only the query changes
+		goto(withParams(new URL(page.url.href), { page: n || null }), { reset: false })}
+	onOpen={(row) => {
+		rememberList('articles', { href: page.url.pathname + page.url.search, openedId: row.id });
+		void goto(resolve('/articles/[id]', { id: String(row.id) }));
+	}}
+	onNew={() => void goto(resolve('/articles/new'))}
+	onExit={() => void goto(resolve('/'))}
+/>
