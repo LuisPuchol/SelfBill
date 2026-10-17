@@ -24,9 +24,9 @@ descifrado lanza excepción. Es lo que pasa al restaurar la base en otro equipo 
 formulario para reintroducirla. Tratar el fallo de descifrado como "sin contraseña".
 
 ### Expuesto a la red, con la contraseña en claro
-Sin `server.address`, el API escucha en todas las interfaces, y `GET /api/user-profile`
-devuelve la contraseña SMTP descifrada. Para una app de escritorio basta con
-`server.address=127.0.0.1` y devolver `hasMailPassword` en vez de la contraseña.
+La API ya escucha solo en `127.0.0.1`. Queda que `GET /api/user-profile` devuelve la
+contraseña SMTP descifrada: devolver `hasMailPassword` en vez de la contraseña (bloque de
+ajustes).
 
 ### Errores 500 que deberían ser 4xx
 `GlobalExceptionHandler` convierte en `INTERNAL_ERROR`:
@@ -89,3 +89,46 @@ clientes y parte de albaranes. Faltan los de controlador de facturas, IVA y perf
 resto de endpoints de albaranes y los de `*Specification` que no se ejercitan en los tests
 de servicio. Tampoco hay tests del envío de email (`DocumentSender`/`EmailService`: asunto,
 cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
+
+---
+
+## 5. Front
+
+### Endurecer campos y teclado
+Primera tarea del bloque de catálogo.
+- Al hacer clic con el ratón en un campo se pierde la selección: "10,00" + teclear 4 →
+  "10,004". Un helper común para los cinco campos de texto.
+- `NumpadDecimal` con Bloq Num apagado (tecla `Supr`) inserta ","; actuar solo si la tecla es
+  "." o "," y sin Ctrl/Alt. Falta el test de `defaultPrevented`.
+- `error=""` tapa el error propio del campo (`??` → `||` en los seis campos). Decidir cómo se
+  limpia un error de la API al editar.
+- `autocomplete="off"` en los campos: el autocompletado de Edge puede tragarse el Enter.
+- Tecla mantenida: ignorar `event.repeat` salvo flechas y AvPág/RePág.
+- Toda acción de guardar lleva su propio bloqueo mientras guarda (el patrón del aviso de
+  cambios sin guardar).
+- Test que fije que el "+" del pad guarda con el foco en un campo y el "+" normal escribe.
+
+### Al hacer las primeras pantallas
+- Tras "Seguir editando", el foco vuelve al enlace de la barra superior pulsado (Enter vuelve a
+  navegar).
+- Si "Guardar y salir" falla, cerrar el aviso y llevar el cursor al primer error.
+- `inert` en `<main>` mientras se muestra la pantalla de conexión: lo tecleado llega al campo de
+  debajo.
+- `DataTable`: el `when` lee `document.activeElement` (no reactivo) y Enter abre la fila con un
+  botón enfocado; excluir botones y enlaces.
+- `CodeField`: un código inicial que no existe muestra el error antes de tocar el campo y deja
+  pasar Enter; al no encontrarlo, `value = null`.
+- Vacíos mezclados: `''` en texto, lote y fecha, y `null` en número, código y opción. Los lotes
+  opcionales (`traceabilityCode2/3`, `@Pattern("\\d{8}")`) fallan con `''`: mapear a `null` al
+  montar el payload.
+- `request()` trata cualquier rechazo como `NETWORK`; limitarlo a `TypeError` y al timeout, y lo
+  demás `UNKNOWN`.
+- El manejador de `unhandledrejection` no deja rastro en consola, y los `throw` síncronos de una
+  acción de teclado no llegan al diálogo.
+- `loaded()` construye mensajes que `+error.svelte` no enseña.
+- `data-sveltekit-preload-data="hover"` lanzará los `load` (GET a la API) al pasar el ratón:
+  revisar.
+- Regla: `decimals` de `NumberField` igual a la escala de la API (2).
+- `SpaFallbackResolver` no llama a la comprobación de ubicación de Spring (`checkResource`):
+  defensa en profundidad.
+- Iconos de Lucide importados uno a uno: el import del paquete entero hace lento `svelte-check`.

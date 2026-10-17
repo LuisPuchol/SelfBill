@@ -1,0 +1,1 @@
+console.log('selfbill-test-asset');
