@@ -1,5 +1,7 @@
 <script lang="ts" generics="T">
 	import { tick } from 'svelte';
+	import { on } from 'svelte/events';
+	import { createSubscriber } from 'svelte/reactivity';
 	import { isEditable } from '../keyboard/keys';
 	import { useKeys } from '../keyboard/keymap.svelte';
 	import type { Column } from './table';
@@ -10,6 +12,7 @@
 		onOpen,
 		page,
 		onPage,
+		selected = $bindable(0),
 		emptyText = 'No hay nada que mostrar.'
 	}: {
 		columns: Column<T>[];
@@ -17,10 +20,10 @@
 		onOpen: (row: T) => void;
 		page?: { number: number; totalPages: number };
 		onPage?: (n: number) => void;
+		selected?: number;
 		emptyText?: string;
 	} = $props();
 
-	let selected = $state(0);
 	let body: HTMLElement | undefined = $state();
 
 	// The selection goes back to the first row whenever the rows change.
@@ -37,7 +40,17 @@
 		);
 	}
 
-	const notTyping = () => !isEditable(document.activeElement);
+	// `when` runs inside a $derived in the key bar: re-evaluate it as the focus moves.
+	const subscribe = createSubscriber((update) => {
+		const off = [on(document, 'focusin', update), on(document, 'focusout', update)];
+		return () => off.forEach((remove) => remove());
+	});
+	// Enter belongs to a focused button or link, and arrows to a text field.
+	const notTyping = () => {
+		subscribe();
+		const active = document.activeElement;
+		return !isEditable(active) && active?.tagName !== 'BUTTON' && active?.tagName !== 'A';
+	};
 	const canMove = () => rows.length > 0 && notTyping();
 	const hasNext = () => !!onPage && !!page && page.number + 1 < page.totalPages && notTyping();
 	const hasPrevious = () => !!onPage && !!page && page.number > 0 && notTyping();

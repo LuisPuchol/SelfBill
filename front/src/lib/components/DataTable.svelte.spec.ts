@@ -53,6 +53,21 @@ describe('DataTable', () => {
 		expect(onPage).toHaveBeenCalledTimes(1);
 	});
 
+	it('Enter does not open a row while a button has focus', async () => {
+		const onOpen = vi.fn();
+		render(TableHarness, { onOpen });
+		page.getByRole('button', { name: 'Otro' }).element().focus();
+		await userEvent.keyboard('{Enter}');
+		expect(onOpen).not.toHaveBeenCalled();
+	});
+
+	it('bind:selected follows the arrows', async () => {
+		render(TableHarness, { onOpen: vi.fn() });
+		await expect.element(page.getByTestId('selected')).toHaveTextContent('0');
+		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(page.getByTestId('selected')).toHaveTextContent('1');
+	});
+
 	it('an empty list says so', async () => {
 		const onOpen = vi.fn();
 		render(TableHarness, { onOpen, rows: [] });
@@ -90,6 +105,8 @@ describe('DataTable', () => {
 		await userEvent.keyboard('{ArrowDown}{ArrowDown}');
 		await page.getByRole('button', { name: 'Cambiar filas' }).click();
 		await expect.element(page.getByRole('row').nth(1)).toHaveAttribute('aria-selected', 'true');
+		// The click left the cursor on the button, which would keep Enter for itself.
+		(document.activeElement as HTMLElement).blur();
 		await userEvent.keyboard('{Enter}');
 		expect(onOpen).toHaveBeenCalledExactlyOnceWith(rows[2]);
 	});

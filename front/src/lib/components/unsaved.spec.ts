@@ -8,18 +8,20 @@ function setup(
 ) {
 	const goto = vi.fn(options.goto ?? (() => Promise.resolve()));
 	const onAsk = vi.fn();
+	const onClosed = vi.fn();
 	const guard = createUnsavedGuard({
 		isDirty: () => options.dirty ?? true,
 		save: options.save ?? (() => Promise.resolve(true)),
 		goto,
-		onAsk
+		onAsk,
+		onClosed
 	});
 	const nav = (willUnload = false): PendingNavigation => ({
 		to: { url },
 		willUnload,
 		cancel: vi.fn()
 	});
-	return { guard, goto, onAsk, nav };
+	return { guard, goto, onAsk, onClosed, nav };
 }
 
 describe('unsaved changes guard', () => {
@@ -55,6 +57,13 @@ describe('unsaved changes guard', () => {
 		expect(goto).not.toHaveBeenCalled();
 	});
 
+	it('keep editing calls onClosed', () => {
+		const { guard, onClosed, nav } = setup();
+		guard.check(nav());
+		guard.keepEditing();
+		expect(onClosed).toHaveBeenCalledOnce();
+	});
+
 	it('discard leaves to the requested page', async () => {
 		let during: PendingNavigation | undefined;
 		const { guard, goto, onAsk, nav } = setup();
@@ -70,14 +79,21 @@ describe('unsaved changes guard', () => {
 		expect(during?.cancel).not.toHaveBeenCalled();
 	});
 
-	it('save and leave only leaves when saving works', async () => {
-		const save = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-		const { guard, goto, nav } = setup({ save });
+	it('a failed save and leave closes the question', async () => {
+		const { guard, goto, onAsk, onClosed, nav } = setup({ save: () => Promise.resolve(false) });
 		guard.check(nav());
 		await guard.saveAndLeave();
+		expect(onAsk).toHaveBeenLastCalledWith(false);
+		expect(onClosed).toHaveBeenCalledOnce();
 		expect(goto).not.toHaveBeenCalled();
+	});
+
+	it('save and leave leaves when saving works', async () => {
+		const { guard, goto, onClosed, nav } = setup();
+		guard.check(nav());
 		await guard.saveAndLeave();
 		expect(goto).toHaveBeenCalledWith(url);
+		expect(onClosed).not.toHaveBeenCalled();
 	});
 
 	it('ignores save and leave while a save is in flight', async () => {

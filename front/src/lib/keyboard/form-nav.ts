@@ -16,6 +16,9 @@ const FORM_NAV = Symbol('form-nav');
 export class FormNav {
 	#fields: NavField[] = [];
 	#busy = false;
+	#last: NavField | undefined;
+	/** First field that failed the last validateAll(); the cursor could not go there if a dialog was open. */
+	#lastFailed: NavField | undefined;
 	readonly #onLast?: () => void;
 	readonly #subscribe = createSubscriber((update) => {
 		const off = [on(document, 'focusin', update), on(document, 'focusout', update)];
@@ -33,8 +36,15 @@ export class FormNav {
 
 	register(field: NavField): () => void {
 		this.#fields.push(field);
+		const off = on(field.el, 'focusin', () => {
+			this.#last = field;
+			if (this.#lastFailed !== field) this.#lastFailed = undefined;
+		});
 		return () => {
+			off();
 			this.#fields = this.#fields.filter((f) => f !== field);
+			if (this.#last === field) this.#last = undefined;
+			if (this.#lastFailed === field) this.#lastFailed = undefined;
 		};
 	}
 
@@ -73,6 +83,7 @@ export class FormNav {
 			// Started in page order; the async ones (lookups) are awaited together.
 			const results = await Promise.all(ordered.map(async (field) => field.commit?.() ?? true));
 			const failed = ordered.find((_, i) => !results[i]);
+			this.#lastFailed = failed;
 			failed?.el.focus();
 			return failed === undefined;
 		} finally {
@@ -105,6 +116,16 @@ export class FormNav {
 		this.#ordered()
 			.find((f) => names.includes(f.name))
 			?.el.focus();
+	}
+
+	/** The first field in page order. */
+	focusFirstField(): void {
+		this.#ordered()[0]?.el.focus();
+	}
+
+	/** Back to the first field that failed validateAll(), else the last one with the cursor, else the first. */
+	restoreFocus(): void {
+		(this.#lastFailed ?? this.#last ?? this.#ordered()[0])?.el.focus();
 	}
 
 	#current(): NavField | undefined {

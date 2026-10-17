@@ -9,6 +9,8 @@ export function createUnsavedGuard(options: {
 	save: () => Promise<boolean>;
 	goto: (url: URL) => Promise<void>;
 	onAsk: (asking: boolean) => void;
+	/** The question closed without leaving. */
+	onClosed?: () => void;
 }): {
 	check(nav: PendingNavigation): void;
 	keepEditing(): void;
@@ -45,13 +47,20 @@ export function createUnsavedGuard(options: {
 		keepEditing() {
 			pending = null;
 			options.onAsk(false);
+			options.onClosed?.();
 		},
 		discard: leave,
 		async saveAndLeave() {
 			if (saving) return;
 			saving = true;
 			try {
-				if (!(await options.save())) return;
+				if (!(await options.save())) {
+					// The form shows its errors: close the question so the user can see them.
+					pending = null;
+					options.onAsk(false);
+					options.onClosed?.();
+					return;
+				}
 			} finally {
 				saving = false;
 			}
