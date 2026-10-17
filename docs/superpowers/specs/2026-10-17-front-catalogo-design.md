@@ -27,6 +27,7 @@ cuando. El trabajo diario son los albaranes, que buscan clientes y artículos po
 | Lista y ficha | Pantallas separadas. Enter abre la ficha, Esc vuelve a la lista | Usuario |
 | Búsqueda | Un solo buscador. Solo cifras: código exacto, y Enter lo abre. Letras: filtra por nombre | Usuario |
 | Búsqueda de clientes | Nombre comercial, razón social o NIF: filtro `q` nuevo en la API | Usuario |
+| Tildes y mayúsculas | La búsqueda las ignora ("garcia" encuentra "García" y "GARCÍA"), con una columna `search_text` normalizada | Usuario, al revisar el plan (§5) |
 | Borrar con pendientes | Aviso con números y se deja borrar. Recuperar borrados sigue en PENDIENTES | Usuario |
 | Avisos de la ficha de cliente | "Faltan datos para facturar" (no bloquea) y confirmar el cambio de IVA o recargo si hay pendientes | Usuario |
 | Tras guardar | Alta → otra alta con el siguiente código. Edición → vuelta a la lista con la fila seleccionada | Usuario |
@@ -211,7 +212,9 @@ campos, cómo se monta lo que se envía, cómo se cuentan sus pendientes y sus a
 
 | Cambio | Motivo |
 |---|---|
-| `ClientFilter.q`: contiene, sin distinguir mayúsculas, en `name`, `businessName` o `nif`. Se combina con Y con los demás filtros, y un `q` vacío se ignora | §4.1 |
+| Columna `search_text` en `clients` y `articles`: el texto de búsqueda sin tildes ni diéresis y en minúsculas, calculado en Java (`SearchText.normalize`) al guardar. Migración Flyway V4 en Java, que añade la columna y rellena las filas existentes. Es necesaria porque el `lower()` de SQLite solo entiende ASCII: "garcia" no encontraba "García" | §4.1 |
+| `ClientFilter.q`: contiene, sin tildes ni mayúsculas, en `name`, `businessName` o `nif` (sobre `search_text`). Se combina con Y con los demás filtros, y un `q` vacío se ignora | §4.1 |
+| El filtro `name` de artículos compara sobre `search_text`, también sin tildes ni mayúsculas | §4.1 |
 
 Después se regeneran los tipos del front (`npm run api:types`). Lo demás ya existe: `sort=code`,
 `next-code`, `by-code` y los filtros para contar pendientes.
@@ -222,7 +225,7 @@ Después se regeneran los tipos del front (`npm run api:types`). Lo demás ya ex
 
 | Nivel | Qué cubre |
 |---|---|
-| API | `q` encuentra por nombre comercial, razón social y NIF; se combina con el rango de códigos; un `q` vacío se ignora; aparece en el OpenAPI |
+| API | `q` encuentra por nombre comercial, razón social y NIF, sin tildes ni mayúsculas; se combina con el rango de códigos; un `q` vacío se ignora; aparece en el OpenAPI. El nombre de artículos ignora tildes y mayúsculas. La migración rellena las filas existentes y la columna se mantiene al editar |
 | Unitario (node) | Montar lo que se envía (recorte y `null`); datos que faltan para facturar; código frente a texto en el buscador; clasificación de `request()`; `event.repeat` y modificadores en `dispatch` |
 | Componente | Cada punto de §4.3; `ListScreen` (búsqueda tras la pausa, cifras como código, ↑/↓/Enter desde el buscador, Esc borra y luego sale, F2); `useRecordForm` con API y navegación inyectadas (valida antes de enviar, código repetido bajo el campo, alta en cadena, edición vuelve a la lista, doble "+" guarda una vez, borrar con números, confirmación del régimen solo con pendientes) |
 | Punta a punta | Ver abajo |

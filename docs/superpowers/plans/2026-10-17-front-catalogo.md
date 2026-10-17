@@ -13,7 +13,7 @@
 ## Requisitos previos
 
 - Rama `feature/front-catalogo`, que ya tiene el commit del spec.
-- **Por instrucción del usuario, ninguna tarea se commitea:** al acabar cada una se para y el usuario la revisa. Los pasos "Dejar sin commitear" lo recuerdan.
+- **Por instrucción del usuario:** cada tarea se commitea en local en cuanto pasa su revisión, y se sigue con la siguiente. El usuario revisa la PR final. Los implementadores no commitean: el paso "Commit" lo hace el controlador tras la revisión.
 - Node 22.18. `JAVA_HOME` apunta al JDK 25; el `java` del PATH es el JDK 24.
 - Comandos del front desde `front/`, y de la API desde `selfbill-api/` (`./mvnw`).
 - Líneas base: `./mvnw test` 128 tests; `npm test` 145 tests; `npm run test:e2e` 6 tests.
@@ -36,7 +36,7 @@
 4. Buscar un código que no existe dice "No existe ningún cliente con el código 7." y Enter no abre nada (tarea 5, mensajes de `ListScreen`).
 5. Cambiar el IVA de un cliente sin pendientes guarda sin preguntar; con pendientes pregunta, y confirmar guarda una sola vez (tarea 5, `confirmation before saving only when asked`; tarea 7, prueba de punta a punta).
 
-Límite conocido, decidido con el usuario fuera de este plan: el `lower()` de SQLite solo entiende letras sin tilde, así que "garcia" no encuentra "García".
+Además, ampliado con el usuario al revisar el plan: buscar sin tildes ni mayúsculas ("garcia" encuentra "García" y "GARCÍA"), con una columna normalizada en la API (tarea 1, `ignoresAccentsAndCase`; tarea 7, prueba de punta a punta).
 
 ## Mapa de ficheros
 
@@ -44,7 +44,7 @@ API: `main/` = `selfbill-api/src/main/java/com/luispuchol/selfbill/selfbill_api/
 
 | Fichero | Responsabilidad | Tarea |
 |---|---|---|
-| `main/catalog/client/ClientFilter.java`, `ClientSpecification.java`, `test/catalog/client/ClientQueriesTest.java`, `test/OpenApiDocsTest.java`, `src/lib/api/schema.d.ts` | Filtro `q` y tipos | 1 |
+| `main/shared/SearchText.java`, `db/migration/V4__Search_text.java`, `Client.java`, `Article.java`, filtros y specifications, sus tests, `src/lib/api/schema.d.ts` | Búsqueda normalizada, filtro `q` y tipos | 1 |
 | `src/lib/components/select-on-focus.ts`, los seis campos, `Field.svelte` | Endurecer campos | 2 |
 | `src/lib/keyboard/keys.ts`, `form-nav.ts`, `src/lib/components/unsaved.ts`, `UnsavedGuard.svelte`, `DataTable.svelte` | Endurecer teclado y ficha | 3 |
 | `src/lib/api/client.ts`, `load.ts`, `src/routes/+layout.svelte`, `src/app.html` | Endurecer la app | 4 |
@@ -57,47 +57,80 @@ Los componentes de prueba (`*Harness.svelte`) van en `src/lib/test/`.
 
 ---
 
-### Task 1: Filtro `q` de clientes en la API
+### Task 1: Búsqueda sin tildes ni mayúsculas y filtro `q` en la API
+
+El `lower()` de SQLite solo entiende ASCII: `lower('GARCÍA')` da `'garcÍa'`, así que "garcia" no
+encuentra "García" (comprobado). Se busca sobre una columna `search_text` ya normalizada en Java: sin
+tildes ni diéresis y en minúsculas. Decidido con el usuario al revisar el plan.
 
 **Files:**
-- Modify: `main/catalog/client/ClientFilter.java`, `main/catalog/client/ClientSpecification.java`
-- Create: `test/catalog/client/ClientQueriesTest.java`
+- Create: `main/shared/SearchText.java`, `test/shared/SearchTextTest.java`
+- Create: `selfbill-api/src/main/java/db/migration/V4__Search_text.java` (migración Java de Flyway, paquete `db.migration`)
+- Modify: `main/catalog/client/Client.java`, `main/catalog/article/Article.java`
+- Modify: `main/catalog/client/ClientFilter.java`, `main/catalog/client/ClientSpecification.java`, `main/catalog/article/ArticleFilter.java` (descripción), `main/catalog/article/ArticleSpecification.java`
+- Create: `test/catalog/client/ClientQueriesTest.java`, `test/catalog/article/ArticleQueriesTest.java`, `test/SearchTextBackfillTest.java`
 - Modify: `test/OpenApiDocsTest.java`
 - Modify: `front/src/lib/api/schema.d.ts` (regenerado)
 
 **Interfaces:**
-- Produces: `GET /api/clients?q=` (contiene, sin distinguir mayúsculas, en `name`, `businessName` o `nif`; combinado con Y con los demás filtros; vacío se ignora). En el front: `paths['/api/clients']['get']['parameters']['query']['q']`.
+- Produces:
+  - `SearchText.normalize(String... parts): String`. Une las partes no nulas con un espacio, aplica NFD, quita las marcas (`\p{M}`), pasa a minúsculas con `Locale.ROOT` y recorta. `"GARCÍA"` → `"garcia"`, `"Peña"` → `"pena"`.
+  - Columna `search_text TEXT NOT NULL DEFAULT ''` en `clients` y `articles`:
+    - cliente: `normalize(name, businessName, nif)`;
+    - artículo: `normalize(name)`.
+  - Se mantiene con un método `@PrePersist @PreUpdate` en cada entidad (`refreshSearchText()`), y el campo se mapea como `@Column(name = "search_text", nullable = false)`.
+  - `V4__Search_text extends BaseJavaMigration`: `ALTER TABLE … ADD COLUMN` en las dos tablas y después `backfill(Connection)`. Es un método estático público que rellena `search_text` de todas las filas, también las borradas, con `SearchText.normalize` (selects por `id` y updates preparados).
+  - `GET /api/clients?q=`: `like` de `'%' + normalize(q) + '%'` sobre `search_text`; Y con los demás filtros; en blanco se ignora.
+  - `GET /api/articles?name=`: el filtro existente pasa a comparar sobre `search_text` con el texto normalizado.
+  - Los filtros `name` y `businessName` de clientes no cambian: el front no los usa.
+  - En el front: `paths['/api/clients']['get']['parameters']['query']['q']`.
 
 - [ ] **Step 1: Escribir los tests**
 
-`ClientQueriesTest extends DomainIntegrationTest`. Usa `clientService.getAllClients(ClientFilter.builder()…build(), PageRequest.of(0, 20))` y clientes creados con `clientService.createClient(clientRequest(…))`, ajustando nombre, razón social y NIF con el builder.
-
 ```java
-@Test void findsByTradeNameBusinessNameOrNif()
-// clientes: (10, "Frutería García", "Frutas Levante SL", "B11111111"),
-//           (11, "Bar Pepe", "Hostelería García SC", "B22222222"),
-//           (12, "Hotel Sol", "Turismo SA", "A33333333")
-// q "garcía" → códigos 10 y 11; q "B2222" → 11; q "HOTEL" → 12
-@Test void combinesWithTheCodeRange()  // q "garcía" + codeFrom 11 → solo 11
-@Test void ignoresABlankQ()            // q "  " → los tres (más el cliente 1 de DomainIntegrationTest)
+// SearchTextTest (unitario)
+assertThat(SearchText.normalize("García")).isEqualTo("garcia");
+assertThat(SearchText.normalize("GARCÍA")).isEqualTo("garcia");
+assertThat(SearchText.normalize("Peña")).isEqualTo("pena");
+assertThat(SearchText.normalize("Bar Pepe", null, "B1")).isEqualTo("bar pepe b1");
+
+// ClientQueriesTest extends DomainIntegrationTest: clientService.getAllClients(ClientFilter.builder()…build(), PageRequest.of(0, 20));
+// clientes creados con clientService.createClient(clientRequest(…)), ajustando nombre, razón social y NIF con el builder:
+//   (10, "Frutería García", "Frutas Levante SL", "B11111111"),
+//   (11, "Bar Pepe", "Hostelería GARCÍA SC", "B22222222"),
+//   (12, "Hotel Sol", "Turismo SA", "A33333333")
+@Test void findsByTradeNameBusinessNameOrNif()   // q "garcia" → 10 y 11; q "B2222" → 11; q "HOTEL" → 12
+@Test void ignoresAccentsAndCase()                // q "GARCÍA" → 10 y 11; q "frutería" → 10
+@Test void combinesWithTheCodeRange()             // q "garcia" + codeFrom 11 → solo 11
+@Test void ignoresABlankQ()                       // q "  " → los tres (más el cliente 1 de DomainIntegrationTest)
+@Test void keepsSearchTextUpToDateOnUpdate()      // actualizar el nombre del 12 a "Hotel Mar" → q "mar" → 12
+
+// ArticleQueriesTest extends DomainIntegrationTest
+@Test void findsByNameIgnoringAccentsAndCase()   // "Plátano canario" → name "platano" y "PLÁTANO" lo encuentran
+
+// SearchTextBackfillTest extends DomainIntegrationTest
+@Test void backfillNormalizesExistingRows()
+// jdbc: UPDATE clients SET search_text = '' (y articles); V4__Search_text.backfill(conexión del DataSource);
+// el cliente 1 de DomainIntegrationTest queda con normalize(name, businessName, nif)
 ```
 
 En `OpenApiDocsTest.documentsTheApi`, añadir: `jsonPath("$.paths['/api/clients'].get.parameters[?(@.name == 'q')]").exists()`.
 
 - [ ] **Step 2: Ejecutar y ver que falla**
 
-Run: `./mvnw test -Dtest=ClientQueriesTest,OpenApiDocsTest`
-Expected: FAIL, no compila (no existe `q`).
+Run: `./mvnw test -Dtest=SearchTextTest,ClientQueriesTest,ArticleQueriesTest,SearchTextBackfillTest,OpenApiDocsTest`
+Expected: FAIL, no compila (no existen `SearchText`, `q` ni la migración).
 
 - [ ] **Step 3: Implementar**
 
-- `ClientFilter`: nuevo componente `@Schema(description = "Part of the trade name, the legal name or the NIF, ignoring case") String q`.
-- `ClientSpecification`: `.and(anyNameOrNifLike(filter.q()))`, un `or` de tres `like` en minúsculas con el mismo patrón que `nameLike`. Si `q` es nulo o en blanco, devuelve `null`.
+- `ClientFilter`: nuevo componente `@Schema(description = "Part of the trade name, the legal name or the NIF, ignoring case and accents") String q`.
+- `ArticleFilter.name`: descripción "Part of the name, ignoring case and accents".
+- `SchemaTest` debe seguir pasando: Hibernate valida que `search_text` exista tras la migración.
 
 - [ ] **Step 4: Ejecutar y ver que pasa**
 
 Run: `./mvnw test`
-Expected: 131 tests, 0 fallos.
+Expected: los 128 de antes más los nuevos, 0 fallos, `ModularityTest` incluido.
 
 - [ ] **Step 5: Regenerar los tipos del front**
 
@@ -109,7 +142,7 @@ Arrancar la API en el 8080 con base y clave desechables:
 
 Después, `npm run api:types` en `front/` y parar la API (`netstat -ano | grep 8080`, `taskkill //PID <pid> //F`). Run: `npm run check`. Expected: 0 errores, y `schema.d.ts` tiene `q?: string` en la consulta de `/api/clients`.
 
-- [ ] **Step 6: Dejar sin commitear**
+- [ ] **Step 6: Commit (lo hace el controlador tras la revisión de la tarea)**
 
 ---
 
@@ -170,7 +203,7 @@ Expected: FAIL en los tests nuevos.
 Run: `npm run check && npm run lint && npm test`
 Expected: PASS.
 
-- [ ] **Step 5: Dejar sin commitear**
+- [ ] **Step 5: Commit (lo hace el controlador tras la revisión de la tarea)**
 
 ---
 
@@ -222,7 +255,7 @@ Expected: FAIL en los tests nuevos.
 Run: `npm run check && npm run lint && npm test`
 Expected: PASS.
 
-- [ ] **Step 5: Dejar sin commitear**
+- [ ] **Step 5: Commit (lo hace el controlador tras la revisión de la tarea)**
 
 ---
 
@@ -265,7 +298,7 @@ Expected: FAIL en el caso `SyntaxError` (hoy da `NETWORK`).
 Run: `npm run check && npm run lint && npm test && npm run build`
 Expected: PASS.
 
-- [ ] **Step 5: Dejar sin commitear**
+- [ ] **Step 5: Commit (lo hace el controlador tras la revisión de la tarea)**
 
 ---
 
@@ -425,7 +458,7 @@ Expected: FAIL, no existen los módulos.
 Run: `npm run check && npm run lint && npm test`
 Expected: PASS.
 
-- [ ] **Step 5: Dejar sin commitear**
+- [ ] **Step 5: Commit (lo hace el controlador tras la revisión de la tarea)**
 
 ---
 
@@ -500,7 +533,7 @@ Expected: FAIL, no existen los módulos.
 Run: `npm run check && npm run lint && npm test && npm run test:e2e`
 Expected: PASS. Las pruebas de punta a punta son las 6 de antes más las de artículos.
 
-- [ ] **Step 5: Dejar sin commitear**
+- [ ] **Step 5: Commit (lo hace el controlador tras la revisión de la tarea)**
 
 ---
 
@@ -580,7 +613,7 @@ expect(EMAIL_PATTERN.test('pedidos@frutas.es')).toBe(true); expect(EMAIL_PATTERN
 test('a minimal client saves and says what is missing for invoices')
 // F2, nombre y razón social → recuadro 'Para poder facturarle faltan: NIF, dirección, código postal y población.' → NumpadAdd → guardado;
 // abrirlo, rellenar NIF, dirección, CP 46001 y población → el recuadro desaparece → NumpadAdd
-test('search by business name and by NIF')
+test('search by business name and by NIF')         // razón social 'Frutas García SL' encontrada tecleando 'garcia' (sin tilde); NIF por un trozo
 test('a regime change with a pending delivery note asks first')
 // abrir el cliente con albarán, IVA '2', NumpadAdd → 'Cambiar el IVA o el recargo recalculará 1 albarán sin facturar de este cliente.';
 // Enter → sigue en la ficha sin guardar; NumpadAdd y NumpadAdd → guardado (lista)
@@ -601,7 +634,7 @@ Expected: FAIL en los módulos y funciones nuevos.
 Run: `npm run check && npm run lint && npm test && npm run test:e2e`
 Expected: PASS, y nada escuchando en el 18080 al acabar.
 
-- [ ] **Step 5: Dejar sin commitear**
+- [ ] **Step 5: Commit (lo hace el controlador tras la revisión de la tarea)**
 
 ---
 
@@ -619,7 +652,6 @@ Quitar lo hecho: todo el grupo "Endurecer campos y teclado", y del segundo grupo
 - la regla de `decimals`.
 
 Añadir:
-- Búsqueda sin tildes: el `lower()` de SQLite solo entiende ASCII, así que "garcia" no encuentra "García".
 - El "+" justo después de Enter en un `CodeField` con la consulta en curso se ignora (decidir con el editor de albaranes).
 - En artículos, el aviso de borrar no cuenta los albaranes que están en facturas en borrador.
 
@@ -632,4 +664,4 @@ En "Convenciones" de `front/README.md`, una línea: las listas usan `ListScreen`
 Run: `npm run lint`
 Expected: limpio.
 
-- [ ] **Step 4: Dejar sin commitear**
+- [ ] **Step 4: Commit (lo hace el controlador tras la revisión de la tarea)**
