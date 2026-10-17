@@ -2,6 +2,7 @@
 	import { getFormNav } from '../keyboard/form-nav';
 	import Field from './Field.svelte';
 	import { inputClass } from './field-style';
+	import { selectOnFocus } from './select-on-focus';
 
 	let {
 		label,
@@ -34,16 +35,22 @@
 		ownError = undefined;
 	}
 
-	function commit(): boolean {
-		if (value === '') ownError = required ? 'Este dato es obligatorio' : undefined;
-		else ownError = value.length === length ? undefined : `Tienen que ser ${length} cifras`;
+	/** Empty is only reported when asked to (Enter), never on leaving. */
+	function check(includeRequired: boolean): boolean {
+		if (value === '') {
+			if (includeRequired) ownError = required ? 'Este dato es obligatorio' : undefined;
+		} else {
+			ownError = value.length === length ? undefined : `Tienen que ser ${length} cifras`;
+		}
 		return ownError === undefined;
 	}
+
+	const commit = () => check(true);
 
 	$effect(() => nav?.register({ name, el: input, commit }));
 </script>
 
-<Field id={name} {label} error={error ?? ownError}>
+<Field id={name} {label} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<input
 			bind:this={input}
@@ -56,7 +63,9 @@
 			class="{inputClass} tabular"
 			aria-invalid={describedBy ? true : undefined}
 			aria-describedby={describedBy}
-			onfocus={() => input.select()}
+			use:selectOnFocus
+			autocomplete="off"
+			onblur={() => check(false)}
 			{oninput}
 		/>
 	{/snippet}

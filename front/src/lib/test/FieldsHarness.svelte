@@ -4,6 +4,7 @@
 	import TextField from '../components/TextField.svelte';
 	import DigitsField from '../components/DigitsField.svelte';
 	import DateField from '../components/DateField.svelte';
+	import NumberField from '../components/NumberField.svelte';
 	import ChoiceField from '../components/ChoiceField.svelte';
 
 	import { todayIso } from '../format/date';
@@ -14,12 +15,13 @@
 	let date = $state(todayIso());
 	let format = $state<Format | null>(null);
 	let last = $state('');
+	let whole = $state<number | null>(null);
 </script>
 
 <KeyboardRoot />
 <Form onLast={() => {}}>
 	<DigitsField label="Lote" name="traceabilityCode1" length={8} bind:value={lot} required />
-	<DateField label="Fecha" name="date" bind:value={date} />
+	<DateField label="Fecha" name="date" bind:value={date} required />
 	<ChoiceField
 		label="Formato"
 		name="format"
@@ -31,6 +33,7 @@
 		required
 	/>
 	<TextField label="Fin" name="last" bind:value={last} />
+	<NumberField label="Entero" name="whole" decimals={0} bind:value={whole} />
 </Form>
 <output data-testid="lot">{lot}</output>
 <output data-testid="date">{date}</output>

@@ -46,7 +46,7 @@
 	$effect(() => nav?.register({ name, el: group, commit }));
 </script>
 
-<Field id={name} {label} error={error ?? ownError}>
+<Field id={name} {label} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<div
 			bind:this={group}

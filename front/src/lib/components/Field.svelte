@@ -20,7 +20,5 @@
 <div class="flex flex-col gap-1">
 	<label id="{id}-label" for={id} class="font-medium">{label}</label>
 	{@render children(error ? errorId : undefined)}
-	{#if error}
-		<p id={errorId} class="text-danger">{error}</p>
-	{/if}
+	<p id={errorId} class="min-h-[1.5em] text-danger" aria-live="polite">{error ?? ''}</p>
 </div>
