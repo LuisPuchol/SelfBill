@@ -2,12 +2,15 @@ package com.luispuchol.selfbill.selfbill_api.catalog.client;
 
 import org.hibernate.annotations.SQLDelete;
 
+import com.luispuchol.selfbill.selfbill_api.shared.SearchText;
 import com.luispuchol.selfbill.selfbill_api.shared.SoftDeletableEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -73,4 +76,13 @@ public class Client extends SoftDeletableEntity {
     @Column(name = "default_delivery_note_format", nullable = false)
     @Builder.Default
     private DeliveryNoteFormat defaultDeliveryNoteFormat = DeliveryNoteFormat.PLAIN;
+
+    @Column(name = "search_text", nullable = false)
+    private String searchText;
+
+    @PrePersist
+    @PreUpdate
+    void refreshSearchText() {
+        searchText = SearchText.normalize(name, businessName, nif);
+    }
 }

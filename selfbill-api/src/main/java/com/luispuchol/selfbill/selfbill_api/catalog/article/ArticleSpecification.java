@@ -2,6 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.catalog.article;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import com.luispuchol.selfbill.selfbill_api.shared.SearchText;
 import com.luispuchol.selfbill.selfbill_api.shared.SoftDeletableEntity_;
 
 public final class ArticleSpecification {
@@ -19,7 +20,7 @@ public final class ArticleSpecification {
 
     private static Specification<Article> nameLike(String name) {
         return (root, query, cb) -> name == null || name.isBlank() ? null
-                : cb.like(cb.lower(root.get(Article_.name)), "%" + name.toLowerCase() + "%");
+                : cb.like(root.get(Article_.searchText), "%" + SearchText.normalize(name) + "%");
     }
 
     private static Specification<Article> codeFrom(Integer from) {

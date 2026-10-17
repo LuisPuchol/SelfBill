@@ -2,10 +2,13 @@ package com.luispuchol.selfbill.selfbill_api.catalog.article;
 
 import org.hibernate.annotations.SQLDelete;
 
+import com.luispuchol.selfbill.selfbill_api.shared.SearchText;
 import com.luispuchol.selfbill.selfbill_api.shared.SoftDeletableEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,4 +32,13 @@ public class Article extends SoftDeletableEntity {
 
     @Column(nullable = false, length = 255)
     private String name;
+
+    @Column(name = "search_text", nullable = false)
+    private String searchText;
+
+    @PrePersist
+    @PreUpdate
+    void refreshSearchText() {
+        searchText = SearchText.normalize(name);
+    }
 }

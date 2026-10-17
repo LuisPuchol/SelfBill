@@ -5,7 +5,7 @@ import lombok.Builder;
 
 @Builder
 public record ArticleFilter(
-        @Schema(description = "Part of the name, ignoring case")
+        @Schema(description = "Part of the name, ignoring case and accents")
         String name,
 
         @Schema(description = "Lowest code, inclusive")

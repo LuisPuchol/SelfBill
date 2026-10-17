@@ -2,6 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.catalog.client;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import com.luispuchol.selfbill.selfbill_api.shared.SearchText;
 import com.luispuchol.selfbill.selfbill_api.shared.SoftDeletableEntity_;
 
 public final class ClientSpecification {
@@ -11,11 +12,17 @@ public final class ClientSpecification {
 
     public static Specification<Client> withFilter(ClientFilter filter) {
         return Specification.<Client>unrestricted()
+                .and(matches(filter.q()))
                 .and(nameLike(filter.name()))
                 .and(businessNameLike(filter.businessName()))
                 .and(codeFrom(filter.codeFrom()))
                 .and(codeTo(filter.codeTo()))
                 .and(notDeleted());
+    }
+
+    private static Specification<Client> matches(String q) {
+        return (root, query, cb) -> q == null || q.isBlank() ? null
+                : cb.like(root.get(Client_.searchText), "%" + SearchText.normalize(q) + "%");
     }
 
     private static Specification<Client> nameLike(String name) {
