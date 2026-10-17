@@ -1,54 +1,16 @@
-# sv
+# SelfBill front
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Interfaz de SelfBill: una SPA de SvelteKit (adapter estático) pensada para usarse con teclado y que se
+empaqueta dentro del jar de `selfbill-api`, que la sirve. Está pensada para usarse en una ventana de Edge en modo app, que abrirá un lanzador que aún no existe.
 
-## Creating a project
+Especificación de la base: [../docs/superpowers/specs/2026-10-13-front-base-design.md](../docs/superpowers/specs/2026-10-13-front-base-design.md)
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Comandos
 
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-npx sv@1.1.1 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" tailwindcss="plugins:none" sveltekit-adapter="adapter:static" playwright="demo:no" --install npm front
-```
-
-## Adding features
-
-Add features to your project with `sv add`:
-
-```sh
-npx sv add
-```
-
-For example, to add Tailwind CSS:
-
-```sh
-npx sv add tailwindcss
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
+- `npm run dev`: servidor de desarrollo. Necesita la API en marcha en el puerto 8080
+  (`./mvnw spring-boot:run` en `selfbill-api/`); `/api` se redirige por proxy.
+- `npm run api:types`: regenera `src/lib/api/schema.d.ts` desde la API (también necesita la API en el 8080).
+- `npm test`: tests unitarios y de componentes.
+- `npm run test:e2e`: construye el jar y lanza Playwright contra él en el puerto 18080 con una BD temporal.
+- `npm run package`: build del front + jar; es el entregable.
+- `npm run check` / `npm run lint`: tipos y estilo.
