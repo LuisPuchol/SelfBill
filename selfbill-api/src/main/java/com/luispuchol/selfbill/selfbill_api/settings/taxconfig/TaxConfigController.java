@@ -3,6 +3,8 @@ package com.luispuchol.selfbill.selfbill_api.settings.taxconfig;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.TAX_CONFIG_ALREADY_EXISTS;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.TAX_CONFIG_NOT_FOUND;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +36,12 @@ public class TaxConfigController {
     @GetMapping
     public TaxConfigResponse getTaxConfig() {
         return taxConfigService.getTaxConfig();
+    }
+
+    @Operation(summary = "List every tax configuration, newest first")
+    @GetMapping("/history")
+    public List<TaxConfigResponse> getHistory() {
+        return taxConfigService.getHistory();
     }
 
     @Operation(summary = "Add a tax configuration from a date", description = """

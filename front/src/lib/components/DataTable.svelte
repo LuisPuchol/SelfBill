@@ -11,13 +11,16 @@
 		rows,
 		onOpen,
 		selected = $bindable(0),
-		emptyText = 'No hay nada que mostrar.'
+		emptyText = 'No hay nada que mostrar.',
+		openLabel = 'Abrir'
 	}: {
 		columns: Column<T>[];
 		rows: T[];
 		onOpen: (row: T) => void;
 		selected?: number;
 		emptyText?: string;
+		/** The label of the Enter action */
+		openLabel?: string;
 	} = $props();
 
 	let body: HTMLElement | undefined = $state();
@@ -70,7 +73,7 @@
 		{ key: 'ArrowDown', label: 'Siguiente', hidden: true, when: canMove, run: () => move(1) },
 		{
 			key: 'Enter',
-			label: 'Abrir',
+			label: openLabel,
 			when: canMove,
 			run: () => {
 				const row = rows[selected];

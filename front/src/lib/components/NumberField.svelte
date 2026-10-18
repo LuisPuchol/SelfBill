@@ -11,7 +11,8 @@
 		value = $bindable<number | null>(null),
 		decimals = 2,
 		required = false,
-		error
+		error,
+		validate
 	}: {
 		label: string;
 		/** API field path; also the input's id */
@@ -22,6 +23,8 @@
 		required?: boolean;
 		/** From outside (e.g. the API); wins over the field's own */
 		error?: string;
+		/** Own check for a number, as rounded: the message, or nothing when it is fine */
+		validate?: (value: number) => string | undefined;
 	} = $props();
 
 	const nav = getFormNav();
@@ -58,9 +61,10 @@
 		if (number === null) ownError = 'Escribe un número';
 		else if (decimals === 0 && !Number.isInteger(number)) ownError = 'Escribe un número entero';
 		else {
-			// The value is what the user sees: rounded to the shown decimals.
-			write(formatDecimal(number, decimals));
-			ownError = undefined;
+			// The value is what the user sees: rounded to the shown decimals, and checked so.
+			const shown = formatDecimal(number, decimals);
+			write(shown);
+			ownError = validate?.(parseDecimal(shown)!);
 		}
 		return ownError === undefined;
 	}

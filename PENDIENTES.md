@@ -17,17 +17,6 @@ Nada pendiente.
 una base vacía sin avisar, y parece que se han perdido los datos. Ponerla junto a la clave:
 `${user.home}/.selfbill/selfbill.db`.
 
-### Sin la clave de cifrado, el perfil da 500
-`UserProfileService` descifra la contraseña SMTP al responder, y con otra clave el
-descifrado lanza excepción. Es lo que pasa al restaurar la base en otro equipo sin
-`secret.key`: `GET /api/user-profile` falla siempre y el front no puede ni cargar el
-formulario para reintroducirla. Tratar el fallo de descifrado como "sin contraseña".
-
-### Expuesto a la red, con la contraseña en claro
-La API ya escucha solo en `127.0.0.1`. Queda que `GET /api/user-profile` devuelve la
-contraseña SMTP descifrada: devolver `hasMailPassword` en vez de la contraseña (bloque de
-ajustes).
-
 ### Errores 500 que deberían ser 4xx
 `GlobalExceptionHandler` convierte en `INTERNAL_ERROR`:
 - `GET /api/clients/by-name` y `by-nif` cuando dos clientes comparten nombre o NIF (una
@@ -125,3 +114,10 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
   vacía más allá de la última, reemplazando la entrada del historial.
 - Los botones ignoran los clics seguidos (para que un doble clic no pulse lo que aparece debajo):
   tres clics rápidos en "Página siguiente" pasan una sola página. AvPág no tiene ese límite.
+
+### Pendiente del bloque de Ajustes
+- Borrar una vigencia de IVA: la API no tiene endpoint.
+- Logo del titular en Ajustes (junto con el bloque del PDF).
+- Probar la cuenta de correo desde Ajustes.
+- Con la base restaurada en otro equipo sin `secret.key`, la contraseña del correo no se puede descifrar pero Ajustes dice "Guardada": comprobar al leer si se puede descifrar.
+- Si se cambia el email de proveedor (Gmail → Outlook) sin vaciar servidor y puerto, se quedan los del anterior.

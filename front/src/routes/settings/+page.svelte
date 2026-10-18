@@ -1,5 +1,7 @@
 <script lang="ts">
-	import SectionPlaceholder from '#lib/components/SectionPlaceholder.svelte';
+	import SettingsMenu from '#lib/settings/SettingsMenu.svelte';
+
+	let { data } = $props();
 </script>
 
-<SectionPlaceholder href="/settings" />
+<SettingsMenu status={data.status} />

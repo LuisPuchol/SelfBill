@@ -3,7 +3,6 @@ package com.luispuchol.selfbill.selfbill_api.settings.profile;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_ALREADY_EXISTS;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_INVALID_LOGO_FORMAT;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_LOGO_NOT_FOUND;
-import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_MAIL_PASSWORD_REQUIRED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_NOT_FOUND;
 
 import org.springframework.http.HttpStatus;
@@ -44,8 +43,8 @@ public class UserProfileController {
         return userProfileService.getUserProfile();
     }
 
-    @Operation(summary = "Create user profile", description = "Only one profile can exist, and it needs the mail password")
-    @ApiErrors({ USER_PROFILE_ALREADY_EXISTS, USER_PROFILE_MAIL_PASSWORD_REQUIRED })
+    @Operation(summary = "Create user profile", description = "Only one profile can exist. The mail password is optional and can be set later")
+    @ApiErrors(USER_PROFILE_ALREADY_EXISTS)
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserProfileResponse createUserProfile(@RequestBody @Valid UserProfileRequest request) {

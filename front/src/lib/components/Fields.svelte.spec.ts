@@ -11,6 +11,13 @@ const formato = () => page.getByRole('radiogroup', { name: 'Formato' });
 const focusFormato = () => formato().element().focus();
 const fin = () => page.getByLabelText('Fin');
 const entero = () => page.getByLabelText('Entero');
+const porcentaje = () => page.getByLabelText('Porcentaje');
+/** Like the page's "+": the cursor stays where it is. */
+const validateAll = () =>
+	page
+		.getByRole('button', { name: 'Validar todo' })
+		.element()
+		.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 describe('Lot, date and choice fields', () => {
 	it('the lot keeps only digits and its leading zero', async () => {
@@ -129,6 +136,35 @@ describe('Lot, date and choice fields', () => {
 		await userEvent.keyboard('10,5{Tab}');
 		await expect.element(page.getByText('Escribe un número entero')).toBeVisible();
 		await expect.element(entero()).toHaveValue('10,5');
+	});
+
+	it('NumberField validate shows its message on leaving and in validateAll', async () => {
+		render(FieldsHarness);
+		const message = () => page.getByText('Tiene que estar entre 0 y 100');
+		await porcentaje().click();
+		await userEvent.keyboard('150{Tab}');
+		await expect.element(message()).toBeVisible();
+		await porcentaje().click();
+		await userEvent.keyboard('50{Tab}');
+		await expect.element(porcentaje()).toHaveValue('50,00');
+		await expect.element(message()).not.toBeInTheDocument();
+
+		// The other fields valid, so validateAll leaves the cursor in this one: no leaving.
+		await lote().click();
+		await userEvent.keyboard('01210426');
+		await page.getByRole('radio', { name: /Simple/ }).click();
+		await porcentaje().click();
+		await userEvent.keyboard('150');
+		validateAll();
+		await expect.element(message()).toBeVisible();
+		await expect.element(porcentaje()).toHaveValue('150,00');
+		await expect.element(porcentaje()).toHaveFocus();
+		await userEvent.clear(porcentaje());
+		await userEvent.keyboard('50');
+		validateAll();
+		await expect.element(porcentaje()).toHaveValue('50,00');
+		await expect.element(message()).not.toBeInTheDocument();
+		await expect.element(porcentaje()).toHaveFocus();
 	});
 
 	it('a digit picks the option', async () => {

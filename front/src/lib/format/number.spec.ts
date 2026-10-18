@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDecimal, parseDecimal } from './number';
+import { formatDecimal, formatPercent, parseDecimal } from './number';
 
 describe('parseDecimal', () => {
 	it('accepts comma or dot as decimal separator', () => {
@@ -19,5 +19,15 @@ describe('formatDecimal', () => {
 		expect(formatDecimal(10)).toBe('10,00');
 		expect(formatDecimal(1234.5)).toBe('1234,50');
 		expect(formatDecimal(3, 0)).toBe('3');
+	});
+});
+
+describe('formatPercent', () => {
+	it('trims zeros, uses a comma and a non-breaking space', () => {
+		expect(formatPercent(4)).toBe('4 %');
+		expect(formatPercent(0.5)).toBe('0,5 %');
+		expect(formatPercent(5.25)).toBe('5,25 %');
+		expect(formatPercent(21)).toBe('21 %');
+		expect(formatPercent(0)).toBe('0 %');
 	});
 });

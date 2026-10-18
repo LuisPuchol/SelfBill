@@ -50,7 +50,7 @@ public record UserProfileRequest(
         Integer smtpPort,
 
         @Schema(description = """
-                Password of the mail account, usually an app password. Required on create. \
+                Password of the mail account, usually an app password. Optional on create (none is stored when null or blank). \
                 On update, null keeps the stored password and blank clears it""")
         @Size(max = 255, message = "Mail password must not exceed 255 characters")
         String mailPassword) {

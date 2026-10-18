@@ -17,8 +17,8 @@ public record UserProfileResponse(
         String smtpHost,
         Integer smtpPort,
 
-        @Schema(description = "Stored encrypted, returned decrypted")
-        String mailPassword,
+        @Schema(description = "Whether a mail password is stored; the password itself is never returned")
+        boolean hasMailPassword,
 
         @Schema(description = "Whether a logo has been uploaded")
         boolean hasLogo,
