@@ -778,6 +778,16 @@ export interface components {
              * @description Invoice that contains the delivery note, or null while it is pending
              */
             invoiceId?: number;
+            /**
+             * @description Status of the invoice that contains the delivery note, or null while it is pending
+             * @enum {string}
+             */
+            invoiceStatus?: "DRAFT" | "ISSUED";
+            /**
+             * @description Number of the invoice, as printed ("1", "S-1"). Null while pending or in a draft
+             * @example S-1
+             */
+            invoiceNumber?: string;
             /** Format: date-time */
             date?: string;
             /** @description Sum of the line totals, without taxes */
@@ -2258,6 +2268,11 @@ export interface operations {
                  * @example 2026-10-31
                  */
                 dateTo?: string;
+                /**
+                 * @description Text searched in the client's trade name, business name and NIF, ignoring case and accents
+                 * @example garcia
+                 */
+                q?: string;
                 /** @description true: only delivery notes in an invoice. false: only pending ones */
                 invoiced?: boolean;
                 /** @description Only delivery notes with a line of this article */

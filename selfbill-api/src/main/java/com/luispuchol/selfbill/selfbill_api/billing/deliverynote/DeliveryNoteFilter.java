@@ -22,6 +22,10 @@ public record DeliveryNoteFilter(
         @Schema(description = "Latest date, inclusive", example = "2026-10-31")
         LocalDate dateTo,
 
+        @Schema(description = "Text searched in the client's trade name, business name and NIF, ignoring case and accents",
+                example = "garcia")
+        String q,
+
         @Schema(description = "true: only delivery notes in an invoice. false: only pending ones")
         Boolean invoiced,
 

@@ -6,18 +6,31 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import com.luispuchol.selfbill.selfbill_api.billing.invoice.Invoice;
+import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceStatus;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.Client;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientRequest;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.DeliveryNoteFormat;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.SurchargeType;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.VatType;
 import com.luispuchol.selfbill.selfbill_api.support.DomainIntegrationTest;
+
+import jakarta.persistence.EntityManagerFactory;
 
 @DisplayName("Delivery note queries")
 class DeliveryNoteQueriesTest extends DomainIntegrationTest {
 
     private static final LocalDateTime OCT_1 = LocalDateTime.of(2026, 10, 1, 8, 0);
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @Test
     @DisplayName("Delivery notes can be filtered by whether they are invoiced")
@@ -100,6 +113,130 @@ class DeliveryNoteQueriesTest extends DomainIntegrationTest {
         assertThat(deliveryNoteService.getDeliveryNoteById(created.id()).lines().get(0).traceabilityCode1())
                 .isEqualTo("01210426");
         assertThat(codes(DeliveryNoteFilter.builder().traceabilityCode("01210426").build())).containsExactly(101);
+    }
+
+    @Test
+    @DisplayName("A delivery note outside any invoice has no invoice state")
+    void invoiceStateIsNullWithoutInvoice() {
+        DeliveryNoteResponse free = createDeliveryNote(clientId, "1", "1");
+
+        DeliveryNoteResponse found = deliveryNoteService.getDeliveryNoteById(free.id());
+        assertThat(found.invoiceStatus()).isNull();
+        assertThat(found.invoiceNumber()).isNull();
+    }
+
+    @Test
+    @DisplayName("A delivery note in a draft invoice shows DRAFT and no number")
+    void invoiceStateIsDraftWithoutNumber() {
+        DeliveryNoteResponse note = createDeliveryNote(clientId, "1", "1");
+        createInvoice(note.id());
+
+        DeliveryNoteResponse found = deliveryNoteService.getDeliveryNoteById(note.id());
+        assertThat(found.invoiceStatus()).isEqualTo(InvoiceStatus.DRAFT);
+        assertThat(found.invoiceNumber()).isNull();
+    }
+
+    @Test
+    @DisplayName("A delivery note in an issued invoice shows ISSUED and the formatted number")
+    void invoiceStateIsIssuedWithNumber() {
+        Integer withoutVat = createClient(2, VatType.WITHOUT_VAT, SurchargeType.WITHOUT_SURCHARGE);
+        DeliveryNoteResponse general = createDeliveryNote(clientId, "1", "1");
+        DeliveryNoteResponse series = createDeliveryNote(withoutVat, "1", "1");
+        issue(clientId, general);
+        issue(withoutVat, series);
+
+        DeliveryNoteResponse foundGeneral = deliveryNoteService.getDeliveryNoteById(general.id());
+        assertThat(foundGeneral.invoiceStatus()).isEqualTo(InvoiceStatus.ISSUED);
+        assertThat(foundGeneral.invoiceNumber()).isEqualTo("1");
+        assertThat(deliveryNoteService.getDeliveryNoteById(series.id()).invoiceNumber()).isEqualTo("S-1");
+    }
+
+    @Test
+    @DisplayName("q finds by trade name ignoring case and accents")
+    void qFindsByTradeNameWithoutAccents() {
+        Integer garcia = searchableClient(2, "Frutería García", "Hortofrutícola del Sur SL", "B11111111");
+        searchableClient(3, "Verduras Pérez", "Pérez e Hijos SL", "B22222222");
+        deliver(101, garcia, OCT_1, line(articleId, "01210401"));
+        deliver(102, clientId, OCT_1, line(articleId, "01210402"));
+
+        assertThat(codes(DeliveryNoteFilter.builder().q("garcia").build())).containsExactly(101);
+        assertThat(codes(DeliveryNoteFilter.builder().q("FRUTERÍA").build())).containsExactly(101);
+    }
+
+    @Test
+    @DisplayName("q finds by business name")
+    void qFindsByBusinessName() {
+        Integer garcia = searchableClient(2, "Frutería García", "Hortofrutícola del Sur SL", "B11111111");
+        deliver(101, garcia, OCT_1, line(articleId, "01210401"));
+        deliver(102, clientId, OCT_1, line(articleId, "01210402"));
+
+        assertThat(codes(DeliveryNoteFilter.builder().q("hortofruticola").build())).containsExactly(101);
+    }
+
+    @Test
+    @DisplayName("q finds by NIF")
+    void qFindsByNif() {
+        Integer garcia = searchableClient(2, "Frutería García", "Hortofrutícola del Sur SL", "B11111111");
+        deliver(101, garcia, OCT_1, line(articleId, "01210401"));
+        deliver(102, clientId, OCT_1, line(articleId, "01210402"));
+
+        assertThat(codes(DeliveryNoteFilter.builder().q("b11111111").build())).containsExactly(101);
+    }
+
+    @Test
+    @DisplayName("q combines with the invoiced filter")
+    void qCombinesWithInvoiced() {
+        Integer garcia = searchableClient(2, "Frutería García", "Hortofrutícola del Sur SL", "B11111111");
+        DeliveryNoteResponse pending = deliver(101, garcia, OCT_1, line(articleId, "01210401"));
+        DeliveryNoteResponse invoiced = deliver(102, garcia, OCT_1, line(articleId, "01210402"));
+        deliver(103, clientId, OCT_1, line(articleId, "01210403"));
+        createInvoiceFor(garcia, invoiced.id());
+
+        assertThat(codes(DeliveryNoteFilter.builder().q("garcia").invoiced(false).build()))
+                .containsExactly(pending.code());
+        assertThat(codes(DeliveryNoteFilter.builder().q("garcia").invoiced(true).build()))
+                .containsExactly(invoiced.code());
+    }
+
+    @Test
+    @DisplayName("The list shows the invoice state of each row without a query per invoice")
+    void listCarriesInvoiceStateWithoutExtraQueries() {
+        DeliveryNoteResponse pending = createDeliveryNote(clientId, "1", "1");
+        DeliveryNoteResponse inDraft = createDeliveryNote(clientId, "1", "1");
+        DeliveryNoteResponse inIssued = createDeliveryNote(clientId, "1", "1");
+        createInvoice(inDraft.id());
+        issue(clientId, inIssued);
+        var statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+
+        List<DeliveryNoteResponse> page = deliveryNoteService
+                .getAllDeliveryNotes(DeliveryNoteFilter.builder().build(), PageRequest.of(0, 20)).getContent();
+
+        assertThat(page).extracting(DeliveryNoteResponse::code, DeliveryNoteResponse::invoiceStatus,
+                DeliveryNoteResponse::invoiceNumber).containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple(pending.code(), null, null),
+                        org.assertj.core.groups.Tuple.tuple(inDraft.code(), InvoiceStatus.DRAFT, null),
+                        org.assertj.core.groups.Tuple.tuple(inIssued.code(), InvoiceStatus.ISSUED, "1"));
+        // Invoices and clients arrive with the page; none is fetched on its own
+        assertThat(statistics.getEntityStatistics(Invoice.class.getName()).getFetchCount()).isZero();
+        assertThat(statistics.getEntityStatistics(Client.class.getName()).getFetchCount()).isZero();
+        statistics.setStatisticsEnabled(false);
+    }
+
+    private Integer searchableClient(int code, String name, String businessName, String nif) {
+        return clientService.createClient(ClientRequest.builder()
+                .code(code)
+                .businessName(businessName)
+                .name(name)
+                .nif(nif)
+                .address("Calle Mayor " + code)
+                .city("Valencia")
+                .postalCode("46001")
+                .vatType(VatType.WITH_VAT)
+                .surchargeType(SurchargeType.WITHOUT_SURCHARGE)
+                .defaultDeliveryNoteFormat(DeliveryNoteFormat.PLAIN)
+                .build()).id();
     }
 
     private DeliveryNoteResponse deliver(int code, Integer client, LocalDateTime date,

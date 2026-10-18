@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceStatus;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.DeliveryNoteFormat;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -16,6 +17,13 @@ public record DeliveryNoteResponse(
 
         @Schema(description = "Invoice that contains the delivery note, or null while it is pending")
         Integer invoiceId,
+
+        @Schema(description = "Status of the invoice that contains the delivery note, or null while it is pending")
+        InvoiceStatus invoiceStatus,
+
+        @Schema(description = "Number of the invoice, as printed (\"1\", \"S-1\"). Null while pending or in a draft",
+                example = "S-1")
+        String invoiceNumber,
 
         LocalDateTime date,
 

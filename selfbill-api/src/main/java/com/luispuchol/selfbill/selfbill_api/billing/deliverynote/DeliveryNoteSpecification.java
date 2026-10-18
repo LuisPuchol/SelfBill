@@ -6,7 +6,9 @@ import java.util.List;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import com.luispuchol.selfbill.selfbill_api.catalog.client.Client_;
 import com.luispuchol.selfbill.selfbill_api.shared.BaseEntity_;
+import com.luispuchol.selfbill.selfbill_api.shared.SearchText;
 
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -22,6 +24,7 @@ public final class DeliveryNoteSpecification {
                 .and(codeFrom(filter.codeFrom()))
                 .and(codeTo(filter.codeTo()))
                 .and(clientId(filter.clientId()))
+                .and(clientMatches(filter.q()))
                 .and(dateFrom(filter.dateFrom()))
                 .and(dateTo(filter.dateTo()))
                 .and(invoiced(filter.invoiced()))
@@ -41,6 +44,11 @@ public final class DeliveryNoteSpecification {
     private static Specification<DeliveryNote> clientId(Integer clientId) {
         return (root, query, cb) -> clientId == null ? null
                 : cb.equal(root.get(DeliveryNote_.client).get(BaseEntity_.id), clientId);
+    }
+
+    private static Specification<DeliveryNote> clientMatches(String q) {
+        return (root, query, cb) -> q == null || q.isBlank() ? null
+                : cb.like(root.get(DeliveryNote_.client).get(Client_.searchText), "%" + SearchText.normalize(q) + "%");
     }
 
     private static Specification<DeliveryNote> dateFrom(LocalDate from) {
