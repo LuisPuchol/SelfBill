@@ -3,6 +3,7 @@
 	import { getFormNav } from '../keyboard/form-nav';
 	import Field from './Field.svelte';
 	import { inputClass } from './field-style';
+	import { selectOnFocus } from './select-on-focus';
 
 	let {
 		label,
@@ -43,29 +44,36 @@
 		ownError = undefined;
 	}
 
-	/** Fixed decimals on leaving (10 → 10,00); invalid text is left as typed. */
-	function normalize(): void {
+	/**
+	 * Fixed decimals (10 → 10,00); invalid text is left as typed, with its error.
+	 * Empty is only reported when asked to (Enter), never on leaving.
+	 */
+	function check(includeRequired: boolean): boolean {
 		if (text.trim() === '') {
 			typed = '';
-			return;
+			if (includeRequired) ownError = required ? 'Este dato es obligatorio' : undefined;
+			return ownError === undefined;
 		}
 		const number = parseDecimal(text);
-		if (number === null) return;
-		// The value is what the user sees: rounded to the shown decimals.
-		write(formatDecimal(number, decimals));
-	}
-
-	function commit(): boolean {
-		normalize();
-		if (text === '') ownError = required ? 'Este dato es obligatorio' : undefined;
-		else ownError = value === null ? 'Escribe un número' : undefined;
+		if (number === null) ownError = 'Escribe un número';
+		else if (decimals === 0 && !Number.isInteger(number)) ownError = 'Escribe un número entero';
+		else {
+			// The value is what the user sees: rounded to the shown decimals.
+			write(formatDecimal(number, decimals));
+			ownError = undefined;
+		}
 		return ownError === undefined;
 	}
 
+	const commit = () => check(true);
+
 	function onkeydown(event: KeyboardEvent): void {
-		if (event.code !== 'NumpadDecimal') return;
-		// Windows writes "." or "," depending on its settings: always a comma here.
+		// With NumLock off the key is a Delete: only a real "." or "," is ours.
+		if (event.code !== 'NumpadDecimal' || (event.key !== '.' && event.key !== ',')) return;
+		if (event.ctrlKey || event.altKey || event.metaKey) return;
 		event.preventDefault();
+		if (decimals === 0) return;
+		// Windows writes "." or "," depending on its settings: always a comma here.
 		const end = input.value.length;
 		input.setRangeText(',', input.selectionStart ?? end, input.selectionEnd ?? end, 'end');
 		write(input.value);
@@ -74,7 +82,7 @@
 	$effect(() => nav?.register({ name, el: input, commit }));
 </script>
 
-<Field id={name} {label} error={error ?? ownError}>
+<Field id={name} {label} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<input
 			bind:this={input}
@@ -86,8 +94,9 @@
 			class="{inputClass} tabular text-right"
 			aria-invalid={describedBy ? true : undefined}
 			aria-describedby={describedBy}
-			onfocus={() => input.select()}
-			onblur={normalize}
+			use:selectOnFocus
+			autocomplete="off"
+			onblur={() => check(false)}
 			{onkeydown}
 		/>
 	{/snippet}

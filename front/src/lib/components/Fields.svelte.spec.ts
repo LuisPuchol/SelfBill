@@ -10,6 +10,7 @@ const formato = () => page.getByRole('radiogroup', { name: 'Formato' });
 /** Clicking the group's centre would hit an option: focus it like Enter from the previous field does. */
 const focusFormato = () => formato().element().focus();
 const fin = () => page.getByLabelText('Fin');
+const entero = () => page.getByLabelText('Entero');
 
 describe('Lot, date and choice fields', () => {
 	it('the lot keeps only digits and its leading zero', async () => {
@@ -90,6 +91,44 @@ describe('Lot, date and choice fields', () => {
 		await expect.element(fecha()).toHaveValue('01/01/2026');
 		await expect.element(page.getByTestId('date')).toHaveTextContent('2026-01-01');
 		await expect.element(fecha()).toHaveFocus();
+	});
+
+	it('leaving a field reports what is mistyped', async () => {
+		render(FieldsHarness);
+		await lote().click();
+		await userEvent.keyboard('0121{Tab}');
+		await expect.element(page.getByText('Tienen que ser 8 cifras')).toBeVisible();
+	});
+
+	it('leaving an empty required date says nothing', async () => {
+		render(FieldsHarness);
+		await fecha().click();
+		await userEvent.clear(fecha());
+		await userEvent.keyboard('{Tab}');
+		await expect.element(page.getByText('Este dato es obligatorio')).not.toBeInTheDocument();
+	});
+
+	it('an integer field ignores the decimal key', async () => {
+		render(FieldsHarness);
+		await entero().click();
+		await userEvent.keyboard('10');
+		const event = new KeyboardEvent('keydown', {
+			key: '.',
+			code: 'NumpadDecimal',
+			bubbles: true,
+			cancelable: true
+		});
+		entero().element().dispatchEvent(event);
+		expect(event.defaultPrevented).toBe(true);
+		await expect.element(entero()).toHaveValue('10');
+	});
+
+	it('an integer field refuses decimals', async () => {
+		render(FieldsHarness);
+		await entero().click();
+		await userEvent.keyboard('10,5{Tab}');
+		await expect.element(page.getByText('Escribe un número entero')).toBeVisible();
+		await expect.element(entero()).toHaveValue('10,5');
 	});
 
 	it('a digit picks the option', async () => {

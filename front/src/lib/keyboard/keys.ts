@@ -28,12 +28,16 @@ export type KeyEventLike = Pick<
 	| 'altKey'
 	| 'metaKey'
 	| 'defaultPrevented'
+	| 'repeat'
 	| 'target'
 	| 'preventDefault'
 >;
 
 // Browser shortcuts (help, search, ...) that must never fire in the app.
 export const ALWAYS_PREVENTED: readonly string[] = ['F1', 'F2', 'F3', 'F4', 'F7', 'F8', 'F9'];
+
+// Holding these keys keeps moving; any other held key must not fire its action again.
+const REPEATABLE: readonly string[] = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'];
 
 const BAR_ORDER = ['Enter', 'NumpadAdd', 'Escape', 'F2', 'F3', 'F4', 'F8', 'F9'];
 
@@ -120,11 +124,15 @@ export function dispatch(layers: readonly Layer[], event: KeyEventLike): boolean
 	if (event.defaultPrevented) return false;
 	// Ctrl, Alt and Win combinations belong to Windows and Edge (Alt+F4 closes, Ctrl with + zooms).
 	if (event.ctrlKey || event.altKey || event.metaKey) return false;
+	const repeated =
+		event.repeat && !REPEATABLE.includes(event.code) && !REPEATABLE.includes(event.key);
 	const typing = isEditable(event.target);
 	for (const a of active(layers)) {
 		if (!matches(a, event)) continue;
 		if (typing && a.key.length === 1) continue;
+		// A held key keeps its default suppressed (no "+++" typed) but fires the action only once.
 		event.preventDefault();
+		if (repeated) return false;
 		void a.run();
 		return true;
 	}

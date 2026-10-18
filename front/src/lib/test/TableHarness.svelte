@@ -35,10 +35,13 @@
 
 	// svelte-ignore state_referenced_locally
 	let data = $state(rows);
+	let selected = $state(0);
 </script>
 
 <KeyboardRoot />
 <input aria-label="Filtro" />
 <button onclick={() => (data = [...data].reverse())}>Cambiar filas</button>
-<DataTable {columns} rows={data} {onOpen} {page} {onPage} />
+<button>Otro</button>
+<p data-testid="selected">{selected}</p>
+<DataTable {columns} rows={data} {onOpen} {page} {onPage} bind:selected />
 <KeyBar />

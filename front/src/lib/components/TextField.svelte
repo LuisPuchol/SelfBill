@@ -2,6 +2,7 @@
 	import { getFormNav } from '../keyboard/form-nav';
 	import Field from './Field.svelte';
 	import { inputClass } from './field-style';
+	import { selectOnFocus } from './select-on-focus';
 
 	let {
 		label,
@@ -9,7 +10,9 @@
 		value = $bindable(''),
 		required = false,
 		error,
-		type = 'text'
+		type = 'text',
+		validate,
+		maxlength
 	}: {
 		label: string;
 		/** API field path; also the input's id */
@@ -19,21 +22,31 @@
 		/** From outside (e.g. the API); wins over the field's own */
 		error?: string;
 		type?: 'text' | 'email';
+		/** Own check for a non-empty value: the message, or nothing when it is fine */
+		validate?: (value: string) => string | undefined;
+		maxlength?: number;
 	} = $props();
 
 	const nav = getFormNav();
 	let input: HTMLInputElement;
 	let ownError = $state<string>();
 
-	function commit(): boolean {
-		ownError = required && value.trim() === '' ? 'Este dato es obligatorio' : undefined;
+	/** Empty is only reported when asked to (Enter), never on leaving. */
+	function check(includeRequired: boolean): boolean {
+		if (value.trim() === '') {
+			if (includeRequired) ownError = required ? 'Este dato es obligatorio' : undefined;
+		} else {
+			ownError = validate?.(value);
+		}
 		return ownError === undefined;
 	}
+
+	const commit = () => check(true);
 
 	$effect(() => nav?.register({ name, el: input, commit }));
 </script>
 
-<Field id={name} {label} error={error ?? ownError}>
+<Field id={name} {label} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<input
 			bind:this={input}
@@ -41,10 +54,13 @@
 			id={name}
 			{name}
 			{type}
+			{maxlength}
 			class={inputClass}
 			aria-invalid={describedBy ? true : undefined}
 			aria-describedby={describedBy}
-			onfocus={() => input.select()}
+			use:selectOnFocus
+			autocomplete="off"
+			onblur={() => check(false)}
 			oninput={() => (ownError = undefined)}
 		/>
 	{/snippet}

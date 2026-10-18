@@ -16,6 +16,12 @@ const FORM_NAV = Symbol('form-nav');
 export class FormNav {
 	#fields: NavField[] = [];
 	#busy = false;
+	#last: NavField | undefined;
+	/**
+	 * First field that failed validateAll() while a dialog kept the cursor out of it: the next
+	 * restoreFocus() takes it there. The dialog's own focus return, when it closes, must not undo it.
+	 */
+	#lastFailed: NavField | undefined;
 	readonly #onLast?: () => void;
 	readonly #subscribe = createSubscriber((update) => {
 		const off = [on(document, 'focusin', update), on(document, 'focusout', update)];
@@ -33,8 +39,16 @@ export class FormNav {
 
 	register(field: NavField): () => void {
 		this.#fields.push(field);
+		const off = [
+			on(field.el, 'focusin', () => (this.#last = field)),
+			// Typing again: that failure is old news.
+			on(field.el, 'input', () => (this.#lastFailed = undefined))
+		];
 		return () => {
+			off.forEach((remove) => remove());
 			this.#fields = this.#fields.filter((f) => f !== field);
+			if (this.#last === field) this.#last = undefined;
+			if (this.#lastFailed === field) this.#lastFailed = undefined;
 		};
 	}
 
@@ -74,6 +88,8 @@ export class FormNav {
 			const results = await Promise.all(ordered.map(async (field) => field.commit?.() ?? true));
 			const failed = ordered.find((_, i) => !results[i]);
 			failed?.el.focus();
+			// Behind a modal dialog (the unsaved-changes question) the cursor cannot get there yet.
+			this.#lastFailed = failed && !failed.el.contains(document.activeElement) ? failed : undefined;
 			return failed === undefined;
 		} finally {
 			this.#busy = false;
@@ -105,6 +121,21 @@ export class FormNav {
 		this.#ordered()
 			.find((f) => names.includes(f.name))
 			?.el.focus();
+	}
+
+	/** The first field in page order. */
+	focusFirstField(): void {
+		this.#ordered()[0]?.el.focus();
+	}
+
+	/**
+	 * Back to the first field that failed validateAll() behind a dialog, else the last one with the
+	 * cursor, else the first.
+	 */
+	restoreFocus(): void {
+		const field = this.#lastFailed ?? this.#last ?? this.#ordered()[0];
+		this.#lastFailed = undefined;
+		field?.el.focus();
 	}
 
 	#current(): NavField | undefined {

@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import type { RouteId } from '$app/types';
 	import { useKeys } from '../keyboard/keymap.svelte.js';
-	import { sections } from '../sections.js';
+	import { sections, type SectionRoute } from '../sections.js';
 
-	let { href }: { href: RouteId } = $props();
+	let { href }: { href: SectionRoute } = $props();
 	const section = $derived(sections.find((s) => s.href === href));
 
 	useKeys([{ key: 'Escape', label: 'Salir', run: () => goto(resolve('/')) }]);

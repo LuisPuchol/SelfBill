@@ -2423,6 +2423,8 @@ export interface operations {
     getAllClients: {
         parameters: {
             query?: {
+                /** @description Part of the trade name, the legal name or the NIF, ignoring case and accents */
+                q?: string;
                 /** @description Part of the trade name, ignoring case */
                 name?: string;
                 /** @description Part of the legal name, ignoring case */
@@ -2508,7 +2510,7 @@ export interface operations {
     getAllArticles: {
         parameters: {
             query?: {
-                /** @description Part of the name, ignoring case */
+                /** @description Part of the name, ignoring case and accents */
                 name?: string;
                 /** @description Lowest code, inclusive */
                 codeFrom?: number;

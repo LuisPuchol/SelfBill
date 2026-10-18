@@ -5,6 +5,9 @@ import lombok.Builder;
 
 @Builder
 public record ClientFilter(
+        @Schema(description = "Part of the trade name, the legal name or the NIF, ignoring case and accents")
+        String q,
+
         @Schema(description = "Part of the trade name, ignoring case")
         String name,
 

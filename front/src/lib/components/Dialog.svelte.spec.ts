@@ -1,3 +1,4 @@
+import { flushSync } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
@@ -63,5 +64,20 @@ describe('Dialog', () => {
 		await expect.element(page.getByRole('contentinfo')).toHaveTextContent('Guardar');
 		await userEvent.keyboard('{NumpadAdd}');
 		expect(onSave).toHaveBeenCalledOnce();
+	});
+
+	it('reopened before the next frame, the earlier close does not shut it', async () => {
+		const { onOk } = await open();
+		const click = (name: string | RegExp) =>
+			(page.getByRole('button', { name }).element() as HTMLButtonElement).click();
+		// Chromium fires `close` at the next frame: close and reopen before it, like Enter then a quick Esc.
+		click(/Vale/);
+		flushSync();
+		expect(onOk).toHaveBeenCalledOnce();
+		click('Abrir');
+		flushSync();
+		await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+		await expect.element(page.getByRole('dialog')).toBeVisible();
+		await expect.element(page.getByRole('contentinfo')).toHaveTextContent('Vale');
 	});
 });

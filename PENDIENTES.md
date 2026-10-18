@@ -75,9 +75,8 @@ con la app parada, o desde la API con `VACUUM INTO`.
 ### Restaurar clientes y artículos borrados
 Un cliente borrado deja sus albaranes pendientes y sus borradores sin poder facturarse ni
 editarse, y un artículo borrado impide volver a guardar los albaranes pendientes que lo
-usan. Hoy solo se restaura por SQL (`deleted_at = NULL`). Opciones: un endpoint de
-restaurar, o que el front avise antes de borrar un cliente con pendientes
-(`GET /api/delivery-notes?clientId=&invoiced=false`).
+usan. El front ya avisa antes de borrar con pendientes, pero hoy solo se restaura por SQL
+(`deleted_at = NULL`). Falta un endpoint de restaurar.
 
 ---
 
@@ -94,41 +93,33 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 
 ## 5. Front
 
-### Endurecer campos y teclado
-Primera tarea del bloque de catálogo.
-- Al hacer clic con el ratón en un campo se pierde la selección: "10,00" + teclear 4 →
-  "10,004". Un helper común para los cinco campos de texto.
-- `NumpadDecimal` con Bloq Num apagado (tecla `Supr`) inserta ","; actuar solo si la tecla es
-  "." o "," y sin Ctrl/Alt. Falta el test de `defaultPrevented`.
-- `error=""` tapa el error propio del campo (`??` → `||` en los seis campos). Decidir cómo se
-  limpia un error de la API al editar.
-- `autocomplete="off"` en los campos: el autocompletado de Edge puede tragarse el Enter.
-- Tecla mantenida: ignorar `event.repeat` salvo flechas y AvPág/RePág.
-- Toda acción de guardar lleva su propio bloqueo mientras guarda (el patrón del aviso de
-  cambios sin guardar).
-- Test que fije que el "+" del pad guarda con el foco en un campo y el "+" normal escribe.
-
-### Al hacer las primeras pantallas
-- Tras "Seguir editando", el foco vuelve al enlace de la barra superior pulsado (Enter vuelve a
-  navegar).
-- Si "Guardar y salir" falla, cerrar el aviso y llevar el cursor al primer error.
-- `inert` en `<main>` mientras se muestra la pantalla de conexión: lo tecleado llega al campo de
-  debajo.
-- `DataTable`: el `when` lee `document.activeElement` (no reactivo) y Enter abre la fila con un
-  botón enfocado; excluir botones y enlaces.
+### Pendiente del bloque de catálogo
 - `CodeField`: un código inicial que no existe muestra el error antes de tocar el campo y deja
   pasar Enter; al no encontrarlo, `value = null`.
-- Vacíos mezclados: `''` en texto, lote y fecha, y `null` en número, código y opción. Los lotes
-  opcionales (`traceabilityCode2/3`, `@Pattern("\\d{8}")`) fallan con `''`: mapear a `null` al
-  montar el payload.
-- `request()` trata cualquier rechazo como `NETWORK`; limitarlo a `TypeError` y al timeout, y lo
-  demás `UNKNOWN`.
-- El manejador de `unhandledrejection` no deja rastro en consola, y los `throw` síncronos de una
-  acción de teclado no llegan al diálogo.
-- `loaded()` construye mensajes que `+error.svelte` no enseña.
-- `data-sveltekit-preload-data="hover"` lanzará los `load` (GET a la API) al pasar el ratón:
-  revisar.
+- El "+" del pad pulsado justo después de Enter en un `CodeField` con la consulta en curso se
+  ignora (decidir con el editor de albaranes).
+- Vacíos mezclados: al montar el payload del albarán, los lotes opcionales
+  (`traceabilityCode2/3`, `@Pattern("\\d{8}")`) deben ir como `null`, no como `''`.
+- En artículos, el aviso de borrar no cuenta los albaranes que están en facturas en borrador (`invoiced=false`
+  solo mira si el albarán no tiene factura).
 - Regla: `decimals` de `NumberField` igual a la escala de la API (2).
 - `SpaFallbackResolver` no llama a la comprobación de ubicación de Spring (`checkResource`):
   defensa en profundidad.
 - Iconos de Lucide importados uno a uno: el import del paquete entero hace lento `svelte-check`.
+- Botones grandes en pantalla para las acciones principales (Nuevo, Guardar, Borrar, páginas): la
+  barra de teclas es solo chuleta (spec de la base).
+- Un `VALIDATION_ERROR` cuyo campo no está en pantalla no muestra nada: caer a `showError`.
+- Buscar un código de 10 cifras o más puede desbordar el `int` de la API (más de 2.147.483.647):
+  la lista se cambia por la página de error.
+- El borrado y el guardado de `RecordForm` no se excluyen entre sí, y el bloqueo de borrar se
+  suelta antes de volver a la lista.
+- Faltan tests de las ramas de error de `RecordForm` (`blank()`, borrar, avisos) y de que
+  `CodeField` no valida al salir.
+- El test "searches after a pause" va justo de tiempo: usar temporizadores falsos.
+- Buscar solo cifras es siempre un código: las cifras de un NIF no se encuentran como texto.
+- Con texto, Enter antes de que llegue la búsqueda abre la fila marcada del resultado (la
+  primera, o el último abierto si está) sin verla.
+- "Guardar y salir" desde un alta no marca en la lista lo recién guardado: `openedId` se apunta
+  al pulsar Esc, antes de guardar.
+- Al volver a la misma lista desde la barra de arriba (de `/clients?q=gar` a Clientes), el
+  buscador no recupera el cursor: el componente se reutiliza y `onMount` no vuelve a correr.

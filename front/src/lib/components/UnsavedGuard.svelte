@@ -1,9 +1,19 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import Dialog from './Dialog.svelte';
 	import { createUnsavedGuard } from './unsaved';
 
-	let { isDirty, save }: { isDirty: () => boolean; save: () => Promise<boolean> } = $props();
+	let {
+		isDirty,
+		save,
+		restoreFocus
+	}: {
+		isDirty: () => boolean;
+		save: () => Promise<boolean>;
+		/** Puts the cursor back in the form once the question has closed. */
+		restoreFocus?: () => void;
+	} = $props();
 
 	let asking = $state(false);
 
@@ -12,7 +22,9 @@
 		save: () => save(),
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- the URL comes from SvelteKit's own navigation, already resolved
 		goto: (url) => goto(url),
-		onAsk: (value) => (asking = value)
+		onAsk: (value) => (asking = value),
+		// After the tick, Dialog has already returned the focus to where it was before opening.
+		onClosed: () => void tick().then(() => restoreFocus?.())
 	});
 
 	beforeNavigate((nav) => guard.check(nav));

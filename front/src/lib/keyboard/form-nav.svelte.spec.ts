@@ -64,6 +64,124 @@ describe('FormNav', () => {
 		expect(document.activeElement).toBe(b);
 	});
 
+	it('focusFirstField focuses the first in page order', () => {
+		const [a, b, c] = inputs('a', 'b', 'c');
+		const nav = new FormNav();
+		for (const el of [c, b, a]) nav.register({ name: el.name, el });
+
+		nav.focusFirstField();
+		expect(document.activeElement).toBe(a);
+	});
+
+	it('restoreFocus goes back to the last focused field', () => {
+		const [a, b, outside] = inputs('a', 'b', 'outside');
+		const nav = new FormNav();
+		nav.register({ name: 'a', el: a });
+		nav.register({ name: 'b', el: b });
+
+		b.focus();
+		outside.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(b);
+	});
+
+	it('restoreFocus falls back to the first field, also after the last one unregistered', () => {
+		const [a, b, outside] = inputs('a', 'b', 'outside');
+		const nav = new FormNav();
+		nav.register({ name: 'a', el: a });
+		const unregister = nav.register({ name: 'b', el: b });
+
+		outside.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(a);
+
+		b.focus();
+		unregister();
+		outside.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(a);
+	});
+
+	it('restoreFocus goes to the field that failed validateAll behind a dialog, once', async () => {
+		const [a, b, c, outside] = inputs('a', 'b', 'c', 'outside');
+		const nav = new FormNav();
+		nav.register({ name: 'a', el: a, commit: () => true });
+		nav.register({ name: 'b', el: b, commit: () => false });
+		nav.register({ name: 'c', el: c, commit: () => true });
+
+		c.focus();
+		// A modal dialog takes the cursor and makes the form inert: validateAll cannot reach b.
+		outside.focus();
+		for (const el of [a, b, c]) el.inert = true;
+		expect(await nav.validateAll()).toBe(false);
+		expect(document.activeElement).toBe(outside);
+		for (const el of [a, b, c]) el.inert = false;
+		// The dialog closes and gives the focus back to where it was.
+		c.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(b);
+
+		// Used up: next time, the last field with the cursor.
+		c.focus();
+		outside.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(c);
+	});
+
+	it('a failure the cursor could reach is not remembered: moving on wins', async () => {
+		const [a, b, c, outside] = inputs('a', 'b', 'c', 'outside');
+		const nav = new FormNav();
+		nav.register({ name: 'a', el: a, commit: () => true });
+		nav.register({ name: 'b', el: b, commit: () => false });
+		nav.register({ name: 'c', el: c, commit: () => true });
+
+		a.focus();
+		expect(await nav.validateAll()).toBe(false);
+		expect(document.activeElement).toBe(b);
+		c.focus();
+		outside.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(c);
+	});
+
+	it('typing forgets a failure that was waiting for restoreFocus', async () => {
+		const [a, b, outside] = inputs('a', 'b', 'outside');
+		const nav = new FormNav();
+		nav.register({ name: 'a', el: a, commit: () => false });
+		nav.register({ name: 'b', el: b, commit: () => true });
+
+		b.focus();
+		outside.focus();
+		for (const el of [a, b]) el.inert = true;
+		expect(await nav.validateAll()).toBe(false);
+		for (const el of [a, b]) el.inert = false;
+		b.focus();
+		b.dispatchEvent(new Event('input', { bubbles: true }));
+		outside.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(b);
+	});
+
+	it('a passing validateAll forgets the earlier failure', async () => {
+		const [a, b, outside] = inputs('a', 'b', 'outside');
+		let ok = false;
+		const nav = new FormNav();
+		nav.register({ name: 'a', el: a, commit: () => true });
+		nav.register({ name: 'b', el: b, commit: () => ok });
+
+		a.focus();
+		// Behind a dialog: the failure waits for restoreFocus.
+		b.inert = true;
+		expect(await nav.validateAll()).toBe(false);
+		b.inert = false;
+		ok = true;
+		a.focus();
+		expect(await nav.validateAll()).toBe(true);
+		outside.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(a);
+	});
+
 	it('calls onLast on the last field and skips fields that unregistered', async () => {
 		const [a, b, c] = inputs('a', 'b', 'c');
 		const onLast = vi.fn();

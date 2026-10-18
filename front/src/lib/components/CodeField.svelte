@@ -3,6 +3,7 @@
 	import { getFormNav } from '../keyboard/form-nav';
 	import Field from './Field.svelte';
 	import { inputClass } from './field-style';
+	import { selectOnFocus } from './select-on-focus';
 
 	let {
 		label,
@@ -80,7 +81,7 @@
 	$effect(() => nav?.register({ name, el: input, commit }));
 </script>
 
-<Field id={name} {label} error={error ?? ownError}>
+<Field id={name} {label} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<div class="flex items-center gap-3">
 			<input
@@ -93,7 +94,8 @@
 				class="{inputClass} tabular"
 				aria-invalid={describedBy ? true : undefined}
 				aria-describedby={describedBy}
-				onfocus={() => input.select()}
+				use:selectOnFocus
+				autocomplete="off"
 				{oninput}
 			/>
 			{#if foundName}

@@ -37,7 +37,11 @@
 <dialog
 	bind:this={element}
 	oncancel={(e) => e.preventDefault()}
-	onclose={() => (open = false)}
+	onclose={(e) => {
+		// `close` arrives later (in Chromium, at the next frame): one left over from an earlier close
+		// must not shut the dialog once it has been opened again (Enter, then a quick Esc).
+		if (!e.currentTarget.open) open = false;
+	}}
 	class="m-auto min-w-96 rounded border border-line bg-surface p-6 text-ink backdrop:bg-black/40"
 >
 	{#if open}

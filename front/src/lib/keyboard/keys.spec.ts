@@ -18,6 +18,7 @@ function ev(over: Partial<KeyEventLike> = {}): KeyEventLike {
 		altKey: false,
 		metaKey: false,
 		defaultPrevented: false,
+		repeat: false,
 		target: null,
 		preventDefault: vi.fn(),
 		...over
@@ -72,6 +73,49 @@ describe('dispatch', () => {
 		const e = ev({ key: '+', code: 'BracketRight' });
 		expect(dispatch([layer([b])], e)).toBe(false);
 		expect(b.run).not.toHaveBeenCalled();
+		expect(e.preventDefault).not.toHaveBeenCalled();
+	});
+
+	it('ignores auto-repeat except arrows and page keys', () => {
+		const enter = act('Enter');
+		expect(dispatch([layer([enter])], ev({ key: 'Enter', code: 'Enter', repeat: true }))).toBe(
+			false
+		);
+		expect(enter.run).not.toHaveBeenCalled();
+		for (const k of ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp']) {
+			const a = act(k);
+			expect(dispatch([layer([a])], ev({ key: k, code: k, repeat: true }))).toBe(true);
+			expect(a.run).toHaveBeenCalledOnce();
+		}
+	});
+
+	it('keeps the default suppressed on repeat without running again', () => {
+		const f3 = ev({ key: 'F3', code: 'F3', repeat: true });
+		expect(dispatch([], f3)).toBe(false);
+		expect(f3.preventDefault).toHaveBeenCalled();
+
+		const enter = act('Enter');
+		const e = ev({ key: 'Enter', code: 'Enter', repeat: true });
+		dispatch([layer([enter])], e);
+		expect(enter.run).not.toHaveBeenCalled();
+		expect(e.preventDefault).toHaveBeenCalled();
+	});
+
+	it('numpad plus saves from a text field', () => {
+		const save = act('NumpadAdd');
+		const input = { tagName: 'INPUT' } as unknown as EventTarget;
+		expect(dispatch([layer([save])], ev({ key: '+', code: 'NumpadAdd', target: input }))).toBe(
+			true
+		);
+		expect(save.run).toHaveBeenCalledOnce();
+	});
+
+	it('main keyboard plus keeps typing in a text field', () => {
+		const save = act('NumpadAdd');
+		const input = { tagName: 'INPUT' } as unknown as EventTarget;
+		const e = ev({ key: '+', code: 'BracketRight', target: input });
+		expect(dispatch([layer([save])], e)).toBe(false);
+		expect(save.run).not.toHaveBeenCalled();
 		expect(e.preventDefault).not.toHaveBeenCalled();
 	});
 

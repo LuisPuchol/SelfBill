@@ -10,8 +10,10 @@
 	let {
 		onLast,
 		quantityError,
+		nameError,
 		onSave
-	}: { onLast: () => void; quantityError?: string; onSave?: () => void } = $props();
+	}: { onLast: () => void; quantityError?: string; nameError?: string; onSave?: () => void } =
+		$props();
 
 	let name = $state('');
 	let quantity = $state<number | null>(null);
@@ -32,9 +34,14 @@
 
 <KeyboardRoot />
 <Form {onLast} bind:nav>
-	<TextField label="Nombre" name="name" bind:value={name} required />
+	<TextField label="Nombre" name="name" bind:value={name} error={nameError} required />
 	<NumberField label="Cantidad" name="quantity" bind:value={quantity} error={quantityError} />
-	<TextField label="Último" name="last" bind:value={last} />
+	<TextField
+		label="Último"
+		name="last"
+		bind:value={last}
+		validate={(v) => (v.includes('@') ? undefined : 'Revisa el email')}
+	/>
 </Form>
 <output data-testid="quantity">{String(quantity)}</output>
 <KeyBar />
