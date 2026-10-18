@@ -11,9 +11,10 @@
 	import UnsavedGuard from '../components/UnsavedGuard.svelte';
 	import { recallList, rememberList } from '../records/list-memory';
 	import { RecordForm } from '../records/record-form.svelte';
+	import { clientDeletion, clientPending } from './clients';
 	import { missingBillingData, missingBillingMessage } from './billing';
 	import { blankClient, clientPayload, EMAIL_PATTERN, type ClientValues } from './client-form';
-	import { clientPendingMessage, regimeChangeMessage } from './pending';
+	import { regimeChangeMessage } from './pending';
 
 	let { id = null, initial }: { id?: number | null; initial: ClientValues } = $props();
 
@@ -30,21 +31,6 @@
 		rememberList('clients', { href, openedId: savedId ?? memory?.openedId });
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- the remembered URL came from the list page
 		await goto(href);
-	}
-
-	/** What still waits on the client: unbilled delivery notes and draft invoices. */
-	async function pending(clientId: number): Promise<[number, number]> {
-		const [notes, drafts] = await Promise.all([
-			request(
-				api.GET('/api/delivery-notes', {
-					params: { query: { clientId, invoiced: false, size: 1 } }
-				})
-			),
-			request(
-				api.GET('/api/invoices', { params: { query: { clientId, status: 'DRAFT', size: 1 } } })
-			)
-		]);
-		return [notes.page?.totalElements ?? 0, drafts.page?.totalElements ?? 0];
 	}
 
 	// What a page does: the options are read once, when the record opens.
@@ -65,20 +51,15 @@
 			);
 			return { id: r.id!, code: r.code! };
 		},
-		remove: async (clientId) => {
-			await request(api.DELETE('/api/clients/{id}', { params: { path: { id: clientId } } }));
-		},
+		remove: clientDeletion.remove,
 		blank,
-		pendingForDelete: async (clientId) => {
-			const [notes, drafts] = await pending(clientId);
-			return clientPendingMessage(notes, drafts);
-		},
+		pendingForDelete: clientDeletion.pendingForDelete,
 		confirmBeforeSave: async (values, original) => {
 			if (id === null) return null;
 			if (values.vatType === original.vatType && values.surchargeType === original.surchargeType) {
 				return null;
 			}
-			const [notes, drafts] = await pending(id);
+			const [notes, drafts] = await clientPending(id);
 			return regimeChangeMessage(notes, drafts);
 		},
 		goToList,

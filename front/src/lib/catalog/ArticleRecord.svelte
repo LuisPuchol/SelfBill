@@ -9,8 +9,8 @@
 	import UnsavedGuard from '../components/UnsavedGuard.svelte';
 	import { recallList, rememberList } from '../records/list-memory';
 	import { RecordForm } from '../records/record-form.svelte';
+	import { articleDeletion } from './articles';
 	import { articlePayload, type ArticleValues } from './article-form';
-	import { articlePendingMessage } from './pending';
 
 	let { id = null, initial }: { id?: number | null; initial: ArticleValues } = $props();
 
@@ -50,18 +50,9 @@
 			);
 			return { id: r.id!, code: r.code! };
 		},
-		remove: async (articleId) => {
-			await request(api.DELETE('/api/articles/{id}', { params: { path: { id: articleId } } }));
-		},
+		remove: articleDeletion.remove,
 		blank,
-		pendingForDelete: async (articleId) => {
-			const notes = await request(
-				api.GET('/api/delivery-notes', {
-					params: { query: { articleId, invoiced: false, size: 1 } }
-				})
-			);
-			return articlePendingMessage(notes.page?.totalElements ?? 0);
-		},
+		pendingForDelete: articleDeletion.pendingForDelete,
 		goToList,
 		toast
 	});

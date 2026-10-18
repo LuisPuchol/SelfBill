@@ -2,6 +2,7 @@
 	import { onMount, tick, type Snippet } from 'svelte';
 	import { useKeys } from '../keyboard/keymap.svelte';
 	import type { RecordForm } from '../records/record-form.svelte';
+	import DeleteDialog from './DeleteDialog.svelte';
 	import Dialog from './Dialog.svelte';
 	import Form from './Form.svelte';
 
@@ -38,27 +39,7 @@
 	{@render children()}
 </Form>
 
-<Dialog
-	bind:open={
-		() => form.deleteDialog !== null,
-		(open) => {
-			if (!open) form.cancelDelete();
-		}
-	}
-	title={form.deleteDialog?.title ?? ''}
-	actions={[
-		{ key: 'Enter', label: 'No borrar', run: () => form.cancelDelete() },
-		{ key: 'Escape', label: 'No borrar', hidden: true, run: () => form.cancelDelete() },
-		{ key: 'F8', label: 'Borrar', run: () => form.confirmDelete() }
-	]}
->
-	{#if form.deleteDialog?.name}
-		<p class="font-medium">{form.deleteDialog.name}</p>
-	{/if}
-	{#if form.deleteDialog?.body}
-		<p class="mt-2">{form.deleteDialog.body}</p>
-	{/if}
-</Dialog>
+<DeleteDialog flow={form.deletion} />
 
 <Dialog
 	bind:open={
