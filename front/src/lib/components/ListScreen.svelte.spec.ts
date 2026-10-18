@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import ListHarness from '#lib/test/ListHarness.svelte';
@@ -19,6 +19,9 @@ const bar = () => page.getByRole('contentinfo');
 /** Data rows start at 1: the first row of the table is its header. */
 const row = (n: number) => page.getByRole('row').nth(n);
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Calls to `spy` made after the first call to `first`: on a slow run the search may go out before. */
+const callsAfter = (spy: Mock, first: Mock) =>
+	spy.mock.invocationCallOrder.filter((n) => n > first.mock.invocationCallOrder[0]).length;
 
 describe('ListScreen', () => {
 	it('the search box has the cursor on entry', async () => {
@@ -168,6 +171,60 @@ describe('ListScreen', () => {
 		expect(s.onPage).toHaveBeenCalledExactlyOnceWith(2);
 		await userEvent.keyboard('{PageUp}');
 		expect(s.onPage).toHaveBeenLastCalledWith(0);
+	});
+
+	it('the search box follows a search it did not send', async () => {
+		const s = spies();
+		// The list as left with `?q=gar`; then the top bar's "Clientes" link, with no search.
+		const { rerender } = await render(ListHarness, { ...s, search: 'gar', rows: [rows[0]] });
+		await expect.element(searchBox()).toHaveValue('gar');
+		await rerender({ search: '', rows });
+		await expect.element(searchBox()).toHaveValue('');
+		await expect.element(bar()).toHaveTextContent('Esc Salir');
+		await userEvent.keyboard('{ArrowDown}{Enter}');
+		expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(rows[1]);
+		expect(s.onSearch).not.toHaveBeenCalled();
+	});
+
+	it('a page turned while a code search is on its way does not leave Enter stuck', async () => {
+		const s = spies();
+		const { rerender } = await render(ListHarness, { ...s, page: { number: 0, totalPages: 3 } });
+		await userEvent.keyboard('7{Enter}');
+		expect(s.onSearch).toHaveBeenCalledExactlyOnceWith('7');
+		// The page replaces the search on its way: the rows that come are page 2 of the old list.
+		await userEvent.keyboard('{PageDown}');
+		expect(s.onPage).toHaveBeenCalledExactlyOnceWith(1);
+		await rerender({ page: { number: 1, totalPages: 3 } });
+		await userEvent.keyboard('{Enter}');
+		expect(s.onSearch).toHaveBeenCalledTimes(2);
+		expect(s.onSearch).toHaveBeenLastCalledWith('7');
+		await rerender({ search: '7', rows: [seven], page: { number: 0, totalPages: 1 } });
+		await vi.waitFor(() => expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(seven));
+	});
+
+	it('leaving with Esc or F2 drops a search still waiting for the pause', async () => {
+		const s = spies();
+		await render(ListHarness, s);
+		// Typed and erased: Esc already reads "Salir" while the search for '' waits.
+		await userEvent.keyboard('g{Backspace}{Escape}');
+		expect(s.onExit).toHaveBeenCalledOnce();
+		await wait(400);
+		expect(callsAfter(s.onSearch, s.onExit)).toBe(0);
+
+		await userEvent.keyboard('gar{F2}');
+		expect(s.onNew).toHaveBeenCalledOnce();
+		await wait(400);
+		expect(callsAfter(s.onSearch, s.onNew)).toBe(0);
+	});
+
+	it('opening a row drops a search still waiting for the pause', async () => {
+		const s = spies();
+		await render(ListHarness, s);
+		await userEvent.keyboard('gar');
+		await row(2).dblClick();
+		expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(rows[1]);
+		await wait(400);
+		expect(callsAfter(s.onSearch, s.onOpen)).toBe(0);
 	});
 
 	it('a search still waiting is dropped on leaving', async () => {

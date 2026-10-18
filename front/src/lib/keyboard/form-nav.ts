@@ -17,7 +17,10 @@ export class FormNav {
 	#fields: NavField[] = [];
 	#busy = false;
 	#last: NavField | undefined;
-	/** First field that failed the last validateAll(); the cursor could not go there if a dialog was open. */
+	/**
+	 * First field that failed validateAll() while a dialog kept the cursor out of it: the next
+	 * restoreFocus() takes it there. The dialog's own focus return, when it closes, must not undo it.
+	 */
 	#lastFailed: NavField | undefined;
 	readonly #onLast?: () => void;
 	readonly #subscribe = createSubscriber((update) => {
@@ -36,12 +39,13 @@ export class FormNav {
 
 	register(field: NavField): () => void {
 		this.#fields.push(field);
-		const off = on(field.el, 'focusin', () => {
-			this.#last = field;
-			if (this.#lastFailed !== field) this.#lastFailed = undefined;
-		});
+		const off = [
+			on(field.el, 'focusin', () => (this.#last = field)),
+			// Typing again: that failure is old news.
+			on(field.el, 'input', () => (this.#lastFailed = undefined))
+		];
 		return () => {
-			off();
+			off.forEach((remove) => remove());
 			this.#fields = this.#fields.filter((f) => f !== field);
 			if (this.#last === field) this.#last = undefined;
 			if (this.#lastFailed === field) this.#lastFailed = undefined;
@@ -83,8 +87,9 @@ export class FormNav {
 			// Started in page order; the async ones (lookups) are awaited together.
 			const results = await Promise.all(ordered.map(async (field) => field.commit?.() ?? true));
 			const failed = ordered.find((_, i) => !results[i]);
-			this.#lastFailed = failed;
 			failed?.el.focus();
+			// Behind a modal dialog (the unsaved-changes question) the cursor cannot get there yet.
+			this.#lastFailed = failed && !failed.el.contains(document.activeElement) ? failed : undefined;
 			return failed === undefined;
 		} finally {
 			this.#busy = false;
@@ -123,9 +128,14 @@ export class FormNav {
 		this.#ordered()[0]?.el.focus();
 	}
 
-	/** Back to the first field that failed validateAll(), else the last one with the cursor, else the first. */
+	/**
+	 * Back to the first field that failed validateAll() behind a dialog, else the last one with the
+	 * cursor, else the first.
+	 */
 	restoreFocus(): void {
-		(this.#lastFailed ?? this.#last ?? this.#ordered()[0])?.el.focus();
+		const field = this.#lastFailed ?? this.#last ?? this.#ordered()[0];
+		this.#lastFailed = undefined;
+		field?.el.focus();
 	}
 
 	#current(): NavField | undefined {

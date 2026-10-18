@@ -69,6 +69,18 @@
 		return () => clearTimeout(timer);
 	});
 
+	// A search we did not send (the top bar's link from `?q=gar`, the browser's back): the box
+	// follows the URL, and whatever was waiting for the old text is dropped.
+	$effect(() => {
+		const value = search;
+		untrack(() => {
+			if (value.trim() === sent.trim()) return;
+			cancelTimer();
+			pendingOpen = null;
+			text = sent = value;
+		});
+	});
+
 	// DataTable goes back to the first row when the rows change (its effect runs first): then
 	// the remembered row, if it is on this page.
 	$effect(() => {
@@ -100,10 +112,15 @@
 		}, PAUSE_MS);
 	}
 
-	/** Searches what is typed now, without waiting for the pause. */
-	function searchNow(value: string): void {
+	/** Drops a search still waiting for the pause, e.g. on leaving: it would bring the list back. */
+	function cancelTimer(): void {
 		clearTimeout(timer);
 		timer = undefined;
+	}
+
+	/** Searches what is typed now, without waiting for the pause. */
+	function searchNow(value: string): void {
+		cancelTimer();
 		sent = value;
 		onSearch(value);
 	}
@@ -112,12 +129,15 @@
 	const waiting = () => timer !== undefined || text.trim() !== searched;
 
 	function openRow(row: T): void {
+		cancelTimer();
 		pendingOpen = null;
 		onOpen(row);
 	}
 
 	function turnPage(n: number): void {
 		pendingOpen = null;
+		// The page goes out with the search on screen, and replaces one still on its way.
+		sent = search;
 		onPage(n);
 	}
 
@@ -139,8 +159,7 @@
 			return;
 		}
 		// The rows answer what is typed; a search still waiting would only repeat it.
-		clearTimeout(timer);
-		timer = undefined;
+		cancelTimer();
 		const row = rows[selected];
 		if (row !== undefined) openRow(row);
 	}
@@ -179,6 +198,7 @@
 			key: 'F2',
 			label: 'Nuevo',
 			run: () => {
+				cancelTimer();
 				pendingOpen = null;
 				onNew();
 			}
@@ -188,6 +208,7 @@
 					key: 'Escape',
 					label: 'Salir',
 					run: () => {
+						cancelTimer();
 						pendingOpen = null;
 						onExit();
 					}

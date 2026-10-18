@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { searchFor } from './list';
 
 async function createClient(
 	request: APIRequestContext,
@@ -99,16 +100,21 @@ test('a minimal client saves and says what is missing for invoices', async ({ pa
 });
 
 test('search by business name and by NIF', async ({ page, request }) => {
-	await createClient(request, 9201, 'Garcia frutas', {
-		businessName: 'Frutas García SL',
+	// Only the business name carries the term, and with an accent.
+	await createClient(request, 9201, 'Bar Pepe', {
+		businessName: 'Hostelería García SL',
 		nif: 'B98765432'
 	});
+	await createClient(request, 9204, 'Otro cliente');
 	await openList(page);
-	const search = page.getByLabel('Buscar (código o nombre)');
-	await search.fill('garcia');
-	await expect(page.getByRole('cell', { name: 'Frutas García SL' })).toBeVisible();
-	await search.fill('98765');
+	await expect(page.getByRole('cell', { name: 'Otro cliente', exact: true })).toBeVisible();
+	await searchFor(page, 'garcia');
+	await expect(page.getByRole('cell', { name: 'Hostelería García SL' })).toBeVisible();
+	await expect(page.getByRole('cell', { name: 'Otro cliente', exact: true })).toBeHidden();
+	// A NIF fragment with its letter: digits alone would be a code.
+	await searchFor(page, 'B98765');
 	await expect(page.getByRole('cell', { name: 'B98765432' })).toBeVisible();
+	await expect(page.getByRole('cell', { name: 'Otro cliente', exact: true })).toBeHidden();
 });
 
 test('a regime change with a pending delivery note asks first', async ({ page, request }) => {

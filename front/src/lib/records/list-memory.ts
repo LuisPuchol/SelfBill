@@ -11,6 +11,11 @@ export function rememberList(section: string, memory: ListMemory): void {
 	memories.set(section, { ...memory });
 }
 
+/** The list's URL now, after a search or a page turn; the last record opened stays. */
+export function rememberListUrl(section: string, href: string): void {
+	memories.set(section, { ...memories.get(section), href });
+}
+
 export function recallList(section: string): ListMemory | undefined {
 	const memory = memories.get(section);
 	return memory && { ...memory };

@@ -75,9 +75,8 @@ con la app parada, o desde la API con `VACUUM INTO`.
 ### Restaurar clientes y artículos borrados
 Un cliente borrado deja sus albaranes pendientes y sus borradores sin poder facturarse ni
 editarse, y un artículo borrado impide volver a guardar los albaranes pendientes que lo
-usan. Hoy solo se restaura por SQL (`deleted_at = NULL`). Opciones: un endpoint de
-restaurar, o que el front avise antes de borrar un cliente con pendientes
-(`GET /api/delivery-notes?clientId=&invoiced=false`).
+usan. El front ya avisa antes de borrar con pendientes, pero hoy solo se restaura por SQL
+(`deleted_at = NULL`). Falta un endpoint de restaurar.
 
 ---
 
@@ -107,3 +106,20 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - `SpaFallbackResolver` no llama a la comprobación de ubicación de Spring (`checkResource`):
   defensa en profundidad.
 - Iconos de Lucide importados uno a uno: el import del paquete entero hace lento `svelte-check`.
+- Botones grandes en pantalla para las acciones principales (Nuevo, Guardar, Borrar, páginas): la
+  barra de teclas es solo chuleta (spec de la base).
+- Un `VALIDATION_ERROR` cuyo campo no está en pantalla no muestra nada: caer a `showError`.
+- Buscar un código de 10 cifras o más puede desbordar el `int` de la API (más de 2.147.483.647):
+  la lista se cambia por la página de error.
+- El borrado y el guardado de `RecordForm` no se excluyen entre sí, y el bloqueo de borrar se
+  suelta antes de volver a la lista.
+- Faltan tests de las ramas de error de `RecordForm` (`blank()`, borrar, avisos) y de que
+  `CodeField` no valida al salir.
+- El test "searches after a pause" va justo de tiempo: usar temporizadores falsos.
+- Buscar solo cifras es siempre un código: las cifras de un NIF no se encuentran como texto.
+- Con texto, Enter antes de que llegue la búsqueda abre la fila marcada del resultado (la
+  primera, o el último abierto si está) sin verla.
+- "Guardar y salir" desde un alta no marca en la lista lo recién guardado: `openedId` se apunta
+  al pulsar Esc, antes de guardar.
+- Al volver a la misma lista desde la barra de arriba (de `/clients?q=gar` a Clientes), el
+  buscador no recupera el cursor: el componente se reutiliza y `onMount` no vuelve a correr.

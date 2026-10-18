@@ -171,6 +171,20 @@ describe('RecordScreen', () => {
 		await expect.element(page.getByText('Pon un nombre')).not.toBeInTheDocument();
 	});
 
+	it('a code that is not positive is explained under the code field', async () => {
+		const o = options();
+		o.create.mockRejectedValue(
+			new ApiError(400, 'VALIDATION_ERROR', '', { code: 'Code must be positive' })
+		);
+		await render(RecordHarness, { ...o, initial: { code: 0, name: '' } });
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect
+			.element(code())
+			.toHaveAccessibleDescription('El código tiene que ser mayor que cero');
+		await expect.element(code()).toHaveFocus();
+	});
+
 	it('restoring the focus prefers a field the API refused', async () => {
 		const o = options();
 		o.create.mockRejectedValue(new ApiError(400, 'VALIDATION_ERROR', '', { name: 'x' }));
@@ -252,6 +266,76 @@ describe('RecordScreen', () => {
 		await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledTimes(2));
 		expect(o.update).toHaveBeenCalledTimes(2);
 		expect(confirmBeforeSave).toHaveBeenCalledTimes(3);
+	});
+
+	it('Esc in the delete question does not delete', async () => {
+		const o = options();
+		await render(RecordHarness, { ...o, ...editing });
+		await expect.element(code()).toHaveFocus();
+		await userEvent.keyboard('{F8}');
+		await expect.element(dialog()).toBeVisible();
+		await userEvent.keyboard('{Escape}');
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(code()).toHaveFocus();
+		expect(o.remove).not.toHaveBeenCalled();
+		expect(o.goToList).not.toHaveBeenCalled();
+	});
+
+	it('Esc in the confirmation goes back to the form without saving', async () => {
+		const o = options();
+		const confirmBeforeSave = vi.fn().mockResolvedValue('¿Seguro?');
+		await render(RecordHarness, { ...o, ...editing, confirmBeforeSave });
+		await name().click();
+		await userEvent.keyboard('{NumpadAdd}');
+		await expect.element(dialog()).toHaveTextContent('¿Seguro?');
+		await userEvent.keyboard('{Escape}');
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(name()).toHaveFocus();
+		expect(o.update).not.toHaveBeenCalled();
+		expect(o.goToList).not.toHaveBeenCalled();
+	});
+
+	it('back from the confirmation, the cursor is in the form even if it was elsewhere', async () => {
+		const o = options();
+		const confirmBeforeSave = vi.fn().mockResolvedValue('¿Seguro?');
+		await render(RecordHarness, { ...o, ...editing, confirmBeforeSave });
+		await name().click();
+		// Like "+" in the unsaved-changes question: the focus was on something that goes away.
+		(document.activeElement as HTMLElement).blur();
+		await userEvent.keyboard('{NumpadAdd}');
+		await expect.element(dialog()).toHaveTextContent('¿Seguro?');
+		await userEvent.keyboard('{Enter}');
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(name()).toHaveFocus();
+		expect(o.update).not.toHaveBeenCalled();
+	});
+
+	it('leaving a chain of new records selects the last one saved', async () => {
+		const o = options();
+		o.create
+			.mockResolvedValueOnce({ id: 5, code: 101 })
+			.mockResolvedValueOnce({ id: 6, code: 102 });
+		o.blank
+			.mockResolvedValueOnce({ code: 102, name: '' })
+			.mockResolvedValueOnce({ code: 103, name: '' });
+		await render(RecordHarness, o);
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect.element(code()).toHaveValue('102');
+		await name().click();
+		await userEvent.keyboard('Pimiento{NumpadAdd}');
+		await expect.element(code()).toHaveValue('103');
+		await userEvent.keyboard('{Escape}');
+		expect(o.goToList).toHaveBeenCalledExactlyOnceWith(6);
+	});
+
+	it('leaving a new record with nothing saved selects nothing new', async () => {
+		const o = options();
+		await render(RecordHarness, o);
+		await expect.element(code()).toHaveFocus();
+		await userEvent.keyboard('{Escape}');
+		expect(o.goToList).toHaveBeenCalledOnce();
+		expect(o.goToList.mock.calls[0][0]).toBeUndefined();
 	});
 
 	it('Enter on the last field goes back to the first', async () => {

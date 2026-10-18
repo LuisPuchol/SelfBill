@@ -102,7 +102,33 @@ describe('FormNav', () => {
 		expect(document.activeElement).toBe(a);
 	});
 
-	it('restoreFocus prefers the field that failed validateAll until the cursor goes elsewhere', async () => {
+	it('restoreFocus goes to the field that failed validateAll behind a dialog, once', async () => {
+		const [a, b, c, outside] = inputs('a', 'b', 'c', 'outside');
+		const nav = new FormNav();
+		nav.register({ name: 'a', el: a, commit: () => true });
+		nav.register({ name: 'b', el: b, commit: () => false });
+		nav.register({ name: 'c', el: c, commit: () => true });
+
+		c.focus();
+		// A modal dialog takes the cursor and makes the form inert: validateAll cannot reach b.
+		outside.focus();
+		for (const el of [a, b, c]) el.inert = true;
+		expect(await nav.validateAll()).toBe(false);
+		expect(document.activeElement).toBe(outside);
+		for (const el of [a, b, c]) el.inert = false;
+		// The dialog closes and gives the focus back to where it was.
+		c.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(b);
+
+		// Used up: next time, the last field with the cursor.
+		c.focus();
+		outside.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(c);
+	});
+
+	it('a failure the cursor could reach is not remembered: moving on wins', async () => {
 		const [a, b, c, outside] = inputs('a', 'b', 'c', 'outside');
 		const nav = new FormNav();
 		nav.register({ name: 'a', el: a, commit: () => true });
@@ -111,15 +137,29 @@ describe('FormNav', () => {
 
 		a.focus();
 		expect(await nav.validateAll()).toBe(false);
-		outside.focus();
-		nav.restoreFocus();
 		expect(document.activeElement).toBe(b);
-
-		outside.focus();
 		c.focus();
 		outside.focus();
 		nav.restoreFocus();
 		expect(document.activeElement).toBe(c);
+	});
+
+	it('typing forgets a failure that was waiting for restoreFocus', async () => {
+		const [a, b, outside] = inputs('a', 'b', 'outside');
+		const nav = new FormNav();
+		nav.register({ name: 'a', el: a, commit: () => false });
+		nav.register({ name: 'b', el: b, commit: () => true });
+
+		b.focus();
+		outside.focus();
+		for (const el of [a, b]) el.inert = true;
+		expect(await nav.validateAll()).toBe(false);
+		for (const el of [a, b]) el.inert = false;
+		b.focus();
+		b.dispatchEvent(new Event('input', { bubbles: true }));
+		outside.focus();
+		nav.restoreFocus();
+		expect(document.activeElement).toBe(b);
 	});
 
 	it('a passing validateAll forgets the earlier failure', async () => {
@@ -130,7 +170,10 @@ describe('FormNav', () => {
 		nav.register({ name: 'b', el: b, commit: () => ok });
 
 		a.focus();
+		// Behind a dialog: the failure waits for restoreFocus.
+		b.inert = true;
 		expect(await nav.validateAll()).toBe(false);
+		b.inert = false;
 		ok = true;
 		a.focus();
 		expect(await nav.validateAll()).toBe(true);

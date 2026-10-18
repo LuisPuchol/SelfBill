@@ -5,7 +5,7 @@
 	let { data }: PageProps = $props();
 </script>
 
-<!-- One form per article: it is built once, when the record opens -->
+<!-- One form per client: it is built once, when the record opens -->
 {#key data.id}
 	<ClientRecord id={data.id} initial={data.initial} />
 {/key}

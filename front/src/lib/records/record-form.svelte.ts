@@ -69,6 +69,8 @@ export class RecordForm<V extends { code: number | null }> {
 	#fieldErrors: Record<string, FieldError> = $state.raw({});
 	#saving = false;
 	#deleting = false;
+	/** The last record this form created, in a chain of new ones: the list selects it on the way back. */
+	#createdId: number | undefined;
 
 	constructor(options: RecordFormOptions<V>) {
 		this.#options = options;
@@ -175,7 +177,7 @@ export class RecordForm<V extends { code: number | null }> {
 	}
 
 	exit(): void {
-		void this.#options.goToList();
+		void this.#options.goToList(this.#createdId);
 	}
 
 	/** Back to the first field the API refused; with none, to where the form had the cursor. */
@@ -214,6 +216,7 @@ export class RecordForm<V extends { code: number | null }> {
 			await this.#options.goToList(id);
 			return true;
 		}
+		this.#createdId = saved.id;
 		let next: V;
 		try {
 			next = await this.#options.blank();
@@ -240,7 +243,11 @@ export class RecordForm<V extends { code: number | null }> {
 			err.code === 'VALIDATION_ERROR' &&
 			Object.keys(err.fieldErrors).length > 0
 		) {
-			const messages = fieldErrorMessages(err.fieldErrors, fieldMessages);
+			// The API takes only positive codes; empty is already caught by validateAll.
+			const messages = fieldErrorMessages(err.fieldErrors, {
+				code: 'El código tiene que ser mayor que cero',
+				...fieldMessages
+			});
 			this.#setFieldErrors(messages);
 			this.nav?.focusFirst(Object.keys(messages));
 		} else {

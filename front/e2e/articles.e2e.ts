@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { searchFor } from './list';
 
 async function createArticle(request: APIRequestContext, code: number, name: string) {
 	const response = await request.post('/api/articles', { data: { code, name } });
@@ -36,40 +37,102 @@ test('two new articles in a row', async ({ page }) => {
 	await expect(page.getByText(`Artículo ${code + 1} guardado`)).toBeVisible();
 	await page.keyboard.press('Escape');
 
-	await expect(page.getByRole('heading', { name: 'Artículos' })).toBeVisible();
+	// Back to the list it came from, with the last one saved selected.
+	await expect(page).toHaveURL('/articles');
 	await ready(page, 'Nuevo');
-	await page.getByLabel('Buscar (código o nombre)').fill('e2e');
+	await expect(page.getByRole('row', { name: /Tomate e2e B/ })).toHaveAttribute(
+		'aria-selected',
+		'true'
+	);
+	await searchFor(page, 'Tomate e2e');
 	await expect(page.getByRole('cell', { name: 'Tomate e2e A' })).toBeVisible();
 	await expect(page.getByRole('cell', { name: 'Tomate e2e B' })).toBeVisible();
 });
 
 test('search by name and by code', async ({ page, request }) => {
 	const { id } = await createArticle(request, 9101, 'Zanahoria búsqueda');
+	await createArticle(request, 9106, 'Zanahoria otra');
 	await openList(page);
-	const search = page.getByLabel('Buscar (código o nombre)');
-	await search.fill('ZANAHORIA busqueda');
+	await expect(page.getByRole('cell', { name: 'Zanahoria otra' })).toBeVisible();
+	// Neither accents nor case count.
+	await searchFor(page, 'ZANAHORIA busqueda');
 	await expect(page.getByRole('cell', { name: 'Zanahoria búsqueda' })).toBeVisible();
-	await search.fill('9101');
+	await expect(page.getByRole('cell', { name: 'Zanahoria otra' })).toBeHidden();
+	// Digits are a code: Enter opens it, even before the search has come back.
+	await page.getByLabel('Buscar (código o nombre)').fill('9101');
 	await page.keyboard.press('Enter');
 	await expect(page).toHaveURL(`/articles/${id}`);
 	await expect(page.getByRole('heading', { name: 'Artículo 9101' })).toBeVisible();
 });
 
 test('an edit returns to the list with the row selected', async ({ page, request }) => {
+	await createArticle(request, 9100, 'Berenjena primera');
 	const { id } = await createArticle(request, 9102, 'Berenjena editar');
 	await openList(page);
-	await page.getByLabel('Buscar (código o nombre)').fill('9102');
+	await searchFor(page, 'berenjena');
+	await expect(page.getByRole('row', { name: /Berenjena/ })).toHaveCount(2);
+	// The second row: going back must not simply land on the first.
+	await page.keyboard.press('ArrowDown');
 	await page.keyboard.press('Enter');
 	await expect(page).toHaveURL(`/articles/${id}`);
 	await ready(page, 'Guardar');
 	await page.getByLabel('Nombre').fill('Berenjena editada');
 	await page.keyboard.press('NumpadAdd');
 	await expect(page.getByText('Artículo 9102 guardado')).toBeVisible();
-	await expect(page).toHaveURL(/\/articles(\?.*)?$/);
+	await expect(page).toHaveURL('/articles?q=berenjena');
 	await expect(page.getByRole('heading', { name: 'Artículos' })).toBeVisible();
 	const row = page.getByRole('row', { name: /Berenjena editada/ });
 	await expect(row).toBeVisible();
 	await expect(row).toHaveAttribute('aria-selected', 'true');
+	await expect(page.getByRole('row', { name: /Berenjena primera/ })).not.toHaveAttribute(
+		'aria-selected',
+		'true'
+	);
+});
+
+test('Esc from a new article goes back to the list it came from', async ({ page, request }) => {
+	const { id } = await createArticle(request, 9107, 'Alcachofa memoria');
+	// An earlier visit to a record leaves the list remembered with its search.
+	await openList(page);
+	await searchFor(page, 'alcachofa');
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(`/articles/${id}`);
+	await ready(page, 'Guardar');
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL('/articles?q=alcachofa');
+	await ready(page, 'Borrar búsqueda');
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL('/articles');
+	await ready(page, 'Salir');
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL('/');
+
+	// The list again, now with no search: F2, save one, Esc.
+	await expect(page.locator('footer')).toContainText('1–6');
+	await page.keyboard.press('4');
+	await expect(page).toHaveURL('/articles');
+	await ready(page, 'Nuevo');
+	await page.keyboard.press('F2');
+	await expect(page.getByRole('heading', { name: 'Artículo nuevo' })).toBeVisible();
+	await ready(page, 'Guardar');
+	const code = await page.getByLabel('Código').inputValue();
+	await page.getByLabel('Nombre').fill('Alcachofa nueva');
+	await page.keyboard.press('NumpadAdd');
+	await expect(page.getByText(`Artículo ${code} guardado`)).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL('/articles');
+	await expect(page.getByRole('row', { name: /Alcachofa nueva/ })).toHaveAttribute(
+		'aria-selected',
+		'true'
+	);
+
+	// With a search on the list when F2 is pressed, Esc comes back to that search.
+	await searchFor(page, 'alcachofa');
+	await page.keyboard.press('F2');
+	await expect(page.getByRole('heading', { name: 'Artículo nuevo' })).toBeVisible();
+	await ready(page, 'Guardar');
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL('/articles?q=alcachofa');
 });
 
 test('a repeated code is reported under Código', async ({ page, request }) => {
@@ -124,7 +187,7 @@ test('unsaved changes', async ({ page, request }) => {
 	await page.keyboard.press('F8');
 	await expect(page.getByRole('heading', { name: 'Artículos' })).toBeVisible();
 	await ready(page, 'Nuevo');
-	await page.getByLabel('Buscar (código o nombre)').fill('9105');
+	await searchFor(page, '9105');
 	await expect(page.getByRole('cell', { name: 'Calabacín cambios' })).toBeVisible();
 
 	// "+": save and leave

@@ -1,14 +1,18 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import ListScreen from '#lib/components/ListScreen.svelte';
 	import type { Column } from '#lib/components/table.js';
-	import { recallList, rememberList } from '#lib/records/list-memory.js';
+	import { recallList, rememberList, rememberListUrl } from '#lib/records/list-memory.js';
 	import { withParams } from '#lib/url.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	// The list as it is on screen, also after a search or a page turn: Esc from a record, new or
+	// opened, comes back to it.
+	afterNavigate(() => rememberListUrl('articles', page.url.pathname + page.url.search));
 
 	interface Row {
 		id: number;

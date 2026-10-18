@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recallList, rememberList } from './list-memory';
+import { recallList, rememberList, rememberListUrl } from './list-memory';
 
 describe('list memory', () => {
 	it('remembers the last list of each section', () => {
@@ -13,5 +13,13 @@ describe('list memory', () => {
 		rememberList('articles', { href: '/articles?page=2', openedId: 1 });
 		rememberList('articles', { href: '/articles' });
 		expect(recallList('articles')).toEqual({ href: '/articles' });
+	});
+
+	it('a new URL keeps the last record opened', () => {
+		rememberListUrl('invoices', '/invoices');
+		expect(recallList('invoices')).toEqual({ href: '/invoices' });
+		rememberList('invoices', { href: '/invoices?q=g', openedId: 4 });
+		rememberListUrl('invoices', '/invoices?page=1');
+		expect(recallList('invoices')).toEqual({ href: '/invoices?page=1', openedId: 4 });
 	});
 });

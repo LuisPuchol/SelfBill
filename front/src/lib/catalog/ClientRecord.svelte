@@ -88,6 +88,9 @@
 	const missing = $derived(missingBillingMessage(missingBillingData(form.values)));
 	const fieldset = 'mb-4';
 	const legend = 'mb-2 text-lg font-semibold';
+	// Side by side within each block, so the whole form fits a 1080p screen. Enter follows the
+	// page order: left to right, then the next row.
+	const fields = 'grid gap-x-4 md:grid-cols-2 xl:grid-cols-4';
 </script>
 
 <RecordScreen {form} title={form.id === null ? 'Cliente nuevo' : `Cliente ${form.values.code}`}>
@@ -96,130 +99,138 @@
 	{/if}
 	<fieldset class={fieldset}>
 		<legend class={legend}>Identificación</legend>
-		<NumberField
-			label="Código"
-			name="code"
-			decimals={0}
-			required
-			bind:value={form.values.code}
-			error={form.errorFor('code')}
-		/>
-		<TextField
-			label="Nombre comercial"
-			name="name"
-			required
-			maxlength={255}
-			bind:value={form.values.name}
-			error={form.errorFor('name')}
-		/>
-		<TextField
-			label="Razón social"
-			name="businessName"
-			required
-			maxlength={255}
-			bind:value={form.values.businessName}
-			error={form.errorFor('businessName')}
-		/>
-		<TextField
-			label="NIF"
-			name="nif"
-			maxlength={20}
-			bind:value={form.values.nif}
-			error={form.errorFor('nif')}
-		/>
+		<div class={fields}>
+			<NumberField
+				label="Código"
+				name="code"
+				decimals={0}
+				required
+				bind:value={form.values.code}
+				error={form.errorFor('code')}
+			/>
+			<TextField
+				label="Nombre comercial"
+				name="name"
+				required
+				maxlength={255}
+				bind:value={form.values.name}
+				error={form.errorFor('name')}
+			/>
+			<TextField
+				label="Razón social"
+				name="businessName"
+				required
+				maxlength={255}
+				bind:value={form.values.businessName}
+				error={form.errorFor('businessName')}
+			/>
+			<TextField
+				label="NIF"
+				name="nif"
+				maxlength={20}
+				bind:value={form.values.nif}
+				error={form.errorFor('nif')}
+			/>
+		</div>
 	</fieldset>
 	<fieldset class={fieldset}>
 		<legend class={legend}>Dirección</legend>
-		<TextField
-			label="Dirección"
-			name="address"
-			maxlength={500}
-			bind:value={form.values.address}
-			error={form.errorFor('address')}
-		/>
-		<DigitsField
-			label="Código postal"
-			name="postalCode"
-			length={5}
-			bind:value={form.values.postalCode}
-			error={form.errorFor('postalCode')}
-		/>
-		<TextField
-			label="Población"
-			name="city"
-			maxlength={100}
-			bind:value={form.values.city}
-			error={form.errorFor('city')}
-		/>
-		<TextField
-			label="Provincia"
-			name="province"
-			maxlength={100}
-			bind:value={form.values.province}
-			error={form.errorFor('province')}
-		/>
+		<div class={fields}>
+			<TextField
+				label="Dirección"
+				name="address"
+				maxlength={500}
+				bind:value={form.values.address}
+				error={form.errorFor('address')}
+			/>
+			<DigitsField
+				label="Código postal"
+				name="postalCode"
+				length={5}
+				bind:value={form.values.postalCode}
+				error={form.errorFor('postalCode')}
+			/>
+			<TextField
+				label="Población"
+				name="city"
+				maxlength={100}
+				bind:value={form.values.city}
+				error={form.errorFor('city')}
+			/>
+			<TextField
+				label="Provincia"
+				name="province"
+				maxlength={100}
+				bind:value={form.values.province}
+				error={form.errorFor('province')}
+			/>
+		</div>
 	</fieldset>
 	<fieldset class={fieldset}>
 		<legend class={legend}>Contacto</legend>
-		<TextField
-			label="Teléfono"
-			name="phone"
-			maxlength={20}
-			bind:value={form.values.phone}
-			error={form.errorFor('phone')}
-		/>
-		<TextField
-			label="Teléfono 2"
-			name="phone2"
-			maxlength={20}
-			bind:value={form.values.phone2}
-			error={form.errorFor('phone2')}
-		/>
-		<TextField
-			label="Email"
-			name="email"
-			type="email"
-			maxlength={50}
-			validate={(value) => (EMAIL_PATTERN.test(value.trim()) ? undefined : 'Revisa el email')}
-			bind:value={form.values.email}
-			error={form.errorFor('email')}
-		/>
+		<div class={fields}>
+			<TextField
+				label="Teléfono"
+				name="phone"
+				maxlength={20}
+				bind:value={form.values.phone}
+				error={form.errorFor('phone')}
+			/>
+			<TextField
+				label="Teléfono 2"
+				name="phone2"
+				maxlength={20}
+				bind:value={form.values.phone2}
+				error={form.errorFor('phone2')}
+			/>
+			<TextField
+				label="Email"
+				name="email"
+				type="email"
+				maxlength={50}
+				validate={(value) => (EMAIL_PATTERN.test(value.trim()) ? undefined : 'Revisa el email')}
+				bind:value={form.values.email}
+				error={form.errorFor('email')}
+			/>
+		</div>
 	</fieldset>
 	<fieldset class={fieldset}>
 		<legend class={legend}>Facturación</legend>
-		<ChoiceField
-			label="IVA"
-			name="vatType"
-			required
-			options={[
-				{ value: 'WITH_VAT', label: 'Con IVA' },
-				{ value: 'WITHOUT_VAT', label: 'Sin IVA' }
-			]}
-			bind:value={form.values.vatType}
-			error={form.errorFor('vatType')}
-		/>
-		<ChoiceField
-			label="Recargo"
-			name="surchargeType"
-			required
-			options={[
-				{ value: 'WITHOUT_SURCHARGE', label: 'Sin recargo' },
-				{ value: 'WITH_SURCHARGE', label: 'Con recargo' }
-			]}
-			bind:value={form.values.surchargeType}
-			error={form.errorFor('surchargeType')}
-		/>
-		<ChoiceField
-			label="Formato de albarán"
-			name="defaultDeliveryNoteFormat"
-			required
-			options={[
-				{ value: 'PLAIN', label: 'Simple' },
-				{ value: 'VALUED', label: 'Valorado' }
-			]}
-			bind:value={form.values.defaultDeliveryNoteFormat}
-			error={form.errorFor('defaultDeliveryNoteFormat')}
-		/>
+		<div class={fields}>
+			<ChoiceField
+				label="IVA"
+				name="vatType"
+				required
+				options={[
+					{ value: 'WITH_VAT', label: 'Con IVA' },
+					{ value: 'WITHOUT_VAT', label: 'Sin IVA' }
+				]}
+				bind:value={form.values.vatType}
+				error={form.errorFor('vatType')}
+			/>
+			<ChoiceField
+				label="Recargo"
+				name="surchargeType"
+				required
+				options={[
+					{ value: 'WITHOUT_SURCHARGE', label: 'Sin recargo' },
+					{ value: 'WITH_SURCHARGE', label: 'Con recargo' }
+				]}
+				bind:value={form.values.surchargeType}
+				error={form.errorFor('surchargeType')}
+			/>
+			<ChoiceField
+				label="Formato de albarán"
+				name="defaultDeliveryNoteFormat"
+				required
+				options={[
+					{ value: 'PLAIN', label: 'Simple' },
+					{ value: 'VALUED', label: 'Valorado' }
+				]}
+				bind:value={form.values.defaultDeliveryNoteFormat}
+				error={form.errorFor('defaultDeliveryNoteFormat')}
+			/>
+		</div>
 	</fieldset>
 </RecordScreen>
 <UnsavedGuard
