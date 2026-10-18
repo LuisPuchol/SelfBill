@@ -105,6 +105,31 @@ describe('RecordScreen', () => {
 		await expect.element(page.getByTestId('dirty')).toHaveTextContent('false');
 	});
 
+	it('a saved new record is clean while the next one is on its way', async () => {
+		const o = options();
+		const next = deferred<ArticleValues>();
+		o.blank.mockReturnValue(next.promise);
+		await render(RecordHarness, o);
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await vi.waitFor(() =>
+			expect(o.toast).toHaveBeenCalledExactlyOnceWith('Artículo 101 guardado')
+		);
+		await vi.waitFor(() => expect(o.blank).toHaveBeenCalledOnce());
+		// Saved, so leaving now must not ask about unsaved changes.
+		await expect.element(page.getByTestId('dirty')).toHaveTextContent('false');
+		await expect.element(name()).toHaveValue('Tomate');
+		// Still saving: "+" does nothing until the next record arrives.
+		await userEvent.keyboard('{NumpadAdd}');
+		expect(o.create).toHaveBeenCalledOnce();
+		next.resolve({ code: 102, name: '' });
+		await expect.element(code()).toHaveValue('102');
+		await expect.element(name()).toHaveValue('');
+		await expect.element(page.getByTestId('dirty')).toHaveTextContent('false');
+		expect(o.create).toHaveBeenCalledOnce();
+		expect(o.toast).toHaveBeenCalledOnce();
+	});
+
 	it('an edit goes back to the list', async () => {
 		const o = options();
 		await render(RecordHarness, { ...o, ...editing });

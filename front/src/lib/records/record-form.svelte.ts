@@ -208,8 +208,9 @@ export class RecordForm<V extends { code: number | null }> {
 		}
 		this.#fieldErrors = {};
 		this.#options.toast(`${entity.Label} ${saved.code} guardado`);
+		// Saved: nothing left to save, also while the next new record is on its way.
+		this.#original = this.#snapshot();
 		if (id !== null) {
-			this.#original = this.#snapshot();
 			await this.#options.goToList(id);
 			return true;
 		}
@@ -218,7 +219,6 @@ export class RecordForm<V extends { code: number | null }> {
 			next = await this.#options.blank();
 		} catch (err) {
 			// Saved, but no next record to chain into: back to the list, where the new one is.
-			this.#original = this.#snapshot();
 			showError(err);
 			await this.#options.goToList(saved.id);
 			return true;
