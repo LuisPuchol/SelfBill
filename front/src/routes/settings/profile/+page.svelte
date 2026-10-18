@@ -1,1 +1,8 @@
-<h1 class="text-2xl font-semibold">Datos del titular</h1>
+<script lang="ts">
+	import ProfileRecordPage from '#lib/settings/ProfileRecordPage.svelte';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
+</script>
+
+<ProfileRecordPage initial={data.profile} />

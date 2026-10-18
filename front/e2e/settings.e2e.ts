@@ -57,3 +57,40 @@ test('adds a period and corrects it', async ({ page }) => {
 	await page.keyboard.press('NumpadAdd');
 	await expect(page.getByRole('row', { name: /01\/01\/2099/ })).toHaveText(/22\s%/);
 });
+
+test("saves the owner's data and the home notice goes away", async ({ page, request }) => {
+	// A period in force, so only the profile is missing; another test may have created it.
+	const tax = await request.post('/api/tax-config', {
+		data: { validFrom: '2026-01-01', vatPercentage: 4, surchargePercentage: 0.5 }
+	});
+	expect([201, 409]).toContain(tax.status());
+	const hadProfile = (await request.get('/api/user-profile')).ok();
+	const notice = page.getByText('Pulsa 6 para ir a Ajustes.');
+
+	// The home is client-rendered: wait for its keys before judging the notice.
+	await page.goto('/');
+	await expect(page.locator('footer')).toContainText('1–6');
+	if (!hadProfile) await expect(notice).toContainText('datos del titular');
+
+	await page.goto('/settings');
+	// The keys are live once the footer shows them.
+	await expect(page.locator('footer')).toContainText('1–2');
+	await page.keyboard.press('2');
+	await expect(page).toHaveURL('/settings/profile');
+	await expect(page.getByRole('heading', { name: 'Datos del titular' })).toBeVisible();
+	await page.getByLabel('Nombre completo').fill('María López');
+	await page.getByLabel('Nombre fiscal').fill('Frutas López S.L.');
+	await page.getByLabel('NIF').fill('B87654321');
+	await page.getByLabel('Dirección').fill('Mercavalencia, nave 3');
+	await page.getByLabel('Email').fill('facturas@ejemplo.es');
+	await page.keyboard.press('NumpadAdd');
+
+	await expect(page).toHaveURL('/settings');
+	await expect(page.getByText('Datos del titular guardados')).toBeVisible();
+	await expect(page.getByRole('link', { name: /Datos del titular/ })).toContainText(
+		'Frutas López S.L.'
+	);
+	await page.goto('/');
+	await expect(page.locator('footer')).toContainText('1–6');
+	await expect(notice).toHaveCount(0);
+});

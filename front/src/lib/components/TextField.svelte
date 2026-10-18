@@ -10,6 +10,7 @@
 		value = $bindable(''),
 		required = false,
 		error,
+		hint,
 		type = 'text',
 		validate,
 		maxlength
@@ -21,7 +22,9 @@
 		required?: boolean;
 		/** From outside (e.g. the API); wins over the field's own */
 		error?: string;
-		type?: 'text' | 'email';
+		/** A note under the input */
+		hint?: string;
+		type?: 'text' | 'email' | 'password';
 		/** Own check for a non-empty value: the message, or nothing when it is fine */
 		validate?: (value: string) => string | undefined;
 		maxlength?: number;
@@ -46,7 +49,7 @@
 	$effect(() => nav?.register({ name, el: input, commit }));
 </script>
 
-<Field id={name} {label} error={error || ownError}>
+<Field id={name} {label} {hint} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<input
 			bind:this={input}

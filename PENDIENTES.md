@@ -114,3 +114,8 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
   vacía más allá de la última, reemplazando la entrada del historial.
 - Los botones ignoran los clics seguidos (para que un doble clic no pulse lo que aparece debajo):
   tres clics rápidos en "Página siguiente" pasan una sola página. AvPág no tiene ese límite.
+
+### Pendiente del bloque de Ajustes
+- Borrar una vigencia de IVA: la API no tiene endpoint.
+- Logo del titular en Ajustes (junto con el bloque del PDF).
+- Probar la cuenta de correo desde Ajustes.
