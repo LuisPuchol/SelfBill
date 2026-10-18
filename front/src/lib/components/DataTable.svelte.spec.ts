@@ -1,3 +1,4 @@
+import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
@@ -36,21 +37,31 @@ describe('DataTable', () => {
 		const onOpen = vi.fn();
 		render(TableHarness, { onOpen });
 		await page.getByText('Hotel Sol').dblClick();
-		expect(onOpen).toHaveBeenCalledWith(rows[2]);
+		expect(onOpen).toHaveBeenCalledExactlyOnceWith(rows[2]);
+		await expect.element(page.getByTestId('selected')).toHaveTextContent('2');
 	});
 
-	it('page keys ask for the next and previous page', async () => {
-		const onPage = vi.fn();
-		render(TableHarness, {
-			onOpen: vi.fn(),
-			onPage,
-			page: { number: 0, totalPages: 3 }
-		});
-		await expect.element(page.getByText('Página 1 de 3')).toBeVisible();
-		await userEvent.keyboard('{PageDown}');
-		expect(onPage).toHaveBeenCalledExactlyOnceWith(1);
-		await userEvent.keyboard('{PageUp}');
-		expect(onPage).toHaveBeenCalledTimes(1);
+	/** One press of the mouse, numbered as the browser numbers the presses of a double click. */
+	function pressOn(target: Element, detail: 1 | 2) {
+		for (const type of ['mousedown', 'mouseup', 'click', ...(detail === 2 ? ['dblclick'] : [])]) {
+			target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, detail }));
+		}
+	}
+
+	it('a double click that began outside the table neither marks nor opens a row', async () => {
+		const onOpen = vi.fn();
+		render(TableHarness, { onOpen });
+		// Both presses on the row: a double click.
+		pressOn(page.getByText('Hotel Sol').element(), 1);
+		pressOn(page.getByText('Hotel Sol').element(), 2);
+		expect(onOpen).toHaveBeenCalledExactlyOnceWith(rows[2]);
+
+		// The first press on a dialog's button, which closes: the second lands on the row behind it.
+		pressOn(page.getByRole('button', { name: 'Otro' }).element(), 1);
+		pressOn(page.getByText('Bar Pepe').element(), 2);
+		await tick();
+		await expect.element(page.getByTestId('selected')).toHaveTextContent('2');
+		expect(onOpen).toHaveBeenCalledOnce();
 	});
 
 	it('Enter does not open a row while a button has focus', async () => {
@@ -82,15 +93,11 @@ describe('DataTable', () => {
 		return event.defaultPrevented;
 	}
 
-	it('arrows and page keys are left to a focused text input', async () => {
-		const onPage = vi.fn();
-		render(TableHarness, { onOpen: vi.fn(), onPage, page: { number: 1, totalPages: 3 } });
+	it('arrows are left to a focused text input', async () => {
+		render(TableHarness, { onOpen: vi.fn() });
 		const input = page.getByLabelText('Filtro');
 		await input.click();
-		const el = input.element();
-		expect(press(el, 'ArrowDown')).toBe(false);
-		expect(press(el, 'PageDown')).toBe(false);
-		expect(onPage).not.toHaveBeenCalled();
+		expect(press(input.element(), 'ArrowDown')).toBe(false);
 		await expect.element(page.getByRole('row').nth(1)).toHaveAttribute('aria-selected', 'true');
 	});
 

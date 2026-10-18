@@ -2,6 +2,7 @@ import { tick } from 'svelte';
 import { ApiError, type ErrorCode } from '../api/errors';
 import { fieldErrorMessages } from '../api/field-errors';
 import { showError } from '../components/errors.svelte';
+import { DeleteFlow } from './delete-flow.svelte';
 import type { FormNav } from '../keyboard/form-nav';
 
 export interface Saved {
@@ -61,14 +62,13 @@ export class RecordForm<V extends { code: number | null }> {
 	/** Set by RecordScreen through `bind:nav` */
 	nav: FormNav | undefined = $state.raw();
 	readonly id: number | null;
-	deleteDialog: { title: string; name: string; body: string | null } | null = $state(null);
+	readonly deletion: DeleteFlow;
 	confirmMessage: string | null = $state(null);
 
 	readonly #options: RecordFormOptions<V>;
 	#original: V;
 	#fieldErrors: Record<string, FieldError> = $state.raw({});
 	#saving = false;
-	#deleting = false;
 	/** The last record this form created, in a chain of new ones: the list selects it on the way back. */
 	#createdId: number | undefined;
 
@@ -78,6 +78,17 @@ export class RecordForm<V extends { code: number | null }> {
 		this.#original = $state.raw($state.snapshot(options.initial) as V);
 		// A copy of its own: the fields write here, never into the caller's object.
 		this.values = $state($state.snapshot(options.initial) as V);
+		this.deletion = new DeleteFlow({
+			entity: options.entity,
+			remove: options.remove,
+			pendingForDelete: options.pendingForDelete,
+			toast: options.toast,
+			onDeleted: async () => {
+				// Nothing left to save: the unsaved-changes question must not stop the way out.
+				this.#original = this.#snapshot();
+				await this.#options.goToList();
+			}
+		});
 	}
 
 	get isDirty(): boolean {
@@ -133,47 +144,12 @@ export class RecordForm<V extends { code: number | null }> {
 		this.confirmMessage = null;
 	}
 
+	/** Asks to delete the saved record; nothing for a new one. */
 	async askDelete(): Promise<void> {
 		const id = this.id;
-		if (id === null || this.#deleting || this.deleteDialog) return;
-		this.#deleting = true;
-		try {
-			const body = await this.#options.pendingForDelete(id);
-			this.deleteDialog = {
-				title: `¿Borrar el ${this.#options.entity.one} ${this.#code}?`,
-				// Like the code: the saved record's, not what the form holds now.
-				name: this.#options.describe(this.#original),
-				body
-			};
-		} catch (err) {
-			showError(err);
-		} finally {
-			this.#deleting = false;
-		}
-	}
-
-	async confirmDelete(): Promise<void> {
-		const id = this.id;
-		if (id === null || this.#deleting) return;
-		this.#deleting = true;
-		try {
-			await this.#options.remove(id);
-		} catch (err) {
-			this.deleteDialog = null;
-			showError(err);
-			return;
-		} finally {
-			this.#deleting = false;
-		}
-		this.deleteDialog = null;
-		this.#options.toast(`${this.#options.entity.Label} ${this.#code} borrado`);
-		// Nothing left to save: the unsaved-changes question must not stop the way out.
-		this.#original = this.#snapshot();
-		await this.#options.goToList();
-	}
-
-	cancelDelete(): void {
-		this.deleteDialog = null;
+		if (id === null) return;
+		// Like the code: the saved record's, not what the form holds now.
+		await this.deletion.ask({ id, code: this.#code, name: this.#options.describe(this.#original) });
 	}
 
 	exit(): void {

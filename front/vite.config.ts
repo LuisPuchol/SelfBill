@@ -6,7 +6,16 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	optimizeDeps: { include: ['@lucide/svelte'] },
-	server: { proxy: { '/api': 'http://127.0.0.1:8080' } },
+	server: {
+		proxy: {
+			'/api': {
+				target: 'http://127.0.0.1:8080',
+				changeOrigin: true,
+				// Without the API the browser's fetch must fail as it does with the jar (NETWORK), not get a 502.
+				configure: (proxy) => proxy.on('error', (_err, _req, res) => res.destroy())
+			}
+		}
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit({

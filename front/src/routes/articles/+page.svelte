@@ -1,10 +1,17 @@
 <script lang="ts">
-	import { afterNavigate, goto } from '$app/navigation';
+	import { afterNavigate, goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { articleDeletion } from '#lib/catalog/articles.js';
 	import ListScreen from '#lib/components/ListScreen.svelte';
 	import type { Column } from '#lib/components/table.js';
-	import { recallList, rememberList, rememberListUrl } from '#lib/records/list-memory.js';
+	import { toast } from '#lib/components/toast.svelte.js';
+	import {
+		forgetOpened,
+		recallList,
+		rememberList,
+		rememberListUrl
+	} from '#lib/records/list-memory.js';
 	import { withParams } from '#lib/url.js';
 	import type { PageProps } from './$types';
 
@@ -53,6 +60,14 @@
 	onOpen={(row) => {
 		rememberList('articles', { href: page.url.pathname + page.url.search, openedId: row.id });
 		void goto(resolve('/articles/[id]', { id: String(row.id) }));
+	}}
+	deletion={{
+		options: articleDeletion,
+		describe: (row) => row.name,
+		code: (row) => row.code,
+		toast,
+		reload: () => invalidateAll(),
+		onDeleted: (id) => forgetOpened('articles', id)
 	}}
 	onNew={() => void goto(resolve('/articles/new'))}
 	onExit={() => void goto(resolve('/'))}

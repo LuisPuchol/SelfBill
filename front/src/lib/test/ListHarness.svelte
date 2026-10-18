@@ -1,5 +1,7 @@
 <script lang="ts">
+	import type { ComponentProps } from 'svelte';
 	import KeyboardRoot from '../keyboard/KeyboardRoot.svelte';
+	import ErrorDialog from '../components/ErrorDialog.svelte';
 	import KeyBar from '../components/KeyBar.svelte';
 	import ListScreen from '../components/ListScreen.svelte';
 	import type { Column } from '../components/table';
@@ -30,7 +32,8 @@
 		onOpen,
 		onNew,
 		onExit,
-		onPage = () => {}
+		onPage = () => {},
+		deletion
 	}: {
 		rows?: Row[];
 		search?: string;
@@ -41,6 +44,7 @@
 		onNew: () => void;
 		onExit: () => void;
 		onPage?: (n: number) => void;
+		deletion?: ComponentProps<typeof ListScreen<Row>>['deletion'];
 	} = $props();
 </script>
 
@@ -59,5 +63,7 @@
 	{onOpen}
 	{onNew}
 	{onExit}
+	{deletion}
 />
+<ErrorDialog />
 <KeyBar />

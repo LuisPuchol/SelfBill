@@ -10,21 +10,33 @@
 		columns,
 		rows,
 		onOpen,
-		page,
-		onPage,
 		selected = $bindable(0),
 		emptyText = 'No hay nada que mostrar.'
 	}: {
 		columns: Column<T>[];
 		rows: T[];
 		onOpen: (row: T) => void;
-		page?: { number: number; totalPages: number };
-		onPage?: (n: number) => void;
 		selected?: number;
 		emptyText?: string;
 	} = $props();
 
 	let body: HTMLElement | undefined = $state();
+	/** The row under the first press of the latest click, null for a press elsewhere. */
+	let pressedRow: Element | null = null;
+
+	// The browser counts a press as the second of a double click by time and place alone: after a
+	// dialog's button closes the dialog, it lands on the row behind. Only the row that got the first
+	// press takes it. Capture: no handler can stop the press before it is seen here.
+	$effect(() =>
+		on(
+			document,
+			'mousedown',
+			(e) => {
+				if (e.detail < 2) pressedRow = e.target instanceof Element ? e.target.closest('tr') : null;
+			},
+			{ capture: true }
+		)
+	);
 
 	// The selection goes back to the first row whenever the rows change.
 	$effect(() => {
@@ -52,8 +64,6 @@
 		return !isEditable(active) && active?.tagName !== 'BUTTON' && active?.tagName !== 'A';
 	};
 	const canMove = () => rows.length > 0 && notTyping();
-	const hasNext = () => !!onPage && !!page && page.number + 1 < page.totalPages && notTyping();
-	const hasPrevious = () => !!onPage && !!page && page.number > 0 && notTyping();
 
 	useKeys(() => [
 		{ key: 'ArrowUp', label: 'Anterior', hidden: true, when: canMove, run: () => move(-1) },
@@ -66,18 +76,6 @@
 				const row = rows[selected];
 				if (row !== undefined) onOpen(row);
 			}
-		},
-		{
-			key: 'PageDown',
-			label: 'Página siguiente',
-			when: hasNext,
-			run: () => onPage?.(page!.number + 1)
-		},
-		{
-			key: 'PageUp',
-			label: 'Página anterior',
-			when: hasPrevious,
-			run: () => onPage?.(page!.number - 1)
 		}
 	]);
 </script>
@@ -103,8 +101,11 @@
 				<tr
 					aria-selected={i === selected}
 					class="cursor-default border-b border-line {i === selected ? 'bg-field-active' : ''}"
-					onclick={() => (selected = i)}
-					ondblclick={() => {
+					onclick={(e) => {
+						if (e.detail < 2 || e.currentTarget === pressedRow) selected = i;
+					}}
+					ondblclick={(e) => {
+						if (e.currentTarget !== pressedRow) return;
 						selected = i;
 						onOpen(row);
 					}}
@@ -118,7 +119,4 @@
 			{/each}
 		</tbody>
 	</table>
-{/if}
-{#if page && page.totalPages > 1}
-	<p class="px-3 py-2 text-muted">Página {page.number + 1} de {page.totalPages}</p>
 {/if}

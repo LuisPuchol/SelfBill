@@ -2,10 +2,15 @@
 	import { onMount, tick, untrack } from 'svelte';
 	import { on } from 'svelte/events';
 	import { createSubscriber } from 'svelte/reactivity';
+	import type { KeyAction } from '../keyboard/keys';
 	import { useKeys } from '../keyboard/keymap.svelte';
+	import { DeleteFlow, type DeleteOptions } from '../records/delete-flow.svelte';
 	import { isCodeSearch } from '../records/search';
+	import ActionButton from './ActionButton.svelte';
 	import DataTable from './DataTable.svelte';
+	import DeleteDialog from './DeleteDialog.svelte';
 	import { inputClass } from './field-style';
+	import ScreenHeader from './ScreenHeader.svelte';
 	import { selectOnFocus } from './select-on-focus';
 	import type { Column } from './table';
 
@@ -18,6 +23,7 @@
 		search,
 		selectId,
 		rowId,
+		deletion,
 		onSearch,
 		onPage,
 		onOpen,
@@ -35,6 +41,22 @@
 		/** Row to select whenever the rows change, if it is on the page: the last one opened */
 		selectId?: number;
 		rowId: (row: T) => number;
+		/** Deleting the marked row; without it there is no "Borrar" and no F8. Read once, on entry. */
+		deletion?: {
+			options: DeleteOptions;
+			/** The row's name in the question, and its code in the title and the toast */
+			describe(row: T): string;
+			code(row: T): number;
+			toast(message: string): void;
+			/**
+			 * After a delete, done or failed: the page loads its rows again (same search, same page).
+			 * It returns the load's promise and hands the screen new rows: the mark's place after the
+			 * delete, and F8 until then, wait for them.
+			 */
+			reload(): void | Promise<void>;
+			/** After a done delete, before reloading: e.g. forget the remembered row */
+			onDeleted?(id: number): void;
+		};
 		onSearch: (text: string) => void;
 		onPage: (n: number) => void;
 		onOpen: (row: T) => void;
@@ -53,6 +75,26 @@
 	let sent = untrack(() => search);
 	/** An Enter pressed before its rows came: they open as soon as they answer exactly this text. */
 	let pendingOpen: string | null = null;
+	/** Where the mark was on a delete, done or failed: the rows reloaded after it keep the mark there. */
+	let afterDelete: number | null = null;
+
+	const deleting = untrack(() => deletion);
+	const flow =
+		deleting &&
+		new DeleteFlow({
+			...deleting.options,
+			toast: deleting.toast,
+			onDeleted: async ({ id }) => {
+				afterDelete = selected;
+				deleting.onDeleted?.(id);
+				await deleting.reload();
+			},
+			// It may be gone already (deleted elsewhere): the list shows what is left.
+			onFailed: async () => {
+				afterDelete = selected;
+				await deleting.reload();
+			}
+		});
 
 	const searched = $derived(search.trim());
 	const emptyText = $derived(
@@ -82,10 +124,22 @@
 	});
 
 	// DataTable goes back to the first row when the rows change (its effect runs first): then
-	// the remembered row, if it is on this page.
+	// the remembered row, if it is on this page. The rows reloaded after a delete keep the mark
+	// in its place instead.
 	$effect(() => {
-		const index = rows.findIndex((row) => rowId(row) === untrack(() => selectId));
-		if (index >= 0) selected = index;
+		void rows;
+		untrack(() => {
+			if (afterDelete !== null) {
+				const index = afterDelete;
+				afterDelete = null;
+				if (rows.length > 0) selected = Math.min(index, rows.length - 1);
+				// Its only row is gone: the previous page rather than an empty one.
+				else if (page.number > 0) turnPage(page.number - 1);
+				return;
+			}
+			const index = rows.findIndex((row) => rowId(row) === selectId);
+			if (index >= 0) selected = index;
+		});
 	});
 
 	// After the selection above has settled: the rows an earlier Enter was waiting for.
@@ -164,6 +218,15 @@
 		if (row !== undefined) openRow(row);
 	}
 
+	function askDelete(): void {
+		const row = rows[selected];
+		// Until the rows come back from a delete, the marked one may be the row just deleted.
+		if (!deleting || !flow || row === undefined || afterDelete !== null) return;
+		// Rows an earlier Enter was waiting for must not open behind the question.
+		pendingOpen = null;
+		void flow.ask({ id: rowId(row), code: deleting.code(row), name: deleting.describe(row) });
+	}
+
 	// `when` runs inside a $derived in the key bar: re-evaluate it as the focus moves.
 	const subscribe = createSubscriber((update) => {
 		const off = [on(document, 'focusin', update), on(document, 'focusout', update)];
@@ -176,33 +239,51 @@
 	};
 	const hasRows = () => rows.length > 0 && inSearch();
 	// While a search is on its way, Enter waits for its rows even if none are on screen now.
-	const canOpen = () => (rows.length > 0 || waiting()) && inSearch();
+	const openable = () => rows.length > 0 || waiting();
+
+	// The keys and the buttons share these actions; a button does not look at the focus.
+	const create: KeyAction = {
+		key: 'F2',
+		label: 'Nuevo',
+		run: () => {
+			cancelTimer();
+			pendingOpen = null;
+			onNew();
+		}
+	};
+	const openSelected: KeyAction = {
+		key: 'Enter',
+		label: 'Abrir',
+		when: () => openable() && inSearch(),
+		run: open
+	};
+	const deleteSelected: KeyAction = {
+		key: 'F8',
+		label: 'Borrar',
+		when: () => flow !== undefined && rows.length > 0,
+		run: askDelete
+	};
+	const nextPage: KeyAction = {
+		key: 'PageDown',
+		label: 'Página siguiente',
+		when: () => page.number + 1 < page.totalPages,
+		run: () => turnPage(page.number + 1)
+	};
+	const previousPage: KeyAction = {
+		key: 'PageUp',
+		label: 'Página anterior',
+		when: () => page.number > 0,
+		run: () => turnPage(page.number - 1)
+	};
 
 	useKeys(() => [
 		{ key: 'ArrowUp', label: 'Anterior', hidden: true, when: hasRows, run: () => move(-1) },
 		{ key: 'ArrowDown', label: 'Siguiente', hidden: true, when: hasRows, run: () => move(1) },
-		{ key: 'Enter', label: 'Abrir', when: canOpen, run: open },
-		{
-			key: 'PageDown',
-			label: 'Página siguiente',
-			when: () => page.number + 1 < page.totalPages && inSearch(),
-			run: () => turnPage(page.number + 1)
-		},
-		{
-			key: 'PageUp',
-			label: 'Página anterior',
-			when: () => page.number > 0 && inSearch(),
-			run: () => turnPage(page.number - 1)
-		},
-		{
-			key: 'F2',
-			label: 'Nuevo',
-			run: () => {
-				cancelTimer();
-				pendingOpen = null;
-				onNew();
-			}
-		},
+		openSelected,
+		nextPage,
+		previousPage,
+		create,
+		deleteSelected,
 		text === ''
 			? {
 					key: 'Escape',
@@ -225,7 +306,13 @@
 	]);
 </script>
 
-<h1 class="mb-4 text-2xl font-semibold">{title}</h1>
+<ScreenHeader {title}>
+	<ActionButton action={create} />
+	<ActionButton action={openSelected} enabled={openable} />
+	{#if flow}
+		<ActionButton action={deleteSelected} variant="danger" />
+	{/if}
+</ScreenHeader>
 <div class="mb-4 flex max-w-xl flex-col gap-1">
 	<label for="list-search" class="font-medium">Buscar (código o nombre)</label>
 	<input
@@ -240,5 +327,15 @@
 	/>
 </div>
 <div bind:this={tableBox}>
-	<DataTable {columns} {rows} onOpen={openRow} {page} onPage={turnPage} {emptyText} bind:selected />
+	<DataTable {columns} {rows} onOpen={openRow} {emptyText} bind:selected />
 </div>
+{#if page.totalPages > 1}
+	<div class="mt-4 flex flex-wrap items-center gap-4">
+		<ActionButton action={previousPage} />
+		<p class="text-muted">Página {page.number + 1} de {page.totalPages}</p>
+		<ActionButton action={nextPage} />
+	</div>
+{/if}
+{#if flow}
+	<DeleteDialog {flow} />
+{/if}
