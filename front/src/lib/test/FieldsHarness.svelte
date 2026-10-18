@@ -12,6 +12,8 @@
 
 	type Format = 'PLAIN' | 'VALUED';
 
+	let { compact = false }: { compact?: boolean } = $props();
+
 	let nav = $state<FormNav>();
 	let lot = $state('');
 	let date = $state(todayIso());
@@ -35,7 +37,7 @@
 		bind:value={format}
 		required
 	/>
-	<TextField label="Fin" name="last" bind:value={last} />
+	<TextField label="Fin" name="last" bind:value={last} {compact} required={compact} />
 	<NumberField label="Entero" name="whole" decimals={0} bind:value={whole} />
 	<NumberField
 		label="Porcentaje"

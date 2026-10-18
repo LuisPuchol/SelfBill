@@ -112,4 +112,14 @@ describe('CodeField', () => {
 		await expect.element(page.getByText('Pepino')).not.toBeInTheDocument();
 		await expect.element(page.getByTestId('articleId')).toHaveTextContent('null');
 	});
+
+	it('a compact one calls onFound and hides the name', async () => {
+		const onFound = vi.fn();
+		render(CodeHarness, { lookup: async () => 'Tomate', compact: true, onFound });
+		await articulo().click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cantidad()).toHaveFocus();
+		expect(onFound).toHaveBeenCalledWith(12);
+		await expect.element(page.getByText('Tomate')).not.toBeInTheDocument();
+	});
 });

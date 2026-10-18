@@ -200,4 +200,12 @@ describe('Lot, date and choice fields', () => {
 		await expect.element(page.getByText('Elige una opción')).toBeVisible();
 		await expect.element(formato()).toHaveFocus();
 	});
+
+	it('a compact field keeps its accessible name and its error', async () => {
+		render(FieldsHarness, { compact: true });
+		await fin().click();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(page.getByText('Este dato es obligatorio')).toBeVisible();
+		await expect.element(page.getByText('Fin', { exact: true })).toHaveClass('sr-only');
+	});
 });

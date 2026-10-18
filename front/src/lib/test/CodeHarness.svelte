@@ -9,11 +9,15 @@
 	let {
 		lookup,
 		initial = null,
-		onSave
+		onSave,
+		compact = false,
+		onFound
 	}: {
 		lookup: (code: number) => Promise<string | null>;
 		initial?: number | null;
 		onSave?: () => void;
+		compact?: boolean;
+		onFound?: (code: number) => void;
 	} = $props();
 
 	let nav = $state<FormNav>();
@@ -42,6 +46,8 @@
 		name="articleId"
 		bind:value={articleId}
 		{lookup}
+		{compact}
+		{onFound}
 		notFoundMessage="No existe ningún artículo con ese código"
 		required
 	/>
