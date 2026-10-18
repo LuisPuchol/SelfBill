@@ -27,7 +27,6 @@ export const errorMessages: Record<ErrorCode, string> = {
 	TAX_CONFIG_ALREADY_EXISTS: 'Ya hay un IVA que empieza en esa fecha.',
 	USER_PROFILE_NOT_FOUND: 'Faltan tus datos de empresa. Rellénalos en Ajustes.',
 	USER_PROFILE_ALREADY_EXISTS: 'Tus datos de empresa ya están guardados.',
-	USER_PROFILE_MAIL_PASSWORD_REQUIRED: 'Falta la contraseña del correo.',
 	USER_PROFILE_LOGO_NOT_FOUND: 'Todavía no has subido ningún logotipo.',
 	USER_PROFILE_INVALID_LOGO_FORMAT: 'El logotipo tiene que ser una imagen JPG o PNG.',
 	MAIL_NOT_CONFIGURED: 'El correo no está configurado. Rellena sus datos en Ajustes.',

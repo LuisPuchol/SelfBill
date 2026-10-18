@@ -12,7 +12,9 @@ import com.luispuchol.selfbill.selfbill_api.shared.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -25,7 +27,7 @@ public class UserProfileService {
     private final CredentialEncryptionService credentialEncryptionService;
 
     public UserProfileResponse getUserProfile() {
-        return toResponse(findProfile());
+        return userProfileMapper.toResponse(findProfile());
     }
 
     @Transactional
@@ -33,14 +35,11 @@ public class UserProfileService {
         if (userProfileRepository.count() > 0) {
             throw new BusinessException(ErrorCode.USER_PROFILE_ALREADY_EXISTS);
         }
-        if (request.mailPassword() == null || request.mailPassword().isBlank()) {
-            throw new BusinessException(ErrorCode.USER_PROFILE_MAIL_PASSWORD_REQUIRED);
-        }
 
         UserProfile profile = userProfileMapper.toEntity(request);
         applySmtpDefaults(profile, request);
-        profile.setMailPasswordEncrypted(credentialEncryptionService.encrypt(request.mailPassword()));
-        return toResponse(userProfileRepository.save(profile));
+        applyMailPassword(profile, request.mailPassword());
+        return userProfileMapper.toResponse(userProfileRepository.save(profile));
     }
 
     @Transactional
@@ -49,7 +48,7 @@ public class UserProfileService {
         userProfileMapper.updateEntity(profile, request);
         applySmtpDefaults(profile, request);
         applyMailPassword(profile, request.mailPassword());
-        return toResponse(userProfileRepository.save(profile));
+        return userProfileMapper.toResponse(userProfileRepository.save(profile));
     }
 
     @Transactional
@@ -84,20 +83,19 @@ public class UserProfileService {
         UserProfile profile = userProfileRepository.findFirstBy()
                 .filter(UserProfileService::isMailConfigured)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MAIL_NOT_CONFIGURED));
-        return new SmtpAccount(profile.getEmail(), profile.getSmtpHost(), profile.getSmtpPort(),
-                credentialEncryptionService.decrypt(profile.getMailPasswordEncrypted()));
+        String password;
+        try {
+            password = credentialEncryptionService.decrypt(profile.getMailPasswordEncrypted());
+        } catch (IllegalStateException e) {
+            log.warn("The stored mail password cannot be decrypted with this key; treating mail as not configured");
+            throw new BusinessException(ErrorCode.MAIL_NOT_CONFIGURED);
+        }
+        return new SmtpAccount(profile.getEmail(), profile.getSmtpHost(), profile.getSmtpPort(), password);
     }
 
     private UserProfile findProfile() {
         return userProfileRepository.findFirstBy()
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_PROFILE_NOT_FOUND));
-    }
-
-    private UserProfileResponse toResponse(UserProfile profile) {
-        String mailPassword = profile.getMailPasswordEncrypted() != null
-                ? credentialEncryptionService.decrypt(profile.getMailPasswordEncrypted())
-                : null;
-        return userProfileMapper.toResponse(profile, mailPassword);
     }
 
     private static void applySmtpDefaults(UserProfile profile, UserProfileRequest request) {

@@ -17,17 +17,6 @@ Nada pendiente.
 una base vacía sin avisar, y parece que se han perdido los datos. Ponerla junto a la clave:
 `${user.home}/.selfbill/selfbill.db`.
 
-### Sin la clave de cifrado, el perfil da 500
-`UserProfileService` descifra la contraseña SMTP al responder, y con otra clave el
-descifrado lanza excepción. Es lo que pasa al restaurar la base en otro equipo sin
-`secret.key`: `GET /api/user-profile` falla siempre y el front no puede ni cargar el
-formulario para reintroducirla. Tratar el fallo de descifrado como "sin contraseña".
-
-### Expuesto a la red, con la contraseña en claro
-La API ya escucha solo en `127.0.0.1`. Queda que `GET /api/user-profile` devuelve la
-contraseña SMTP descifrada: devolver `hasMailPassword` en vez de la contraseña (bloque de
-ajustes).
-
 ### Errores 500 que deberían ser 4xx
 `GlobalExceptionHandler` convierte en `INTERNAL_ERROR`:
 - `GET /api/clients/by-name` y `by-nif` cuando dos clientes comparten nombre o NIF (una

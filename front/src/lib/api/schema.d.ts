@@ -17,7 +17,7 @@ export interface paths {
         put: operations["updateUserProfile"];
         /**
          * Create user profile
-         * @description Only one profile can exist, and it needs the mail password
+         * @description Only one profile can exist. The mail password is optional and can be set later
          */
         post: operations["createUserProfile"];
         delete?: never;
@@ -327,6 +327,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tax-config/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List every tax configuration, newest first */
+        get: operations["getHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invoices/{id}/pdf": {
         parameters: {
             query?: never;
@@ -543,7 +560,7 @@ export interface components {
              * @example 587
              */
             smtpPort?: number;
-            /** @description Password of the mail account, usually an app password. Required on create. On update, null keeps the stored password and blank clears it */
+            /** @description Password of the mail account, usually an app password. Optional on create (none is stored when null or blank). On update, null keeps the stored password and blank clears it */
             mailPassword?: string;
         };
         UserProfileResponse: {
@@ -558,8 +575,8 @@ export interface components {
             smtpHost?: string;
             /** Format: int32 */
             smtpPort?: number;
-            /** @description Stored encrypted, returned decrypted */
-            mailPassword?: string;
+            /** @description Whether a mail password is stored; the password itself is never returned */
+            hasMailPassword?: boolean;
             /** @description Whether a logo has been uploaded */
             hasLogo?: boolean;
             /** Format: date-time */
@@ -937,7 +954,7 @@ export interface components {
             /** @example /api/clients/7 */
             instance?: string;
             /** @enum {string} */
-            errorCode?: "CLIENT_NOT_FOUND" | "CLIENT_DUPLICATE_CODE" | "CLIENT_EMAIL_NOT_CONFIGURED" | "CLIENT_FISCAL_DATA_MISSING" | "ARTICLE_NOT_FOUND" | "ARTICLE_DUPLICATE_CODE" | "DELIVERY_NOTE_NOT_FOUND" | "DELIVERY_NOTE_DUPLICATE_CODE" | "DELIVERY_NOTE_ALREADY_INVOICED" | "INVOICE_NOT_FOUND" | "INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED" | "INVOICE_MIXED_CLIENTS" | "INVOICE_MIXED_TAX_RATES" | "INVOICE_MIXED_MONTHS" | "INVOICE_ALREADY_ISSUED" | "INVOICE_NOT_ISSUED" | "TAX_CONFIG_NOT_FOUND" | "TAX_CONFIG_ALREADY_EXISTS" | "USER_PROFILE_NOT_FOUND" | "USER_PROFILE_ALREADY_EXISTS" | "USER_PROFILE_MAIL_PASSWORD_REQUIRED" | "USER_PROFILE_LOGO_NOT_FOUND" | "USER_PROFILE_INVALID_LOGO_FORMAT" | "MAIL_NOT_CONFIGURED" | "EMAIL_SEND_FAILED" | "VALIDATION_ERROR" | "INTERNAL_ERROR";
+            errorCode?: "CLIENT_NOT_FOUND" | "CLIENT_DUPLICATE_CODE" | "CLIENT_EMAIL_NOT_CONFIGURED" | "CLIENT_FISCAL_DATA_MISSING" | "ARTICLE_NOT_FOUND" | "ARTICLE_DUPLICATE_CODE" | "DELIVERY_NOTE_NOT_FOUND" | "DELIVERY_NOTE_DUPLICATE_CODE" | "DELIVERY_NOTE_ALREADY_INVOICED" | "INVOICE_NOT_FOUND" | "INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED" | "INVOICE_MIXED_CLIENTS" | "INVOICE_MIXED_TAX_RATES" | "INVOICE_MIXED_MONTHS" | "INVOICE_ALREADY_ISSUED" | "INVOICE_NOT_ISSUED" | "TAX_CONFIG_NOT_FOUND" | "TAX_CONFIG_ALREADY_EXISTS" | "USER_PROFILE_NOT_FOUND" | "USER_PROFILE_ALREADY_EXISTS" | "USER_PROFILE_LOGO_NOT_FOUND" | "USER_PROFILE_INVALID_LOGO_FORMAT" | "MAIL_NOT_CONFIGURED" | "EMAIL_SEND_FAILED" | "VALIDATION_ERROR" | "INTERNAL_ERROR";
             errors?: {
                 [key: string]: string;
             };
@@ -1060,7 +1077,6 @@ export interface operations {
              * @description Bad Request
              *
              *     - `VALIDATION_ERROR`: Validation error
-             *     - `USER_PROFILE_MAIL_PASSWORD_REQUIRED`: Mail password is required to create a user profile
              */
             400: {
                 headers: {
@@ -2586,6 +2602,26 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxConfigResponse"][];
                 };
             };
         };
