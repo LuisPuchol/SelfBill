@@ -33,3 +33,27 @@ test('Ajustes opens with 6 and says what is configured', async ({ page, request 
 	await page.keyboard.press('Escape');
 	await expect(page).toHaveURL('/');
 });
+
+test('adds a period and corrects it', async ({ page }) => {
+	await page.goto('/settings/tax');
+	await expect(page.getByRole('heading', { name: 'IVA y recargo' })).toBeVisible();
+	await expect(page.locator('footer')).toContainText('Nuevo');
+	await page.keyboard.press('F2');
+	await expect(page.getByRole('heading', { name: 'Tipo nuevo' })).toBeVisible();
+	// A date far away: the database is shared with the other tests.
+	await page.getByLabel('Desde').fill('01012099');
+	await page.getByLabel('IVA %').fill('21');
+	await page.getByLabel('Recargo %').fill('5,2');
+	await page.keyboard.press('NumpadAdd');
+	await expect(page.getByText('Tipo desde el 01/01/2099 guardado')).toBeVisible();
+
+	const row = page.getByRole('row', { name: /01\/01\/2099/ });
+	await expect(row).toHaveText(/01\/01\/2099\s*21\s%\s*5,2\s%\s*A partir del 01\/01\/2099/);
+	await expect(row).toHaveAttribute('aria-selected', 'true');
+
+	await page.keyboard.press('Enter');
+	await expect(page.getByRole('heading', { name: 'Tipo desde el 01/01/2099' })).toBeVisible();
+	await page.getByLabel('IVA %').fill('22');
+	await page.keyboard.press('NumpadAdd');
+	await expect(page.getByRole('row', { name: /01\/01\/2099/ })).toHaveText(/22\s%/);
+});
