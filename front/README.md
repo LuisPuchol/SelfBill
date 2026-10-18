@@ -26,4 +26,6 @@ Especificación de la base: [../docs/superpowers/specs/2026-10-13-front-base-des
 - Los textos de la API (en inglés) nunca se muestran: los textos en español viven en
   `src/lib/api/messages.ts`, y un `ErrorCode` nuevo no compila hasta tener su texto.
 - Antes de guardar, la pantalla valida todo el formulario: `<Form bind:nav>` y
-  `if (await nav.validateAll()) save()`. Así salen todos los errores y el cursor va al primero.
+  `if (await nav?.validateAll()) save()`. Así salen todos los errores y el cursor va al primero.
+- Las listas usan `ListScreen` y las fichas `RecordForm` + `RecordScreen`, con la navegación y la
+  API inyectadas; la ficha (el componente del formulario) añade `UnsavedGuard`.

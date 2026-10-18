@@ -9,7 +9,7 @@
 		onLast,
 		children
 	}: {
-		/** For the page, via `bind:nav`: `if (await nav.validateAll()) save()` before saving */
+		/** For the page, via `bind:nav`: `if (await nav?.validateAll()) save()` before saving */
 		nav?: FormNav;
 		onLast?: () => void;
 		children: Snippet;
