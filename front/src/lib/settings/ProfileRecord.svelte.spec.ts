@@ -63,6 +63,14 @@ describe('ProfileRecord', () => {
 		}
 	});
 
+	it('keeps the browser from autofilling the mail password', async () => {
+		await render(ProfileRecordHarness, props());
+		await expect
+			.element(page.getByLabelText('Contraseña de aplicación'))
+			.toHaveAttribute('autocomplete', 'new-password');
+		await expect.element(page.getByLabelText('Email')).toHaveAttribute('autocomplete', 'off');
+	});
+
 	it('does not save without the required data', async () => {
 		const p = props();
 		await render(ProfileRecordHarness, p);

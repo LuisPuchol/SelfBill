@@ -5,4 +5,6 @@
 	let { data }: PageProps = $props();
 </script>
 
-<TaxRecordPage mode="edit" initial={data.initial} />
+{#key data.initial.validFrom}
+	<TaxRecordPage mode="edit" initial={data.initial} />
+{/key}

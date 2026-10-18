@@ -13,7 +13,8 @@
 		hint,
 		type = 'text',
 		validate,
-		maxlength
+		maxlength,
+		autocomplete = 'off'
 	}: {
 		label: string;
 		/** API field path; also the input's id */
@@ -28,6 +29,8 @@
 		/** Own check for a non-empty value: the message, or nothing when it is fine */
 		validate?: (value: string) => string | undefined;
 		maxlength?: number;
+		/** Browser autofill: off, except where it would offer a saved login (a mail password) */
+		autocomplete?: 'off' | 'new-password';
 	} = $props();
 
 	const nav = getFormNav();
@@ -62,7 +65,7 @@
 			aria-invalid={describedBy ? true : undefined}
 			aria-describedby={describedBy}
 			use:selectOnFocus
-			autocomplete="off"
+			{autocomplete}
 			onblur={() => check(false)}
 			oninput={() => (ownError = undefined)}
 		/>

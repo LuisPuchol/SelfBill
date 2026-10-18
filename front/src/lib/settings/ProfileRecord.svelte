@@ -157,6 +157,7 @@
 				label="Contraseña de aplicación"
 				name="mailPassword"
 				type="password"
+				autocomplete="new-password"
 				maxlength={255}
 				hint={hasMailPassword ? 'Guardada. Déjalo vacío para conservarla.' : undefined}
 				bind:value={form.values.mailPassword}

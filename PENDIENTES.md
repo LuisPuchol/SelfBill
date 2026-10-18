@@ -119,3 +119,5 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - Borrar una vigencia de IVA: la API no tiene endpoint.
 - Logo del titular en Ajustes (junto con el bloque del PDF).
 - Probar la cuenta de correo desde Ajustes.
+- Con la base restaurada en otro equipo sin `secret.key`, la contraseña del correo no se puede descifrar pero Ajustes dice "Guardada": comprobar al leer si se puede descifrar.
+- Si se cambia el email de proveedor (Gmail → Outlook) sin vaciar servidor y puerto, se quedan los del anterior.

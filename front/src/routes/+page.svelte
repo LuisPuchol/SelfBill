@@ -19,7 +19,9 @@
 	);
 </script>
 
-<SetupNotice status={data.status} />
+{#if data.status}
+	<SetupNotice status={data.status} />
+{/if}
 <div class="grid grid-cols-3 gap-6">
 	{#each sections as section (section.href)}
 		<Tile {section} />

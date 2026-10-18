@@ -56,3 +56,22 @@ export function taxSummary(status: SetupStatus): string {
 	}
 	return status.anyTax ? 'No hay IVA vigente hoy' : 'Sin configurar';
 }
+
+/** The date a new VAT period starts on: the year's first day for the first one, else today. */
+export function proposedValidFrom(periods: { validFrom?: string }[], today: string): string {
+	return periods.length === 0 ? `${today.slice(0, 4)}-01-01` : today;
+}
+
+/**
+ * The status for the home screen. A lost connection propagates (the connection screen takes
+ * over); any other failure is logged and the home loads without the notice.
+ */
+export async function homeStatus(load: () => Promise<SetupStatus>): Promise<SetupStatus | null> {
+	try {
+		return await load();
+	} catch (e) {
+		if (e instanceof ApiError && e.code === 'NETWORK') throw e;
+		console.error('Could not load the setup status', e);
+		return null;
+	}
+}

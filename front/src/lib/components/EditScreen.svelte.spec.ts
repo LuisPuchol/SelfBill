@@ -3,6 +3,7 @@ import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import EditHarness from '#lib/test/EditHarness.svelte';
 import { ApiError } from '#lib/api/errors.js';
+import { dismissError, errorState } from '#lib/components/errors.svelte.js';
 import type { FormState } from '#lib/records/form-state.svelte.js';
 
 type Form = FormState<{ name: string; amount: number | null }>;
@@ -73,6 +74,20 @@ describe('EditScreen', () => {
 		// Once saved, "+" saves again.
 		await userEvent.keyboard('{NumpadAdd}');
 		await vi.waitFor(() => expect(s.persist).toHaveBeenCalledTimes(2));
+	});
+
+	it('a persist that throws shows the error and releases the lock', async () => {
+		const s = spies();
+		s.persist.mockRejectedValueOnce(new Error('boom'));
+		errorState.view = null;
+		await render(EditHarness, s);
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await vi.waitFor(() => expect(errorState.view).not.toBeNull());
+		expect(s.persist).toHaveBeenCalledOnce();
+		dismissError();
+		await userEvent.keyboard('{NumpadAdd}');
+		await vi.waitFor(() => expect(s.persist).toHaveBeenCalledTimes(2));
+		expect(errorState.view).toBeNull();
 	});
 
 	it('API field errors show under the field and clear when it changes', async () => {
