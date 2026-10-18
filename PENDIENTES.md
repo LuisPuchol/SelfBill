@@ -106,8 +106,6 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - `SpaFallbackResolver` no llama a la comprobación de ubicación de Spring (`checkResource`):
   defensa en profundidad.
 - Iconos de Lucide importados uno a uno: el import del paquete entero hace lento `svelte-check`.
-- Botones grandes en pantalla para las acciones principales (Nuevo, Guardar, Borrar, páginas): la
-  barra de teclas es solo chuleta (spec de la base).
 - Un `VALIDATION_ERROR` cuyo campo no está en pantalla no muestra nada: caer a `showError`.
 - Buscar un código de 10 cifras o más puede desbordar el `int` de la API (más de 2.147.483.647):
   la lista se cambia por la página de error.

@@ -29,3 +29,5 @@ Especificación de la base: [../docs/superpowers/specs/2026-10-13-front-base-des
   `if (await nav?.validateAll()) save()`. Así salen todos los errores y el cursor va al primero.
 - Las listas usan `ListScreen` y las fichas `RecordForm` + `RecordScreen`, con la navegación y la
   API inyectadas; la ficha (el componente del formulario) añade `UnsavedGuard`.
+- Cada acción principal tiene su tecla y su `ActionButton`, ambos construidos desde el mismo
+  `KeyAction`; el `enabled` del botón ignora el foco. Los botones van en `ScreenHeader`.

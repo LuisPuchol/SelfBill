@@ -158,6 +158,20 @@ test('deleting a client with a pending delivery note warns with the number', asy
 	await expect(page).toHaveURL(`/clients/${id}`);
 });
 
+test('deleting from the list warns with the number', async ({ page, request }) => {
+	await clientWithNote(request, 9205, 'Lista borrar e2e');
+	await openList(page);
+	await searchFor(page, 'Lista borrar e2e');
+	await expect(page.getByRole('row', { name: /Lista borrar e2e/ })).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(
+		page.getByText('Tiene 1 albarán sin facturar. Si lo borras no se podrán editar ni facturar.')
+	).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('Cliente 9205 borrado')).toBeVisible();
+	await expect(page.getByRole('row', { name: /Lista borrar e2e/ })).toBeHidden();
+});
+
 test('a missing client shows the not-found page', async ({ page }) => {
 	await page.goto('/clients/9999');
 	await expect(page.getByText('No se ha encontrado')).toBeVisible();

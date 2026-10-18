@@ -203,3 +203,47 @@ test('unsaved changes', async ({ page, request }) => {
 	await ready(page, 'Nuevo');
 	await expect(page.getByRole('cell', { name: 'Calabacín guardado' })).toBeVisible();
 });
+
+test('with the mouse only: new, save, back, delete', async ({ page }) => {
+	await openList(page);
+	await page.getByRole('button', { name: /Nuevo/ }).click();
+	await expect(page.getByRole('heading', { name: 'Artículo nuevo' })).toBeVisible();
+	await ready(page, 'Guardar');
+	const code = Number(await page.getByLabel('Código').inputValue());
+	await page.getByLabel('Nombre').fill('Ratón e2e');
+	await page.getByRole('button', { name: /Guardar/ }).click();
+	await expect(page.getByText(`Artículo ${code} guardado`)).toBeVisible();
+	await page.getByRole('button', { name: /Volver/ }).click();
+	await expect(page).toHaveURL('/articles');
+	await ready(page, 'Nuevo');
+
+	await searchFor(page, 'Ratón e2e');
+	await page.getByRole('row', { name: /Ratón e2e/ }).click();
+	await page.getByRole('button', { name: /Borrar/ }).click();
+	await expect(page.getByText(`¿Borrar el artículo ${code}?`)).toBeVisible();
+	await expect(page.getByRole('dialog').getByText('Ratón e2e')).toBeVisible();
+	await page
+		.getByRole('dialog')
+		.getByRole('button', { name: /Borrar/ })
+		.click();
+	await expect(page.getByText(`Artículo ${code} borrado`)).toBeVisible();
+	await expect(page.getByRole('row', { name: /Ratón e2e/ })).toBeHidden();
+	await expect(
+		page.getByText('No hay ningún artículo que coincida con «Ratón e2e».')
+	).toBeVisible();
+});
+
+test('the page buttons turn the page', async ({ page, request }) => {
+	for (let i = 1; i <= 21; i++) {
+		await createArticle(request, 9299 + i, `Página e2e ${String(i).padStart(2, '0')}`);
+	}
+	await openList(page);
+	await searchFor(page, 'Página e2e');
+	await expect(page.getByText('Página 1 de 2')).toBeVisible();
+	await page.getByRole('button', { name: /Página siguiente/ }).click();
+	await expect(page).toHaveURL(/page=1/);
+	await expect(page.getByText('Página 2 de 2')).toBeVisible();
+	await expect(page.getByRole('row', { name: /Página e2e/ })).toHaveCount(1);
+	await page.getByRole('button', { name: /Página anterior/ }).click();
+	await expect(page.getByText('Página 1 de 2')).toBeVisible();
+});
