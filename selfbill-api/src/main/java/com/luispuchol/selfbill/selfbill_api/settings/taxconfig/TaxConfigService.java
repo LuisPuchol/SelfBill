@@ -2,6 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.settings.taxconfig;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,10 @@ public class TaxConfigService {
 
     public TaxConfigResponse getTaxConfig() {
         return taxConfigMapper.toResponse(getInForceOn(LocalDate.now(clock)));
+    }
+
+    public List<TaxConfigResponse> getHistory() {
+        return taxConfigRepository.findAllByOrderByValidFromDesc().stream().map(taxConfigMapper::toResponse).toList();
     }
 
     @Transactional
