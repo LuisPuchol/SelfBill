@@ -344,4 +344,68 @@ describe('RecordScreen', () => {
 		await userEvent.keyboard('{Enter}');
 		await expect.element(code()).toHaveFocus();
 	});
+
+	describe('buttons', () => {
+		const button = (label: string) => page.getByRole('button', { name: new RegExp(label) });
+
+		it('the buttons do what their keys do', async () => {
+			const o = options();
+			const first = await render(RecordHarness, { ...o, ...editing });
+			await button('Guardar').click();
+			await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledExactlyOnceWith(5));
+			expect(o.update).toHaveBeenCalledOnce();
+			await first.unmount();
+
+			const second = await render(RecordHarness, { ...o, ...editing });
+			await button('Borrar').click();
+			await expect.element(dialog()).toHaveTextContent('¿Borrar el artículo 101?');
+			await second.unmount();
+
+			o.goToList.mockClear();
+			await render(RecordHarness, { ...o, ...editing });
+			await button('Volver').click();
+			expect(o.goToList).toHaveBeenCalledOnce();
+		});
+
+		it('Borrar is greyed out in a new record', async () => {
+			await render(RecordHarness, options());
+			await expect.element(button('Borrar')).toBeDisabled();
+			await expect.element(button('Guardar')).toBeEnabled();
+			await expect.element(button('Volver')).toBeEnabled();
+		});
+
+		it('the buttons sit on the title line', async () => {
+			await render(RecordHarness, options());
+			const line = page.getByRole('heading', { level: 1 }).element().parentElement!;
+			for (const label of ['Guardar', 'Borrar', 'Volver']) {
+				expect(line).toContainElement(button(label).element() as HTMLElement);
+			}
+		});
+
+		it('a button keeps the cursor in the field', async () => {
+			await render(RecordHarness, { ...options(), ...editing });
+			await name().click();
+			await button('Borrar').click();
+			await expect.element(dialog()).toBeVisible();
+			await userEvent.keyboard('{Enter}');
+			await expect.element(dialog()).not.toBeInTheDocument();
+			await expect.element(name()).toHaveFocus();
+			await userEvent.keyboard('{Enter}');
+			await expect.element(code()).toHaveFocus();
+		});
+
+		it('a double click on Guardar saves once', async () => {
+			const o = options();
+			o.update.mockReturnValue(deferred<Saved>().promise);
+			await render(RecordHarness, { ...o, ...editing });
+			await button('Guardar').dblClick();
+			await vi.waitFor(() => expect(o.update).toHaveBeenCalled());
+			expect(o.update).toHaveBeenCalledOnce();
+		});
+
+		it('Esc is called Volver', async () => {
+			await render(RecordHarness, options());
+			await expect.element(bar()).toHaveTextContent('Esc Volver');
+		});
+	});
 });
