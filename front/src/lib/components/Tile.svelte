@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import type { Section } from '../sections.js';
 
-	let { section }: { section: Section } = $props();
+	let { section, detail }: { section: Section; detail?: string } = $props();
 	const Icon = $derived(section.icon);
 </script>
 
@@ -13,4 +13,5 @@
 	<span class="tabular text-6xl font-semibold">{section.digit}</span>
 	<Icon size={48} aria-hidden="true" />
 	<span class="text-2xl">{section.title}</span>
+	{#if detail}<span class="text-base text-muted">{detail}</span>{/if}
 </a>

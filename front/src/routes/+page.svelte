@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import SetupNotice from '#lib/components/SetupNotice.svelte';
 	import Tile from '#lib/components/Tile.svelte';
 	import { useKeys } from '#lib/keyboard/keymap.svelte.js';
 	import { sections } from '#lib/sections.js';
+
+	let { data } = $props();
 
 	useKeys(() =>
 		sections.map((s, i) => ({
@@ -16,6 +19,7 @@
 	);
 </script>
 
+<SetupNotice status={data.status} />
 <div class="grid grid-cols-3 gap-6">
 	{#each sections as section (section.href)}
 		<Tile {section} />

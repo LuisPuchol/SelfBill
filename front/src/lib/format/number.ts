@@ -14,3 +14,15 @@ export function formatDecimal(value: number, decimals = 2): string {
 		useGrouping: false
 	}).format(value);
 }
+
+const NBSP = String.fromCharCode(160);
+
+/** "4 %", "0,5 %", "5,25 %": up to 2 decimals, no trailing zeros, non-breaking space before "%". */
+export function formatPercent(value: number): string {
+	const text = new Intl.NumberFormat('es-ES', {
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 2,
+		useGrouping: false
+	}).format(value);
+	return `${text}${NBSP}%`;
+}
