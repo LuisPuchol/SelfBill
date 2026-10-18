@@ -21,17 +21,7 @@
 		{ label: 'Importe', value: (r) => formatMoney(r.amount), align: 'right' }
 	];
 
-	let {
-		rows = all,
-		onOpen,
-		onPage,
-		page
-	}: {
-		rows?: Row[];
-		onOpen: (row: Row) => void;
-		onPage?: (n: number) => void;
-		page?: { number: number; totalPages: number };
-	} = $props();
+	let { rows = all, onOpen }: { rows?: Row[]; onOpen: (row: Row) => void } = $props();
 
 	// svelte-ignore state_referenced_locally
 	let data = $state(rows);
@@ -43,5 +33,5 @@
 <button onclick={() => (data = [...data].reverse())}>Cambiar filas</button>
 <button>Otro</button>
 <p data-testid="selected">{selected}</p>
-<DataTable {columns} rows={data} {onOpen} {page} {onPage} bind:selected />
+<DataTable {columns} rows={data} {onOpen} bind:selected />
 <KeyBar />

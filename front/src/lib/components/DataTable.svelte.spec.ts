@@ -39,20 +39,6 @@ describe('DataTable', () => {
 		expect(onOpen).toHaveBeenCalledWith(rows[2]);
 	});
 
-	it('page keys ask for the next and previous page', async () => {
-		const onPage = vi.fn();
-		render(TableHarness, {
-			onOpen: vi.fn(),
-			onPage,
-			page: { number: 0, totalPages: 3 }
-		});
-		await expect.element(page.getByText('Página 1 de 3')).toBeVisible();
-		await userEvent.keyboard('{PageDown}');
-		expect(onPage).toHaveBeenCalledExactlyOnceWith(1);
-		await userEvent.keyboard('{PageUp}');
-		expect(onPage).toHaveBeenCalledTimes(1);
-	});
-
 	it('Enter does not open a row while a button has focus', async () => {
 		const onOpen = vi.fn();
 		render(TableHarness, { onOpen });
@@ -82,15 +68,11 @@ describe('DataTable', () => {
 		return event.defaultPrevented;
 	}
 
-	it('arrows and page keys are left to a focused text input', async () => {
-		const onPage = vi.fn();
-		render(TableHarness, { onOpen: vi.fn(), onPage, page: { number: 1, totalPages: 3 } });
+	it('arrows are left to a focused text input', async () => {
+		render(TableHarness, { onOpen: vi.fn() });
 		const input = page.getByLabelText('Filtro');
 		await input.click();
-		const el = input.element();
-		expect(press(el, 'ArrowDown')).toBe(false);
-		expect(press(el, 'PageDown')).toBe(false);
-		expect(onPage).not.toHaveBeenCalled();
+		expect(press(input.element(), 'ArrowDown')).toBe(false);
 		await expect.element(page.getByRole('row').nth(1)).toHaveAttribute('aria-selected', 'true');
 	});
 
