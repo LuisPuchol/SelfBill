@@ -107,6 +107,8 @@ test('search by business name and by NIF', async ({ page, request }) => {
 	});
 	await createClient(request, 9204, 'Otro cliente');
 	await openList(page);
+	// Its own rows: the whole list depends on what other tests created.
+	await searchFor(page, 'Otro cliente');
 	await expect(page.getByRole('cell', { name: 'Otro cliente', exact: true })).toBeVisible();
 	await searchFor(page, 'garcia');
 	await expect(page.getByRole('cell', { name: 'Hostelería García SL' })).toBeVisible();

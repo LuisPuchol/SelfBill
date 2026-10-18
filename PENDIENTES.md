@@ -113,7 +113,6 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
   suelta antes de volver a la lista.
 - Faltan tests de las ramas de error de `RecordForm` (`blank()`, borrar, avisos) y de que
   `CodeField` no valida al salir.
-- El test "searches after a pause" va justo de tiempo: usar temporizadores falsos.
 - Buscar solo cifras es siempre un código: las cifras de un NIF no se encuentran como texto.
 - Con texto, Enter antes de que llegue la búsqueda abre la fila marcada del resultado (la
   primera, o el último abierto si está) sin verla.
@@ -121,3 +120,8 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
   al pulsar Esc, antes de guardar.
 - Al volver a la misma lista desde la barra de arriba (de `/clients?q=gar` a Clientes), el
   buscador no recupera el cursor: el componente se reutiliza y `onMount` no vuelve a correr.
+- Borrar la única fila de la última página enseña un momento "Página 3 de 2" y el texto de
+  catálogo vacío, y deja en el historial una página que ya no existe: corregir cualquier página
+  vacía más allá de la última, reemplazando la entrada del historial.
+- Los botones ignoran los clics seguidos (para que un doble clic no pulse lo que aparece debajo):
+  tres clics rápidos en "Página siguiente" pasan una sola página. AvPág no tiene ese límite.

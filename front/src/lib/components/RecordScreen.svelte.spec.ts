@@ -395,12 +395,23 @@ describe('RecordScreen', () => {
 		});
 
 		it('a double click on Guardar saves once', async () => {
+			// The save is done before the second press: it must not save again.
 			const o = options();
-			o.update.mockReturnValue(deferred<Saved>().promise);
-			await render(RecordHarness, { ...o, ...editing });
+			const edit = await render(RecordHarness, { ...o, ...editing });
 			await button('Guardar').dblClick();
-			await vi.waitFor(() => expect(o.update).toHaveBeenCalled());
+			await vi.waitFor(() => expect(o.goToList).toHaveBeenCalled());
 			expect(o.update).toHaveBeenCalledOnce();
+			expect(o.goToList).toHaveBeenCalledOnce();
+			await edit.unmount();
+
+			// A new record: nor try to save the blank one chained after it.
+			await render(RecordHarness, o);
+			await name().click();
+			await userEvent.keyboard('Tomate');
+			await button('Guardar').dblClick();
+			await expect.element(code()).toHaveValue('102');
+			expect(page.getByText('Este dato es obligatorio').query()).toBeNull();
+			expect(o.create).toHaveBeenCalledOnce();
 		});
 
 		it('Esc is called Volver', async () => {

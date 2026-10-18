@@ -21,13 +21,15 @@
 </script>
 
 <!-- Out of the Tab order and mousedown keeps the focus where it was: the button is the mouse twin of the key.
-	Not the `disabled` attribute: a disabled button swallows the mouse events, so Chromium would take the focus away. -->
+	Not the `disabled` attribute: a disabled button swallows the mouse events, so Chromium would take the focus away.
+	A double click acts once: the browser counts the second press as a follow-up (`detail` 2) even when the
+	first one changed the screen, and it would click whatever is under the pointer now. The keyboard's is 0. -->
 <button
 	type="button"
 	tabindex="-1"
 	aria-disabled={!enabled()}
 	onmousedown={(e) => e.preventDefault()}
-	onclick={() => enabled() && void action.run()}
+	onclick={(e) => e.detail < 2 && enabled() && void action.run()}
 	class="h-12 rounded border-2 px-4 text-lg aria-disabled:cursor-default aria-disabled:opacity-50 {looks[
 		variant
 	]}"

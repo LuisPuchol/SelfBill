@@ -20,6 +20,8 @@ async function openList(page: Page) {
 
 test('two new articles in a row', async ({ page }) => {
 	await openList(page);
+	// Its own rows: other tests leave enough articles to push new ones off the first page.
+	await searchFor(page, 'Tomate e2e');
 	await page.keyboard.press('F2');
 	await expect(page.getByRole('heading', { name: 'Artículo nuevo' })).toBeVisible();
 	await ready(page, 'Guardar');
@@ -38,21 +40,22 @@ test('two new articles in a row', async ({ page }) => {
 	await page.keyboard.press('Escape');
 
 	// Back to the list it came from, with the last one saved selected.
-	await expect(page).toHaveURL('/articles');
+	await expect(page).toHaveURL(
+		(url) => url.pathname === '/articles' && url.searchParams.get('q') === 'Tomate e2e'
+	);
 	await ready(page, 'Nuevo');
 	await expect(page.getByRole('row', { name: /Tomate e2e B/ })).toHaveAttribute(
 		'aria-selected',
 		'true'
 	);
-	await searchFor(page, 'Tomate e2e');
 	await expect(page.getByRole('cell', { name: 'Tomate e2e A' })).toBeVisible();
-	await expect(page.getByRole('cell', { name: 'Tomate e2e B' })).toBeVisible();
 });
 
 test('search by name and by code', async ({ page, request }) => {
 	const { id } = await createArticle(request, 9101, 'Zanahoria búsqueda');
 	await createArticle(request, 9106, 'Zanahoria otra');
 	await openList(page);
+	await searchFor(page, 'zanahoria');
 	await expect(page.getByRole('cell', { name: 'Zanahoria otra' })).toBeVisible();
 	// Neither accents nor case count.
 	await searchFor(page, 'ZANAHORIA busqueda');
@@ -121,13 +124,15 @@ test('Esc from a new article goes back to the list it came from', async ({ page,
 	await expect(page.getByText(`Artículo ${code} guardado`)).toBeVisible();
 	await page.keyboard.press('Escape');
 	await expect(page).toHaveURL('/articles');
+	await ready(page, 'Nuevo');
+	// The new one may be past the first page of the whole list: its search still selects it.
+	await searchFor(page, 'alcachofa');
 	await expect(page.getByRole('row', { name: /Alcachofa nueva/ })).toHaveAttribute(
 		'aria-selected',
 		'true'
 	);
 
 	// With a search on the list when F2 is pressed, Esc comes back to that search.
-	await searchFor(page, 'alcachofa');
 	await page.keyboard.press('F2');
 	await expect(page.getByRole('heading', { name: 'Artículo nuevo' })).toBeVisible();
 	await ready(page, 'Guardar');

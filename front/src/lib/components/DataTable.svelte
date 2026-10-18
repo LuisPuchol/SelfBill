@@ -21,6 +21,22 @@
 	} = $props();
 
 	let body: HTMLElement | undefined = $state();
+	/** The row under the first press of the latest click, null for a press elsewhere. */
+	let pressedRow: Element | null = null;
+
+	// The browser counts a press as the second of a double click by time and place alone: after a
+	// dialog's button closes the dialog, it lands on the row behind. Only the row that got the first
+	// press takes it. Capture: no handler can stop the press before it is seen here.
+	$effect(() =>
+		on(
+			document,
+			'mousedown',
+			(e) => {
+				if (e.detail < 2) pressedRow = e.target instanceof Element ? e.target.closest('tr') : null;
+			},
+			{ capture: true }
+		)
+	);
 
 	// The selection goes back to the first row whenever the rows change.
 	$effect(() => {
@@ -85,8 +101,11 @@
 				<tr
 					aria-selected={i === selected}
 					class="cursor-default border-b border-line {i === selected ? 'bg-field-active' : ''}"
-					onclick={() => (selected = i)}
-					ondblclick={() => {
+					onclick={(e) => {
+						if (e.detail < 2 || e.currentTarget === pressedRow) selected = i;
+					}}
+					ondblclick={(e) => {
+						if (e.currentTarget !== pressedRow) return;
 						selected = i;
 						onOpen(row);
 					}}

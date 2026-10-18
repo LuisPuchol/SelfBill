@@ -1,3 +1,4 @@
+import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
@@ -36,7 +37,31 @@ describe('DataTable', () => {
 		const onOpen = vi.fn();
 		render(TableHarness, { onOpen });
 		await page.getByText('Hotel Sol').dblClick();
-		expect(onOpen).toHaveBeenCalledWith(rows[2]);
+		expect(onOpen).toHaveBeenCalledExactlyOnceWith(rows[2]);
+		await expect.element(page.getByTestId('selected')).toHaveTextContent('2');
+	});
+
+	/** One press of the mouse, numbered as the browser numbers the presses of a double click. */
+	function pressOn(target: Element, detail: 1 | 2) {
+		for (const type of ['mousedown', 'mouseup', 'click', ...(detail === 2 ? ['dblclick'] : [])]) {
+			target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, detail }));
+		}
+	}
+
+	it('a double click that began outside the table neither marks nor opens a row', async () => {
+		const onOpen = vi.fn();
+		render(TableHarness, { onOpen });
+		// Both presses on the row: a double click.
+		pressOn(page.getByText('Hotel Sol').element(), 1);
+		pressOn(page.getByText('Hotel Sol').element(), 2);
+		expect(onOpen).toHaveBeenCalledExactlyOnceWith(rows[2]);
+
+		// The first press on a dialog's button, which closes: the second lands on the row behind it.
+		pressOn(page.getByRole('button', { name: 'Otro' }).element(), 1);
+		pressOn(page.getByText('Bar Pepe').element(), 2);
+		await tick();
+		await expect.element(page.getByTestId('selected')).toHaveTextContent('2');
+		expect(onOpen).toHaveBeenCalledOnce();
 	});
 
 	it('Enter does not open a row while a button has focus', async () => {

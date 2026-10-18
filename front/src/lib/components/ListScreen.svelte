@@ -48,7 +48,11 @@
 			describe(row: T): string;
 			code(row: T): number;
 			toast(message: string): void;
-			/** After a delete, done or failed: the page loads its rows again (same search, same page) */
+			/**
+			 * After a delete, done or failed: the page loads its rows again (same search, same page).
+			 * It returns the load's promise and hands the screen new rows: the mark's place after the
+			 * delete, and F8 until then, wait for them.
+			 */
 			reload(): void | Promise<void>;
 			/** After a done delete, before reloading: e.g. forget the remembered row */
 			onDeleted?(id: number): void;
@@ -71,7 +75,7 @@
 	let sent = untrack(() => search);
 	/** An Enter pressed before its rows came: they open as soon as they answer exactly this text. */
 	let pendingOpen: string | null = null;
-	/** Where the mark was on a done delete: the rows reloaded after it keep the mark there. */
+	/** Where the mark was on a delete, done or failed: the rows reloaded after it keep the mark there. */
 	let afterDelete: number | null = null;
 
 	const deleting = untrack(() => deletion);
@@ -86,7 +90,10 @@
 				await deleting.reload();
 			},
 			// It may be gone already (deleted elsewhere): the list shows what is left.
-			onFailed: () => deleting.reload()
+			onFailed: async () => {
+				afterDelete = selected;
+				await deleting.reload();
+			}
 		});
 
 	const searched = $derived(search.trim());

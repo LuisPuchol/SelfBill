@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import ButtonHarness from '#lib/test/ButtonHarness.svelte';
+import ButtonSwapHarness from '#lib/test/ButtonSwapHarness.svelte';
 
 const guardar = (run = vi.fn()) => ({ key: 'NumpadAdd', label: 'Guardar', run });
 
@@ -17,6 +18,36 @@ describe('ActionButton', () => {
 		const run = vi.fn();
 		await render(ButtonHarness, { action: guardar(run) });
 		await page.getByRole('button', { name: /Guardar/ }).click();
+		expect(run).toHaveBeenCalledOnce();
+	});
+
+	it('a double click runs the action once', async () => {
+		const run = vi.fn();
+		await render(ButtonHarness, { action: guardar(run) });
+		await page.getByRole('button', { name: /Guardar/ }).dblClick();
+		expect(run).toHaveBeenCalledOnce();
+	});
+
+	it('the second press of a double click does not click what the first one brought', async () => {
+		// "Nuevo" opens the record, whose "Guardar" is now under the pointer.
+		const nuevo = vi.fn();
+		const save = vi.fn();
+		await render(ButtonSwapHarness, {
+			first: { key: 'F2', label: 'Nuevo', run: nuevo },
+			second: guardar(save)
+		});
+		await page.getByRole('button', { name: /Nuevo/ }).dblClick();
+		await expect.element(page.getByRole('button', { name: /Guardar/ })).toBeVisible();
+		expect(nuevo).toHaveBeenCalledOnce();
+		expect(save).not.toHaveBeenCalled();
+	});
+
+	it('a click from the keyboard runs the action', async () => {
+		// Enter on a focused button clicks it with no pointer: no click count.
+		const run = vi.fn();
+		await render(ButtonHarness, { action: guardar(run) });
+		(page.getByRole('button', { name: /Guardar/ }).element() as HTMLElement).focus();
+		await userEvent.keyboard('{Enter}');
 		expect(run).toHaveBeenCalledOnce();
 	});
 

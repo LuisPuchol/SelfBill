@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import ListHarness from '#lib/test/ListHarness.svelte';
@@ -42,12 +42,22 @@ const button = (label: string) => page.getByRole('button', { name: new RegExp(la
 /** Data rows start at 1: the first row of the table is its header. */
 const row = (n: number) => page.getByRole('row').nth(n);
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * The search's pause on a fake clock, moved with `vi.advanceTimersByTime`: what a test proves no
+ * longer depends on how long each key takes to arrive. Only the timers the pause uses: the keys go
+ * through Playwright, and the runner keeps real timers for itself.
+ */
+const fakePause = () => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 /** Calls to `spy` made after the first call to `first`: on a slow run the search may go out before. */
 const callsAfter = (spy: Mock, first: Mock) =>
 	spy.mock.invocationCallOrder.filter((n) => n > first.mock.invocationCallOrder[0]).length;
 
 beforeEach(() => {
 	errorState.view = null;
+});
+
+afterEach(() => {
+	vi.useRealTimers();
 });
 
 describe('ListScreen', () => {
@@ -61,15 +71,19 @@ describe('ListScreen', () => {
 	it('searches after a pause', async () => {
 		const s = spies();
 		await render(ListHarness, s);
+		fakePause();
 		// Each key restarts the wait: 400 ms in all, but never 300 ms without typing.
 		await userEvent.keyboard('g');
-		await wait(200);
+		vi.advanceTimersByTime(200);
 		await userEvent.keyboard('a');
-		await wait(200);
+		vi.advanceTimersByTime(200);
 		await userEvent.keyboard('r');
 		expect(s.onSearch).not.toHaveBeenCalled();
-		await vi.waitFor(() => expect(s.onSearch).toHaveBeenCalledExactlyOnceWith('gar'));
-		await wait(400);
+		vi.advanceTimersByTime(299);
+		expect(s.onSearch).not.toHaveBeenCalled();
+		vi.advanceTimersByTime(1);
+		expect(s.onSearch).toHaveBeenCalledExactlyOnceWith('gar');
+		vi.advanceTimersByTime(1000);
 		expect(s.onSearch).toHaveBeenCalledOnce();
 	});
 
@@ -257,9 +271,10 @@ describe('ListScreen', () => {
 	it('a search still waiting is dropped on leaving', async () => {
 		const s = spies();
 		const { unmount } = await render(ListHarness, s);
+		fakePause();
 		await userEvent.keyboard('gar');
 		await unmount();
-		await wait(400);
+		vi.advanceTimersByTime(1000);
 		expect(s.onSearch).not.toHaveBeenCalled();
 	});
 
@@ -473,6 +488,38 @@ describe('ListScreen', () => {
 			await vi.waitFor(() => expect(d.reload).toHaveBeenCalledOnce());
 			expect(d.onDeleted).not.toHaveBeenCalled();
 			expect(d.toast).not.toHaveBeenCalled();
+		});
+
+		it('a failed delete keeps the mark in place', async () => {
+			const d = deletion();
+			d.options.remove.mockRejectedValue(new ApiError(404, 'CLIENT_NOT_FOUND', 'Not found', {}));
+			const { rerender } = await render(ListHarness, { ...spies(), deletion: d });
+			await userEvent.keyboard('{ArrowDown}{F8}');
+			await expect.element(dialog()).toHaveTextContent('¿Borrar el cliente 2?');
+			await userEvent.keyboard('{F8}');
+			await vi.waitFor(() => expect(d.reload).toHaveBeenCalledOnce());
+			// The reload brings the same rows back.
+			await rerender({ rows: [...rows] });
+			await expect.element(row(2)).toHaveAttribute('aria-selected', 'true');
+		});
+
+		it('a double click on the question does not open the row behind it', async () => {
+			const s = spies();
+			// Enough rows to have one under the question's buttons once it closes.
+			const many = Array.from({ length: 20 }, (_, i) => ({
+				id: 100 + i,
+				code: i + 1,
+				name: `Cliente ${i + 1}`
+			}));
+			await render(ListHarness, { ...s, deletion: deletion(), rows: many });
+			await userEvent.keyboard('{ArrowDown}{F8}');
+			await expect.element(dialog()).toBeVisible();
+			await dialog()
+				.getByRole('button', { name: /No borrar/ })
+				.dblClick();
+			await expect.element(dialog()).not.toBeInTheDocument();
+			expect(s.onOpen).not.toHaveBeenCalled();
+			await expect.element(row(2)).toHaveAttribute('aria-selected', 'true');
 		});
 
 		it('without deletion there is no Borrar', async () => {
