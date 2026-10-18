@@ -9,8 +9,21 @@
 	import Form from './Form.svelte';
 	import ScreenHeader from './ScreenHeader.svelte';
 
-	let { form, title, children }: { form: RecordForm<V>; title: string; children: Snippet } =
-		$props();
+	let {
+		form,
+		title,
+		readOnly = false,
+		canDelete = () => true,
+		children
+	}: {
+		form: RecordForm<V>;
+		title: string;
+		/** No saving nor deleting: only looking, and the way back */
+		readOnly?: boolean;
+		/** Whether the saved record may be deleted now; an existing record only */
+		canDelete?: () => boolean;
+		children: Snippet;
+	} = $props();
 
 	// The fields register before this runs: the cursor starts in the first one.
 	onMount(() => form.nav?.focusFirstField());
@@ -28,6 +41,7 @@
 	const save: KeyAction = {
 		key: 'NumpadAdd',
 		label: 'Guardar',
+		when: () => !readOnly,
 		run: async () => {
 			await form.save();
 		}
@@ -35,7 +49,7 @@
 	const remove: KeyAction = {
 		key: 'F8',
 		label: 'Borrar',
-		when: () => form.id !== null,
+		when: () => !readOnly && form.id !== null && canDelete(),
 		run: () => form.askDelete()
 	};
 	const back: KeyAction = { key: 'Escape', label: 'Volver', run: () => form.exit() };
@@ -44,8 +58,10 @@
 </script>
 
 <ScreenHeader {title}>
-	<ActionButton action={save} variant="primary" />
-	<ActionButton action={remove} variant="danger" />
+	{#if !readOnly}
+		<ActionButton action={save} variant="primary" />
+		<ActionButton action={remove} variant="danger" />
+	{/if}
 	<ActionButton action={back} />
 </ScreenHeader>
 <Form bind:nav={form.nav} onLast={() => form.nav?.focusFirstField()}>

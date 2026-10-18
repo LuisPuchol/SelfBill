@@ -89,6 +89,43 @@ describe('RecordScreen', () => {
 		expect(o.goToList).not.toHaveBeenCalled();
 	});
 
+	it('firstField puts the cursor there after a chained new record', async () => {
+		const o = options();
+		await render(RecordHarness, { ...o, firstField: 'name' });
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect.element(code()).toHaveValue('102');
+		await expect.element(name()).toHaveFocus();
+	});
+
+	it('readOnly hides Guardar and Borrar and ignores "+" and F8', async () => {
+		const o = options();
+		await render(RecordHarness, { ...o, ...editing, readOnly: true });
+		await expect.element(bar()).toHaveTextContent('Esc Volver');
+		await expect.element(bar()).not.toHaveTextContent('Guardar');
+		await expect.element(bar()).not.toHaveTextContent('Borrar');
+		await name().click();
+		await userEvent.keyboard('x{NumpadAdd}{F8}');
+		expect(o.create).not.toHaveBeenCalled();
+		expect(o.update).not.toHaveBeenCalled();
+		expect(o.remove).not.toHaveBeenCalled();
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: /Guardar|Borrar/ }))
+			.not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: /Volver/ })).toBeEnabled();
+	});
+
+	it('canDelete false greys out Borrar and ignores F8', async () => {
+		const o = options();
+		await render(RecordHarness, { ...o, ...editing, canDelete: () => false });
+		await expect.element(page.getByRole('button', { name: /Borrar/ })).toBeDisabled();
+		await name().click();
+		await userEvent.keyboard('{F8}');
+		await expect.element(dialog()).not.toBeInTheDocument();
+		expect(o.pendingForDelete).not.toHaveBeenCalled();
+	});
+
 	it('the chained blank form is clean', async () => {
 		const o = options();
 		await render(RecordHarness, o);

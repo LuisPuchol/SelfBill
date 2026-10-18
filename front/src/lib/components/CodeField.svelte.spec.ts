@@ -54,6 +54,18 @@ describe('CodeField', () => {
 		expect(lookup).toHaveBeenCalledTimes(1);
 	});
 
+	it('+ right after Enter waits for the lookup and then saves once', async () => {
+		const pending = deferred<string | null>();
+		const onSave = vi.fn();
+		render(CodeHarness, { lookup: () => pending.promise, onSave });
+		await articulo().click();
+		await userEvent.keyboard('5{Enter}{NumpadAdd}');
+		expect(onSave).not.toHaveBeenCalled();
+		pending.resolve('Pepino');
+		await vi.waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+		await expect.element(page.getByText('Pepino')).toBeVisible();
+	});
+
 	it('editing the code clears the old name', async () => {
 		render(CodeHarness, { lookup: async () => 'Tomate' });
 		await articulo().click();

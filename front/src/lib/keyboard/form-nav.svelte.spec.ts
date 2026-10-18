@@ -258,7 +258,7 @@ describe('FormNav', () => {
 			expect(document.activeElement).toBe(a);
 		});
 
-		it('is busy while it runs: another validateAll is false and next() does nothing', async () => {
+		it('is busy while it runs: next() does nothing and another validateAll waits its turn', async () => {
 			const [a, b] = inputs('a', 'b');
 			let resolve!: (ok: boolean) => void;
 			const slow = vi.fn(() => new Promise<boolean>((r) => (resolve = r)));
@@ -270,15 +270,42 @@ describe('FormNav', () => {
 
 			const first = nav.validateAll();
 			expect(nav.busy).toBe(true);
-			expect(await nav.validateAll()).toBe(false);
+			const second = nav.validateAll();
 			await nav.next();
 			expect(slow).toHaveBeenCalledOnce();
 			expect(document.activeElement).toBe(a);
 
 			resolve(true);
 			expect(await first).toBe(true);
-			expect(other).toHaveBeenCalledOnce();
+			// The second one runs the commits only after the first finished.
+			expect(slow).toHaveBeenCalledTimes(2);
+			resolve(true);
+			expect(await second).toBe(true);
+			expect(other).toHaveBeenCalledTimes(2);
 			expect(nav.busy).toBe(false);
+		});
+
+		it('waits for a commit that is still running', async () => {
+			const [a, b] = inputs('a', 'b');
+			let resolve!: (ok: boolean) => void;
+			const slow = vi.fn(() => new Promise<boolean>((r) => (resolve = r)));
+			const nav = new FormNav();
+			nav.register({ name: 'a', el: a, commit: slow });
+			nav.register({ name: 'b', el: b });
+			a.focus();
+
+			void nav.next();
+			let settled: boolean | undefined;
+			const result = nav.validateAll().then((ok) => (settled = ok));
+			await Promise.resolve();
+			expect(settled).toBeUndefined();
+			expect(slow).toHaveBeenCalledOnce();
+
+			resolve(true);
+			await vi.waitFor(() => expect(slow).toHaveBeenCalledTimes(2));
+			resolve(true);
+			await result;
+			expect(settled).toBe(true);
 		});
 	});
 

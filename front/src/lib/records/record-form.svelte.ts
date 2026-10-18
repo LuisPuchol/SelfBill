@@ -29,6 +29,8 @@ export interface RecordFormOptions<V extends { code: number | null }> {
 	confirmBeforeSave?(values: V, original: V): Promise<string | null>;
 	/** Spanish texts for the API's field errors, by field path */
 	fieldMessages?: Record<string, string>;
+	/** The field the cursor goes to in the next new record of a chain; `code` by default */
+	firstField?: string;
 	goToList(savedId?: number): void | Promise<void>;
 	toast(message: string): void;
 }
@@ -141,7 +143,7 @@ export class RecordForm<V extends { code: number | null }> extends FormState<V> 
 		}
 		this.reset(next);
 		await tick();
-		this.nav?.focus('code');
+		this.nav?.focus(this.#options.firstField ?? 'code');
 		return true;
 	}
 

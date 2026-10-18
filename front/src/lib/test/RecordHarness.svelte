@@ -21,6 +21,9 @@
 		pendingForDelete,
 		confirmBeforeSave,
 		fieldMessages,
+		firstField,
+		readOnly,
+		canDelete,
 		goToList,
 		toast
 	}: {
@@ -33,6 +36,9 @@
 		pendingForDelete: (id: number) => Promise<string | null>;
 		confirmBeforeSave?: (values: ArticleValues, original: ArticleValues) => Promise<string | null>;
 		fieldMessages?: Record<string, string>;
+		firstField?: string;
+		readOnly?: boolean;
+		canDelete?: () => boolean;
 		goToList: (savedId?: number) => void;
 		toast: (message: string) => void;
 	} = $props();
@@ -52,13 +58,19 @@
 		pendingForDelete,
 		confirmBeforeSave,
 		fieldMessages,
+		firstField,
 		goToList,
 		toast
 	});
 </script>
 
 <KeyboardRoot />
-<RecordScreen {form} title={form.id === null ? 'Artículo nuevo' : `Artículo ${form.values.code}`}>
+<RecordScreen
+	{form}
+	{readOnly}
+	{canDelete}
+	title={form.id === null ? 'Artículo nuevo' : `Artículo ${form.values.code}`}
+>
 	<NumberField
 		label="Código"
 		name="code"
