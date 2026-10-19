@@ -34,15 +34,18 @@ export class FormState<V extends object> {
 	#saved: V;
 	#fieldErrors: Record<string, FieldError> = $state.raw({});
 	#saving = false;
+	readonly #comparable: (values: V) => unknown;
 
-	constructor(initial: V) {
+	/** `comparable`: what the dirty check compares, e.g. without what is never sent; all by default. */
+	constructor(initial: V, options: { comparable?(values: V): unknown } = {}) {
+		this.#comparable = options.comparable ?? ((values) => values);
 		this.#saved = $state.raw($state.snapshot(initial) as V);
 		// A copy of its own: the fields write here, never into the caller's object.
 		this.values = $state($state.snapshot(initial) as V);
 	}
 
 	get isDirty(): boolean {
-		return !same(this.values, this.#saved);
+		return !same(this.#comparable(this.values), this.#comparable(this.#saved));
 	}
 
 	/** The values as last saved (or as opened). */
@@ -75,8 +78,13 @@ export class FormState<V extends object> {
 	/**
 	 * A VALIDATION_ERROR with field errors goes under its fields, in Spanish: `messages` by field
 	 * path, "Revisa este dato" for the rest. False for anything else, which is left to the caller.
+	 * `fieldPath` turns the API's path into the form's when they differ.
 	 */
-	showFieldErrors(err: unknown, messages: Record<string, string> = {}): boolean {
+	showFieldErrors(
+		err: unknown,
+		messages: Record<string, string> = {},
+		fieldPath: (apiPath: string) => string = (apiPath) => apiPath
+	): boolean {
 		if (
 			!(err instanceof ApiError) ||
 			err.code !== 'VALIDATION_ERROR' ||
@@ -84,7 +92,10 @@ export class FormState<V extends object> {
 		) {
 			return false;
 		}
-		this.setFieldErrors(fieldErrorMessages(err.fieldErrors, messages));
+		const shown = fieldErrorMessages(err.fieldErrors, messages);
+		this.setFieldErrors(
+			Object.fromEntries(Object.entries(shown).map(([path, message]) => [fieldPath(path), message]))
+		);
 		return true;
 	}
 

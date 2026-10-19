@@ -242,6 +242,16 @@ describe('LinesGrid', () => {
 		await expect.element(cell(0, 'Precio')).toHaveAccessibleDescription('Este dato es obligatorio');
 	});
 
+	it('with every line empty the first one is required: a note needs a line', async () => {
+		await render(GridHarness, props({ initial: [emptyLine(), emptyLine()] }));
+		await cell(1, 'Código').click();
+		await userEvent.keyboard('{NumpadAdd}');
+		await expect.element(page.getByTestId('valid')).toHaveTextContent('false');
+		await expect.element(cell(0, 'Código')).toHaveFocus();
+		await expect.element(cell(0, 'Código')).toHaveAccessibleDescription('Este dato es obligatorio');
+		await expect.element(cell(1, 'Código')).toHaveAccessibleDescription('');
+	});
+
 	it('a code typed without Enter already makes its line need the rest', async () => {
 		await render(GridHarness, props());
 		await cell(0, 'Código').click();
@@ -298,6 +308,30 @@ describe('LinesGrid', () => {
 		await cell(0, 'Precio').click();
 		await userEvent.keyboard('{Enter}');
 		expect(linesNow()).toEqual([tomate()]);
+	});
+
+	it('readOnly: an empty cell is not required, so Enter walks on', async () => {
+		const gone = { ...tomate(), articleCode: null, savedArticleName: 'Tomate' };
+		await render(GridHarness, props({ initial: [gone], readOnly: true }));
+		await expect.element(page.getByRole('cell', { name: 'Tomate', exact: true })).toBeVisible();
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(cell(0, 'Lote')).toHaveFocus();
+		await userEvent.keyboard('{NumpadAdd}');
+		await expect.element(page.getByTestId('valid')).toHaveTextContent('true');
+		await expect.element(page.getByText('Este dato es obligatorio')).not.toBeInTheDocument();
+	});
+
+	it('the name a line was saved with shows until a code is typed (its article was deleted)', async () => {
+		const gone = { ...tomate(), articleCode: null, savedArticleName: 'Berenjena' };
+		await render(GridHarness, props({ initial: [gone] }));
+		const saved = () => page.getByRole('cell', { name: 'Berenjena', exact: true });
+		await expect.element(saved()).toBeVisible();
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('1');
+		await expect.element(saved()).not.toBeInTheDocument();
+		await userEvent.keyboard('5{Enter}');
+		await expect.element(page.getByRole('cell', { name: 'Pepino', exact: true })).toBeVisible();
 	});
 
 	it('buttons Lotes and Quitar línea act on the line with the cursor', async () => {

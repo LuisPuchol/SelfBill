@@ -50,6 +50,15 @@ describe('Lot, date and choice fields', () => {
 		await expect.element(formato()).toHaveFocus();
 	});
 
+	it('a read-only date cannot be typed into', async () => {
+		render(FieldsHarness, { dateReadOnly: true });
+		await fecha().click();
+		await userEvent.keyboard('121026');
+		await expect.element(fecha()).toHaveValue(formatDate(todayIso()));
+		await expect.element(fecha()).toHaveAttribute('readonly');
+		await expect.element(page.getByTestId('date')).toHaveTextContent(todayIso());
+	});
+
 	it('the date is normalised when leaving with the mouse', async () => {
 		render(FieldsHarness);
 		await fecha().click();

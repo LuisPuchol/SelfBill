@@ -106,8 +106,11 @@ código") y Fecha (hoy en un alta). Al lado, en solo lectura, el formato: "Albar
 
 - Base = suma de importes de línea. IVA y recargo = base × tipo, redondeados a céntimos.
 - Tipos: los del periodo de IVA vigente en la fecha del albarán y el régimen del cliente (sin IVA →
-  0; sin recargo → 0). En un albarán guardado sin cambiar fecha ni cliente, los congelados del
-  albarán. Son una vista previa: la API fija los definitivos al guardar.
+  0; sin recargo → 0). En un albarán guardado, como hace la API (CONCEPTO §3), cada componente
+  conserva su tipo congelado mientras el régimen del cliente para ese componente no cambie
+  (cambiar solo la fecha no lo toca); si cambia (otro cliente con otro régimen), ese componente
+  toma el tipo del periodo vigente en la fecha, o 0. En uno facturado, siempre los congelados.
+  Son una vista previa: la API fija los definitivos al guardar.
 - Sin IVA vigente en esa fecha: en lugar de los tipos, "No hay IVA configurado para esa fecha".
 
 **Guardar (+)**: `validateAll` (cliente, fecha, al menos una línea con contenido, cada línea

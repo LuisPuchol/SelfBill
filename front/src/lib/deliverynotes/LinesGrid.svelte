@@ -66,6 +66,8 @@
 	const typedCode = new SvelteSet<LineValues>();
 
 	function oncodeinput(line: LineValues, event: Event): void {
+		// Another article now: the name of the deleted one goes.
+		delete line.savedArticleName;
 		if ((event.target as HTMLInputElement).value === '') typedCode.delete(line);
 		else typedCode.add(line);
 	}
@@ -73,6 +75,19 @@
 	/** An empty line is left out of the note, so none of its cells is required. */
 	function written(line: LineValues): boolean {
 		return !isEmptyLine(line) || typedCode.has(line);
+	}
+
+	/** A note needs a line: while none is written, the first one is required. */
+	const noneWritten = $derived(!lines.some(written));
+
+	/** Only looking, nothing is asked for: Enter walks on even past a deleted article's empty code. */
+	function cellsRequired(line: LineValues, row: number): boolean {
+		return !readOnly && (written(line) || (row === 0 && noneWritten));
+	}
+
+	function nameOf(line: LineValues): string {
+		if (line.articleCode === null) return line.savedArticleName ?? '';
+		return articleName(line.articleCode) ?? '';
 	}
 
 	/** Offers the last price, only into an empty price: a typed or saved one is never replaced. */
@@ -197,7 +212,7 @@
 						bind:value={line.articleCode}
 						lookup={lookupArticle}
 						notFoundMessage="No existe ningún artículo con ese código"
-						required={written(line)}
+						required={cellsRequired(line, i)}
 						error={errorFor(`lines[${i}].articleCode`)}
 						compact
 						{readOnly}
@@ -205,7 +220,7 @@
 					/>
 				</td>
 				<td class="px-2 pt-4">
-					{line.articleCode === null ? '' : (articleName(line.articleCode) ?? '')}
+					{nameOf(line)}
 				</td>
 				<td class="px-1 pt-1">
 					<div class="flex items-start gap-2">
@@ -214,7 +229,7 @@
 							name="lines[{i}].lot1"
 							length={8}
 							bind:value={line.lot1}
-							required={written(line)}
+							required={cellsRequired(line, i)}
 							error={errorFor(`lines[${i}].lot1`)}
 							compact
 							{readOnly}
@@ -229,7 +244,7 @@
 						label="Cantidad"
 						name="lines[{i}].quantity"
 						bind:value={line.quantity}
-						required={written(line)}
+						required={cellsRequired(line, i)}
 						validate={(v) => (v > 0 ? undefined : 'Tiene que ser mayor que cero')}
 						error={errorFor(`lines[${i}].quantity`)}
 						compact
@@ -241,7 +256,7 @@
 						label="Precio"
 						name="lines[{i}].price"
 						bind:value={line.price}
-						required={written(line)}
+						required={cellsRequired(line, i)}
 						error={errorFor(`lines[${i}].price`)}
 						compact
 						{readOnly}

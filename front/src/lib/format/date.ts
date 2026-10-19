@@ -32,3 +32,8 @@ export function parseDateDigits(text: string, today: string): string | null {
 export function todayIso(now = new Date()): string {
 	return `${pad(now.getFullYear(), 4)}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
+
+/** Local time as hh:mm:ss, the time part of an ISO date-time. */
+export function timeNow(now = new Date()): string {
+	return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}

@@ -6,7 +6,8 @@ import { ApiError } from '../api/errors';
 type ClientResponse = components['schemas']['ClientResponse'];
 type ArticleResponse = components['schemas']['ArticleResponse'];
 
-async function orNull<T>(call: Promise<T>): Promise<T | null> {
+/** A 404 is an answer: null. */
+export async function orNull<T>(call: Promise<T>): Promise<T | null> {
 	try {
 		return await call;
 	} catch (error) {
@@ -41,6 +42,13 @@ export function createLookups(client: typeof Api) {
 				request(client.GET('/api/articles/by-code/{code}', { params: { path: { code } } }))
 			),
 		cachedClient: (code: number) => clients.get(code) ?? null,
-		cachedArticle: (code: number) => articles.get(code) ?? null
+		cachedArticle: (code: number) => articles.get(code) ?? null,
+		/** Already known, e.g. a saved note's client and articles: never asked for again. */
+		seed(found: { clients?: ClientResponse[]; articles?: ArticleResponse[] }): void {
+			for (const c of found.clients ?? []) if (c.code !== undefined) clients.set(c.code, c);
+			for (const a of found.articles ?? []) if (a.code !== undefined) articles.set(a.code, a);
+		}
 	};
 }
+
+export type Lookups = ReturnType<typeof createLookups>;

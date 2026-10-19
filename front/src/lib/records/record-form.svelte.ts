@@ -10,8 +10,11 @@ export interface Saved {
 }
 
 export interface RecordFormOptions<V extends { code: number | null }> {
-	/** e.g. `{ one: 'cliente', Label: 'Cliente', duplicateCode: 'CLIENT_DUPLICATE_CODE' }` */
-	entity: { one: string; Label: string; duplicateCode: ErrorCode };
+	/**
+	 * e.g. `{ one: 'cliente', Label: 'Cliente', duplicateCode: 'CLIENT_DUPLICATE_CODE' }`. Without
+	 * `duplicateCode` (no code field to put it under) a repeated code goes to the error dialog.
+	 */
+	entity: { one: string; Label: string; duplicateCode?: ErrorCode };
 	/** Null for a new record */
 	id: number | null;
 	initial: V;
@@ -29,6 +32,10 @@ export interface RecordFormOptions<V extends { code: number | null }> {
 	confirmBeforeSave?(values: V, original: V): Promise<string | null>;
 	/** Spanish texts for the API's field errors, by field path */
 	fieldMessages?: Record<string, string>;
+	/** The form's field path for one of the API's, when the payload names or numbers them differently */
+	mapFieldPath?(path: string): string;
+	/** What the unsaved-changes check compares; all the values by default */
+	comparable?(values: V): unknown;
 	/** The field the cursor goes to in the next new record of a chain; `code` by default */
 	firstField?: string;
 	goToList(savedId?: number): void | Promise<void>;
@@ -50,7 +57,7 @@ export class RecordForm<V extends { code: number | null }> extends FormState<V> 
 	#createdId: number | undefined;
 
 	constructor(options: RecordFormOptions<V>) {
-		super(options.initial);
+		super(options.initial, { comparable: options.comparable });
 		this.#options = options;
 		this.id = options.id;
 		this.deletion = new DeleteFlow({
@@ -148,13 +155,13 @@ export class RecordForm<V extends { code: number | null }> extends FormState<V> 
 	}
 
 	#refused(err: unknown): void {
-		const { entity, fieldMessages } = this.#options;
+		const { entity, fieldMessages, mapFieldPath } = this.#options;
 		if (err instanceof ApiError && err.code === entity.duplicateCode) {
 			this.setFieldErrors({ code: `Ya existe un ${entity.one} con ese código` });
 			return;
 		}
 		// The API takes only positive codes; empty is already caught by validateAll.
 		const messages = { code: 'El código tiene que ser mayor que cero', ...fieldMessages };
-		if (!this.showFieldErrors(err, messages)) showError(err);
+		if (!this.showFieldErrors(err, messages, mapFieldPath)) showError(err);
 	}
 }

@@ -14,6 +14,7 @@
 		title,
 		readOnly = false,
 		canDelete = () => true,
+		onLast = () => form.nav?.focusFirstField(),
 		children
 	}: {
 		form: RecordForm<V>;
@@ -22,6 +23,8 @@
 		readOnly?: boolean;
 		/** Whether the saved record may be deleted now; an existing record only */
 		canDelete?: () => boolean;
+		/** Enter on the last field; back to the first one by default */
+		onLast?: () => void;
 		children: Snippet;
 	} = $props();
 
@@ -64,7 +67,7 @@
 	{/if}
 	<ActionButton action={back} />
 </ScreenHeader>
-<Form bind:nav={form.nav} onLast={() => form.nav?.focusFirstField()}>
+<Form bind:nav={form.nav} onLast={() => onLast()}>
 	{@render children()}
 </Form>
 

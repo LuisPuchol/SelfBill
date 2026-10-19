@@ -382,6 +382,40 @@ describe('RecordScreen', () => {
 		await expect.element(code()).toHaveFocus();
 	});
 
+	it('onLast replaces going back to the first field', async () => {
+		const onLast = vi.fn();
+		await render(RecordHarness, { ...options(), ...editing, onLast });
+		await name().click();
+		await userEvent.keyboard('{Enter}');
+		expect(onLast).toHaveBeenCalledOnce();
+		await expect.element(name()).toHaveFocus();
+	});
+
+	it('comparable decides what counts as a change', async () => {
+		const comparable = (v: ArticleValues) => ({ ...v, name: v.name.trim() });
+		await render(RecordHarness, { ...options(), ...editing, comparable });
+		await name().click();
+		await userEvent.keyboard('{End} ');
+		await expect.element(name()).toHaveValue('Tomate ');
+		await expect.element(page.getByTestId('dirty')).toHaveTextContent('false');
+		await userEvent.keyboard('s');
+		await expect.element(page.getByTestId('dirty')).toHaveTextContent('true');
+	});
+
+	it('mapFieldPath puts an API field error under the field it names', async () => {
+		const o = options();
+		o.update.mockRejectedValue(new ApiError(400, 'VALIDATION_ERROR', '', { title: 'x' }));
+		await render(RecordHarness, {
+			...o,
+			...editing,
+			fieldMessages: { title: 'Pon un nombre' },
+			mapFieldPath: (path: string) => (path === 'title' ? 'name' : path)
+		});
+		await userEvent.keyboard('{NumpadAdd}');
+		await expect.element(page.getByText('Pon un nombre')).toBeVisible();
+		await expect.element(name()).toHaveFocus();
+	});
+
 	describe('buttons', () => {
 		const button = (label: string) => page.getByRole('button', { name: new RegExp(label) });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, parseDateDigits, todayIso } from './date';
+import { formatDate, parseDateDigits, timeNow, todayIso } from './date';
 
 describe('formatDate', () => {
 	it('prints dd/mm/yyyy from date or datetime', () => {
@@ -26,5 +26,11 @@ describe('parseDateDigits', () => {
 describe('todayIso', () => {
 	it('uses the local day, not UTC', () => {
 		expect(todayIso(new Date(2026, 9, 13, 0, 30))).toBe('2026-10-13');
+	});
+});
+
+describe('timeNow', () => {
+	it('gives the local time as hh:mm:ss', () => {
+		expect(timeNow(new Date(2026, 9, 13, 7, 5, 9))).toBe('07:05:09');
 	});
 });
