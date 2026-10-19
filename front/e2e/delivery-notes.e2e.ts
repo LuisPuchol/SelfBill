@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { searchFor } from './list';
 
 // Codes 9401–9449 are this file's: the other e2e files use their own.
 
@@ -89,8 +90,9 @@ test('a delivery note by keyboard', async ({ page, request }) => {
 		price: 1.2
 	});
 
-	// The list's F2 comes with the list itself; until then, its URL.
-	await page.goto('/delivery-notes/new');
+	await page.goto('/delivery-notes');
+	await ready(page, 'Nuevo');
+	await page.keyboard.press('F2');
 	await expect(page.getByRole('heading', { name: 'Albarán nuevo' })).toBeVisible();
 	await ready(page, 'Guardar');
 	const cliente = page.getByLabel('Cliente', { exact: true });
@@ -168,6 +170,11 @@ test('editing a note keeps it and returns to the list', async ({ page, request }
 	await page.keyboard.press('NumpadAdd');
 	await expect(page.getByText(`Albarán ${note.code} guardado`)).toBeVisible();
 	await expect(page).toHaveURL(/\/delivery-notes$/);
+	// The list marks the note just edited.
+	await expect(page.getByRole('row', { name: new RegExp(`^${note.code} `) })).toHaveAttribute(
+		'aria-selected',
+		'true'
+	);
 
 	const edited = await getNote(request, note.id);
 	expect(edited.code).toBe(note.code);
@@ -178,4 +185,101 @@ test('editing a note keeps it and returns to the list', async ({ page, request }
 test('a missing note shows the not-found page', async ({ page }) => {
 	await page.goto('/delivery-notes/999999');
 	await expect(page.getByText('No se ha encontrado')).toBeVisible();
+});
+
+/** An issued invoice with one note of a fresh client: issuing needs the owner and the client's fiscal data. */
+async function issuedNote(request: APIRequestContext, clientCode: number, name: string) {
+	// 409: another test created the owner already
+	await request.post('/api/user-profile', {
+		data: {
+			fullName: 'María López',
+			fiscalName: 'Frutas López S.L.',
+			nif: 'B87654321',
+			address: 'Mercavalencia, nave 3',
+			email: 'facturas@ejemplo.es'
+		}
+	});
+	const client = await ensure(request, '/api/clients', {
+		code: clientCode,
+		name,
+		businessName: `${name} SL`,
+		nif: 'B12345674',
+		address: 'Calle Mayor 1',
+		postalCode: '46001',
+		city: 'Valencia',
+		vatType: 'WITH_VAT',
+		surchargeType: 'WITH_SURCHARGE',
+		defaultDeliveryNoteFormat: 'VALUED'
+	});
+	const article = await ensureArticle(request, clientCode + 100, `${name} artículo`);
+	const note = await createNote(request, client.id, `${today()}T09:00:00`, {
+		articleId: article.id,
+		quantity: 2,
+		price: 3
+	});
+	const invoice = await request.post('/api/invoices', {
+		data: { clientId: client.id, deliveryNoteIds: [note.id] }
+	});
+	expect(invoice.ok()).toBe(true);
+	const { id } = (await invoice.json()) as { id: number };
+	const issued = await request.post(`/api/invoices/${id}/issue`);
+	expect(issued.ok()).toBe(true);
+	const { number } = (await issued.json()) as { number: string };
+	return { note, number };
+}
+
+test('the list finds by client without accents and filters pending', async ({ page, request }) => {
+	const garcia = await ensureClient(request, 9406, 'Frutería García e2e');
+	const article = await ensureArticle(request, 9407, 'Naranja lista e2e');
+	const pending = await createNote(request, garcia.id, `${today()}T08:00:00`, {
+		articleId: article.id,
+		quantity: 1,
+		price: 2
+	});
+	const { note: issued, number } = await issuedNote(request, 9408, 'Verdulería Facturada e2e');
+
+	await page.goto('/delivery-notes');
+	await ready(page, 'Solo pendientes');
+	const pendingRow = page.getByRole('row', { name: new RegExp(`^${pending.code} `) });
+	const issuedRow = page.getByRole('row', { name: new RegExp(`^${issued.code} `) });
+	await expect(pendingRow).toBeVisible();
+	await expect(issuedRow).toContainText(`Facturado nº ${number}`);
+
+	await searchFor(page, 'garcia e2e');
+	await expect(pendingRow).toContainText('Frutería García e2e');
+	await expect(pendingRow).toContainText('Pendiente');
+	await expect(issuedRow).toHaveCount(0);
+	await page.getByLabel('Buscar (código o nombre)').fill('');
+	await expect(page).not.toHaveURL(/q=/);
+	await expect(issuedRow).toBeVisible();
+
+	await page.keyboard.press('F3');
+	await expect(page).toHaveURL(/pending=1/);
+	await expect(page.getByRole('button', { name: /Ver todos/ })).toContainText('F3');
+	await expect(issuedRow).toHaveCount(0);
+	await expect(pendingRow).toBeVisible();
+	await page.keyboard.press('F3');
+	await expect(page.getByRole('button', { name: /Solo pendientes/ })).toBeVisible();
+	await expect(issuedRow).toBeVisible();
+});
+
+test('an issued note opens read-only', async ({ page, request }) => {
+	const { note, number } = await issuedNote(request, 9410, 'Frutas Emitidas e2e');
+
+	await page.goto(`/delivery-notes/${note.id}`);
+	await expect(page.getByText(`Está en la factura nº ${number}, emitida`)).toBeVisible();
+	await ready(page, 'Volver');
+	await expect(page.getByRole('button', { name: /Guardar/ })).toHaveCount(0);
+	const writes: string[] = [];
+	page.on('request', (r) => {
+		if (r.method() !== 'GET' && r.url().includes('/api/')) writes.push(`${r.method()} ${r.url()}`);
+	});
+	const before = await getNote(request, note.id);
+	await page.keyboard.press('NumpadAdd');
+	// Esc and the list rendering are the anchor: a save started by "+" would have gone out by then.
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL(/\/delivery-notes$/);
+	await expect(page.getByRole('row', { name: new RegExp(`^${note.code} `) })).toBeVisible();
+	expect(writes).toEqual([]);
+	expect(await getNote(request, note.id)).toEqual(before);
 });

@@ -25,6 +25,7 @@
 		rowId,
 		deletion,
 		extraActions = [],
+		emptyHint,
 		onSearch,
 		onPage,
 		onOpen,
@@ -62,6 +63,8 @@
 		};
 		/** More keys and buttons for the header, after "Borrar" */
 		extraActions?: { action: KeyAction; variant?: 'normal' | 'primary' | 'danger' }[];
+		/** Replaces the message of a list with nothing in it and no search */
+		emptyHint?: string;
 		onSearch: (text: string) => void;
 		onPage: (n: number) => void;
 		onOpen: (row: T) => void;
@@ -104,7 +107,7 @@
 	const searched = $derived(search.trim());
 	const emptyText = $derived(
 		searched === ''
-			? `Todavía no hay ${entity.many}. Pulsa F2 para dar de alta el primero.`
+			? (emptyHint ?? `Todavía no hay ${entity.many}. Pulsa F2 para dar de alta el primero.`)
 			: isCodeSearch(searched)
 				? `No existe ningún ${entity.one} con el código ${searched}.`
 				: `No hay ningún ${entity.one} que coincida con «${searched}».`
