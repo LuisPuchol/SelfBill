@@ -14,6 +14,7 @@
 		required = false,
 		error,
 		compact = false,
+		readOnly = false,
 		onFound
 	}: {
 		label: string;
@@ -28,7 +29,9 @@
 		error?: string;
 		/** For a table cell: label for screen readers only, smaller error line, and the found name is not shown (the grid has its own column) */
 		compact?: boolean;
-		/** After a successful lookup */
+		/** Shown but not editable, e.g. a document that can no longer change */
+		readOnly?: boolean;
+		/** After a successful lookup; also after the first lookup of a code passed in */
 		onFound?: (code: number) => void;
 	} = $props();
 
@@ -103,6 +106,7 @@
 				aria-describedby={describedBy}
 				use:selectOnFocus
 				autocomplete="off"
+				readonly={readOnly}
 				{oninput}
 			/>
 			{#if foundName && !compact}

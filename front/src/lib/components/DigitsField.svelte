@@ -11,7 +11,8 @@
 		length,
 		required = false,
 		error,
-		compact = false
+		compact = false,
+		readOnly = false
 	}: {
 		label: string;
 		/** API field path; also the input's id */
@@ -25,6 +26,8 @@
 		error?: string;
 		/** For a table cell: label for screen readers only, smaller error line */
 		compact?: boolean;
+		/** Shown but not editable, e.g. a document that can no longer change */
+		readOnly?: boolean;
 	} = $props();
 
 	const nav = getFormNav();
@@ -68,6 +71,7 @@
 			aria-describedby={describedBy}
 			use:selectOnFocus
 			autocomplete="off"
+			readonly={readOnly}
 			onblur={() => check(false)}
 			{oninput}
 		/>
