@@ -23,6 +23,7 @@
 		fieldMessages,
 		firstField,
 		comparable,
+		afterSave,
 		mapFieldPath,
 		readOnly,
 		canDelete,
@@ -45,6 +46,7 @@
 		readOnly?: boolean;
 		canDelete?: () => boolean;
 		onLast?: () => void;
+		afterSave?: (saved: Saved) => Promise<string | void>;
 		goToList: (savedId?: number) => void;
 		toast: (message: string) => void;
 	} = $props();
@@ -66,6 +68,7 @@
 		fieldMessages,
 		firstField,
 		comparable,
+		afterSave,
 		mapFieldPath,
 		goToList,
 		toast

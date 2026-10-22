@@ -38,6 +38,11 @@ export interface RecordFormOptions<V extends { code: number | null }> {
 	comparable?(values: V): unknown;
 	/** The field the cursor goes to in the next new record of a chain; `code` by default */
 	firstField?: string;
+	/**
+	 * Runs after a successful create or update, before the toast and the chain or return. A returned
+	 * text is appended to the toast; a throw goes to the error dialog and the flow goes on.
+	 */
+	afterSave?(saved: Saved): Promise<string | void>;
 	goToList(savedId?: number): void | Promise<void>;
 	toast(message: string): void;
 }
@@ -131,9 +136,15 @@ export class RecordForm<V extends { code: number | null }> extends FormState<V> 
 			return false;
 		}
 		this.clearFieldErrors();
-		this.#options.toast(`${entity.Label} ${saved.code} guardado`);
-		// Saved: nothing left to save, also while the next new record is on its way.
+		// Saved: nothing left to save, also while afterSave runs and the next new record is on its way.
 		this.markSaved();
+		let extra: string | void = undefined;
+		try {
+			extra = await this.#options.afterSave?.(saved);
+		} catch (err) {
+			showError(err);
+		}
+		this.#options.toast(`${entity.Label} ${saved.code} guardado${extra ? ` · ${extra}` : ''}`);
 		if (id !== null) {
 			await this.#options.goToList(id);
 			return true;

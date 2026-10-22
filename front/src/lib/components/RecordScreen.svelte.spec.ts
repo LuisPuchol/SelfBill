@@ -3,6 +3,7 @@ import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import RecordHarness from '#lib/test/RecordHarness.svelte';
 import { ApiError } from '#lib/api/errors.js';
+import { dismissError, errorState } from '#lib/components/errors.svelte.js';
 import type { Saved } from '#lib/records/record-form.svelte.js';
 
 interface ArticleValues {
@@ -489,5 +490,72 @@ describe('RecordScreen', () => {
 			await render(RecordHarness, options());
 			await expect.element(bar()).toHaveTextContent('Esc Volver');
 		});
+	});
+});
+
+describe('RecordScreen afterSave', () => {
+	it('runs once after creating, before the toast, and its text goes in the toast', async () => {
+		const o = options();
+		const order: string[] = [];
+		o.toast.mockImplementation((m) => void order.push(`toast:${m}`));
+		const afterSave = vi.fn(async (saved: Saved) => {
+			order.push(`after:${saved.code}`);
+			return 'Factura 23 emitida';
+		});
+		await render(RecordHarness, { ...o, afterSave });
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect.element(code()).toHaveValue('102');
+		expect(afterSave).toHaveBeenCalledOnce();
+		expect(order).toEqual(['after:101', 'toast:Artículo 101 guardado · Factura 23 emitida']);
+	});
+
+	it('runs after updating too', async () => {
+		const o = options();
+		const afterSave = vi.fn(async () => {});
+		await render(RecordHarness, { ...o, ...editing, afterSave });
+		await name().click();
+		await userEvent.keyboard('{NumpadAdd}');
+		await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledWith(5));
+		expect(afterSave).toHaveBeenCalledOnce();
+		expect(o.toast).toHaveBeenCalledWith('Artículo 101 guardado');
+	});
+
+	it('a throw shows the error and the flow goes on', async () => {
+		const o = options();
+		const afterSave = vi.fn(async () => {
+			throw new ApiError(409, 'ARTICLE_DUPLICATE_CODE', '', {});
+		});
+		await render(RecordHarness, { ...o, afterSave });
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect.element(code()).toHaveValue('102');
+		expect(o.toast).toHaveBeenCalledWith('Artículo 101 guardado');
+		expect(errorState.view).not.toBeNull();
+		dismissError();
+	});
+
+	it('is not called when the save is refused', async () => {
+		const o = options();
+		o.create.mockRejectedValue(new ApiError(409, 'ARTICLE_DUPLICATE_CODE', '', {}));
+		const afterSave = vi.fn(async () => {});
+		await render(RecordHarness, { ...o, afterSave });
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect.element(page.getByText('Ya existe un artículo con ese código')).toBeVisible();
+		expect(afterSave).not.toHaveBeenCalled();
+	});
+
+	it('the form is already saved while afterSave is pending', async () => {
+		const o = options();
+		const pending = deferred<void>();
+		await render(RecordHarness, { ...o, ...editing, afterSave: () => pending.promise });
+		await name().click();
+		await userEvent.keyboard('s{NumpadAdd}');
+		await vi.waitFor(() => expect(o.update).toHaveBeenCalled());
+		await expect.element(page.getByTestId('dirty')).toHaveTextContent('false');
+		expect(o.toast).not.toHaveBeenCalled();
+		pending.resolve();
+		await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledWith(5));
 	});
 });
