@@ -333,6 +333,22 @@ describe('DeliveryNoteRecord, saving', () => {
 		expect(p.proposePrice).toHaveBeenCalledExactlyOnceWith(7, 120);
 	});
 
+	it('another client proposes its own last price where the price is still the proposed one', async () => {
+		const p = props({
+			proposePrice: vi.fn(async (clientId: number) => (clientId === garcia.id ? 1.2 : 1.5))
+		});
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('3{Enter}');
+		await expect.element(fecha()).toHaveFocus();
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		await cliente().click();
+		await userEvent.keyboard('4{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,50');
+		expect(p.proposePrice).toHaveBeenLastCalledWith(pepe.id, 120);
+	});
+
 	it('an edit sends the number and the original time, then goes back to the list', async () => {
 		const p = props(editing());
 		await render(DeliveryNoteHarness, p);

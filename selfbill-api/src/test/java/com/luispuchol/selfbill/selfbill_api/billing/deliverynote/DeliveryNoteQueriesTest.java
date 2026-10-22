@@ -209,19 +209,22 @@ class DeliveryNoteQueriesTest extends DomainIntegrationTest {
         var statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
         statistics.setStatisticsEnabled(true);
         statistics.clear();
+        try {
+            List<DeliveryNoteResponse> page = deliveryNoteService
+                    .getAllDeliveryNotes(DeliveryNoteFilter.builder().build(), PageRequest.of(0, 20)).getContent();
 
-        List<DeliveryNoteResponse> page = deliveryNoteService
-                .getAllDeliveryNotes(DeliveryNoteFilter.builder().build(), PageRequest.of(0, 20)).getContent();
-
-        assertThat(page).extracting(DeliveryNoteResponse::code, DeliveryNoteResponse::invoiceStatus,
-                DeliveryNoteResponse::invoiceNumber).containsExactlyInAnyOrder(
-                        org.assertj.core.groups.Tuple.tuple(pending.code(), null, null),
-                        org.assertj.core.groups.Tuple.tuple(inDraft.code(), InvoiceStatus.DRAFT, null),
-                        org.assertj.core.groups.Tuple.tuple(inIssued.code(), InvoiceStatus.ISSUED, "1"));
-        // Invoices and clients arrive with the page; none is fetched on its own
-        assertThat(statistics.getEntityStatistics(Invoice.class.getName()).getFetchCount()).isZero();
-        assertThat(statistics.getEntityStatistics(Client.class.getName()).getFetchCount()).isZero();
-        statistics.setStatisticsEnabled(false);
+            assertThat(page).extracting(DeliveryNoteResponse::code, DeliveryNoteResponse::invoiceStatus,
+                    DeliveryNoteResponse::invoiceNumber).containsExactlyInAnyOrder(
+                            org.assertj.core.groups.Tuple.tuple(pending.code(), null, null),
+                            org.assertj.core.groups.Tuple.tuple(inDraft.code(), InvoiceStatus.DRAFT, null),
+                            org.assertj.core.groups.Tuple.tuple(inIssued.code(), InvoiceStatus.ISSUED, "1"));
+            // Invoices and clients arrive with the page; none is fetched on its own
+            assertThat(statistics.getEntityStatistics(Invoice.class.getName()).getFetchCount()).isZero();
+            assertThat(statistics.getEntityStatistics(Client.class.getName()).getFetchCount()).isZero();
+        } finally {
+            // Shared by the whole context: a failure here must not leave it on for other tests
+            statistics.setStatisticsEnabled(false);
+        }
     }
 
     private Integer searchableClient(int code, String name, String businessName, String nif) {

@@ -111,7 +111,132 @@ describe('LinesGrid', () => {
 		expect(linesNow()[0].price).toBe(3);
 	});
 
-	it('a saved line keeps its price when its article is looked up on opening', async () => {
+	it('an untouched proposal follows the article when its code is corrected', async () => {
+		const prices: Record<number, number> = { 12: 1.2, 15: 0.8 };
+		await render(GridHarness, props({ proposePrice: async (code: number) => prices[code] }));
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		await expect.element(cell(0, 'Lote')).toHaveFocus();
+		// Back to the code: it was another article.
+		await userEvent.keyboard('{Shift>}{Enter}{/Shift}15{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('0,80');
+		expect(linesNow()[0]).toMatchObject({ articleCode: 15, price: 0.8 });
+	});
+
+	it('and the price is left empty when the new article has no last price', async () => {
+		const prices: Record<number, number> = { 12: 1.2 };
+		await render(
+			GridHarness,
+			props({ proposePrice: async (code: number) => prices[code] ?? null })
+		);
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		await expect.element(cell(0, 'Lote')).toHaveFocus();
+		await userEvent.keyboard('{Shift>}{Enter}{/Shift}15{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('');
+		expect(linesNow()[0]).toMatchObject({ articleCode: 15, price: null });
+	});
+
+	it('typing another code empties an untouched proposal at once: "+" before the lookup ends stops at the price', async () => {
+		const pepino = deferred<string | null>();
+		const pepinoPrice = deferred<number | null>();
+		const o = props({
+			lookupArticle: vi.fn(async (code: number) => (code === 15 ? pepino.promise : catalog[code])),
+			proposePrice: vi.fn(async (code: number) => (code === 15 ? pepinoPrice.promise : 1.2))
+		});
+		await render(GridHarness, o);
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}01181026{Enter}25{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveFocus();
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('15');
+		// The price was the replaced article's: gone before the new one is even looked up.
+		await expect.element(cell(0, 'Precio')).toHaveValue('');
+		expect(linesNow()[0].price).toBeNull();
+		await userEvent.keyboard('{NumpadAdd}');
+		pepino.resolve('Pepino');
+		await expect.element(page.getByTestId('valid')).toHaveTextContent('false');
+		await expect.element(cell(0, 'Precio')).toHaveFocus();
+		await expect.element(cell(0, 'Precio')).toHaveAccessibleDescription('Este dato es obligatorio');
+		// Found by then: the new article's last price comes.
+		pepinoPrice.resolve(0.8);
+		await expect.element(cell(0, 'Precio')).toHaveValue('0,80');
+		expect(linesNow()[0]).toMatchObject({ articleCode: 15, price: 0.8 });
+		expect(o.proposePrice).toHaveBeenLastCalledWith(15);
+	});
+
+	it('a price typed over the proposal stays when the code is corrected, even the same one', async () => {
+		const prices: Record<number, number> = { 12: 1.2, 15: 0.8 };
+		const proposePrice = vi.fn(async (code: number) => prices[code]);
+		await render(GridHarness, props({ proposePrice }));
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		await cell(0, 'Precio').click();
+		await userEvent.keyboard('1,2');
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('15{Enter}');
+		await expect.element(page.getByRole('cell', { name: 'Pepino', exact: true })).toBeVisible();
+		await expect.element(cell(0, 'Lote')).toHaveFocus();
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		expect(linesNow()[0].price).toBe(1.2);
+		expect(proposePrice).toHaveBeenCalledExactlyOnceWith(12);
+	});
+
+	it('another client proposes again the prices still untouched, not the typed ones', async () => {
+		let prices: Record<number, number> = { 12: 1.2 };
+		const proposePrice = async (code: number) => prices[code] ?? null;
+		await render(
+			GridHarness,
+			props({ initial: [emptyLine(), emptyLine(), emptyLine()], proposePrice })
+		);
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		// No last price for this client: empty, and still the grid's to fill.
+		await cell(1, 'Código').click();
+		await userEvent.keyboard('15{Enter}');
+		await expect.element(cell(1, 'Lote')).toHaveFocus();
+		await cell(2, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(2, 'Precio')).toHaveValue('1,20');
+		await cell(2, 'Precio').click();
+		await userEvent.keyboard('1');
+		prices = { 12: 1.5, 15: 0.9 };
+		await page.getByRole('button', { name: 'Otro cliente' }).click();
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,50');
+		await expect.element(cell(1, 'Precio')).toHaveValue('0,90');
+		await expect.element(cell(2, 'Precio')).toHaveValue('1,00');
+		expect(linesNow().map((l) => l.price)).toEqual([1.5, 0.9, 1]);
+	});
+
+	it("a proposal still on its way when the client changes gives way to the new client's", async () => {
+		const before = deferred<number | null>();
+		const after = deferred<number | null>();
+		const proposePrice = vi
+			.fn<(code: number) => Promise<number | null>>()
+			.mockReturnValueOnce(before.promise)
+			.mockReturnValueOnce(after.promise);
+		await render(GridHarness, props({ proposePrice }));
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Lote')).toHaveFocus();
+		await page.getByRole('button', { name: 'Otro cliente' }).click();
+		expect(proposePrice).toHaveBeenCalledTimes(2);
+		// The old client's answer comes first: it is not the price anymore.
+		before.resolve(1.2);
+		await before.promise;
+		await expect.element(cell(0, 'Precio')).toHaveValue('');
+		after.resolve(1.5);
+		await after.promise;
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,50');
+		expect(linesNow()[0].price).toBe(1.5);
+	});
+
+	it('a saved line keeps its price: on opening, for another client, and for another article', async () => {
 		const o = props({
 			initial: [line(12, '01181026', 25, 2.5)],
 			proposePrice: vi.fn(async () => 1.2)
@@ -120,6 +245,15 @@ describe('LinesGrid', () => {
 		await expect.poll(() => o.lookupArticle.mock.results.length).toBe(1);
 		await o.lookupArticle.mock.results[0].value;
 		await expect.element(cell(0, 'Precio')).toHaveValue('2,50');
+		await page.getByRole('button', { name: 'Otro cliente' }).click();
+		await expect.element(cell(0, 'Precio')).toHaveValue('2,50');
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('1');
+		await expect.element(cell(0, 'Precio')).toHaveValue('2,50');
+		await userEvent.keyboard('5{Enter}');
+		await expect.element(cell(0, 'Lote')).toHaveFocus();
+		await expect.element(cell(0, 'Precio')).toHaveValue('2,50');
+		expect(linesNow()[0]).toMatchObject({ articleCode: 15, price: 2.5 });
 		expect(o.proposePrice).not.toHaveBeenCalled();
 	});
 

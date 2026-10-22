@@ -11,3 +11,10 @@ export function stateText(note: {
 	if (note.invoiceStatus === 'DRAFT') return 'En factura borrador';
 	return 'Pendiente';
 }
+
+/** The text of a list with no note and no search: with the pending filter, none is left to invoice. */
+export function emptyHint(pending: boolean): string {
+	return pending
+		? 'No hay albaranes pendientes de facturar.'
+		: 'Todavía no hay albaranes. Pulsa F2 para hacer el primero.';
+}

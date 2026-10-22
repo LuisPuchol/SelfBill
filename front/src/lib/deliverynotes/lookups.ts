@@ -16,19 +16,23 @@ export async function orNull<T>(call: Promise<T>): Promise<T | null> {
 	}
 }
 
-/** Client and article lookups by code, cached per code (misses too) for the life of the editor. */
+/**
+ * Client and article lookups by code, cached per code for the life of the editor. Only what is found:
+ * a code missing now may be created meanwhile, in another tab.
+ */
 export function createLookups(client: typeof Api) {
-	const clients = new Map<number, ClientResponse | null>();
-	const articles = new Map<number, ArticleResponse | null>();
+	const clients = new Map<number, ClientResponse>();
+	const articles = new Map<number, ArticleResponse>();
 
 	async function cached<T>(
-		cache: Map<number, T | null>,
+		cache: Map<number, T>,
 		code: number,
 		fetch: () => Promise<T>
 	): Promise<T | null> {
-		if (cache.has(code)) return cache.get(code) ?? null;
+		const known = cache.get(code);
+		if (known !== undefined) return known;
 		const found = await orNull(fetch());
-		cache.set(code, found);
+		if (found !== null) cache.set(code, found);
 		return found;
 	}
 

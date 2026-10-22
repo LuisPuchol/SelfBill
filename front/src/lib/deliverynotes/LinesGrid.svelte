@@ -66,8 +66,13 @@
 	const typedCode = new SvelteSet<LineValues>();
 
 	function oncodeinput(line: LineValues, event: Event): void {
-		// Another article now: the name of the deleted one goes.
+		// Another article now: the name of the deleted one goes, and so does the price offered for
+		// the one replaced, at once: "+" before the new code is found must not save it.
 		delete line.savedArticleName;
+		if (untouchedOffer(line)) {
+			offers.delete(line);
+			line.price = null;
+		}
 		if ((event.target as HTMLInputElement).value === '') typedCode.delete(line);
 		else typedCode.add(line);
 	}
@@ -90,9 +95,38 @@
 		return articleName(line.articleCode) ?? '';
 	}
 
-	/** Offers the last price, only into an empty price: a typed or saved one is never replaced. */
+	/** The last price the grid offered a line: for which article, and what it put in (null for none). */
+	interface Offer {
+		code: number;
+		price: number | null;
+	}
+
+	/** Per line object, its latest offer; typing in the price cell makes the price the user's. */
+	const offers = new WeakMap<LineValues, Offer>();
+
+	/**
+	 * The price is still the grid's to change: as offered, untouched. Also compared by value, as the
+	 * numpad's comma is written without an input event.
+	 */
+	function untouchedOffer(line: LineValues): Offer | undefined {
+		const offer = offers.get(line);
+		return offer && line.price === offer.price ? offer : undefined;
+	}
+
+	/**
+	 * An article found: its last price, only into an empty price. A typed or saved one is never
+	 * replaced; an offer for the article replaced was emptied when its code was typed over.
+	 */
+	function onArticleFound(line: LineValues, code: number): void {
+		if (line.price === null) void propose(line, code);
+	}
+
+	/** Puts in the last price for the article; the price stays empty meanwhile and if there is none. */
 	async function propose(line: LineValues, code: number): Promise<void> {
-		if (line.price !== null) return;
+		const offer: Offer = { code, price: null };
+		offers.set(line, offer);
+		// Another article's or client's price must not be saved while this one is on its way.
+		line.price = null;
 		let price: number | null;
 		try {
 			price = await proposePrice(code);
@@ -100,8 +134,18 @@
 			// Only a help: without it the price stays empty, to be typed.
 			return;
 		}
-		// Typed meanwhile, or another article by now: the user's wins.
-		if (price !== null && line.price === null && line.articleCode === code) line.price = price;
+		// Typed meanwhile, another article by now, or a newer offer (another client): not this one.
+		if (offers.get(line) !== offer || line.price !== null || line.articleCode !== code) return;
+		offer.price = price;
+		line.price = price;
+	}
+
+	/** Another client: every price still as the grid offered it gets that client's last price. */
+	export function reproposePrices(): void {
+		for (const line of lines) {
+			const offer = untouchedOffer(line);
+			if (offer) void propose(line, offer.code);
+		}
 	}
 
 	function amount(line: LineValues): string {
@@ -216,7 +260,7 @@
 						error={errorFor(`lines[${i}].articleCode`)}
 						compact
 						{readOnly}
-						onFound={(code) => void propose(line, code)}
+						onFound={(code) => onArticleFound(line, code)}
 					/>
 				</td>
 				<td class="px-2 pt-4">
@@ -251,7 +295,7 @@
 						{readOnly}
 					/>
 				</td>
-				<td class="px-1 pt-1">
+				<td class="px-1 pt-1" oninput={() => offers.delete(line)}>
 					<NumberField
 						label="Precio"
 						name="lines[{i}].price"

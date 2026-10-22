@@ -53,6 +53,8 @@
 		errorFor={(name) => errors[name]}
 	/>
 </Form>
+<!-- What the editor does when another client is found -->
+<button type="button" onclick={() => grid?.reproposePrices()}>Otro cliente</button>
 <output data-testid="lines">{JSON.stringify(lines)}</output>
 <output data-testid="valid">{valid}</output>
 <KeyBar />

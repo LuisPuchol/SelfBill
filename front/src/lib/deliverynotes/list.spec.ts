@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { stateText } from './list';
+import { emptyHint, stateText } from './list';
+
+describe('emptyHint', () => {
+	it('invites to make the first note when the list shows them all', () => {
+		expect(emptyHint(false)).toBe('Todavía no hay albaranes. Pulsa F2 para hacer el primero.');
+	});
+
+	it('says there is none to invoice when only the pending ones are shown', () => {
+		expect(emptyHint(true)).toBe('No hay albaranes pendientes de facturar.');
+	});
+});
 
 describe('stateText', () => {
 	it('says pending when the note is in no invoice', () => {

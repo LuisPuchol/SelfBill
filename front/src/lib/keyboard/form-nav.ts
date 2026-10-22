@@ -74,7 +74,8 @@ export class FormNav {
 	 * Before saving: runs every field's commit in page order, so every error shows, and puts the
 	 * cursor on the first field that fails. Fields reached with the mouse, or never visited, are
 	 * only checked here. A commit still running (Enter, then "+") is waited for first, so is an earlier
-	 * validateAll(): they never run the commits at the same time.
+	 * validateAll(): they never run the commits at the same time. So a field's commit must never call
+	 * validateAll() nor save: it would wait on itself forever.
 	 */
 	async validateAll(): Promise<boolean> {
 		// Loop: several waiters wake together, and only the first may take the turn.

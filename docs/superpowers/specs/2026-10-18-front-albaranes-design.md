@@ -64,14 +64,15 @@ Después vendrá Facturas, que agrupa estos albaranes.
 ### 4.2. Lista (`/delivery-notes`)
 
 - Columnas: `Nº · Fecha · Cliente · Importe · Estado`, de la fecha más reciente a la más antigua
-  (y por número dentro del día). Importe = `total` (sin impuestos).
+  (por fecha y hora; a igual fecha y hora, por número). Importe = `total` (sin impuestos).
 - Estado: "Pendiente" (sin factura), "En factura borrador" (`DRAFT`), "Facturado nº 23" (`ISSUED`).
 - Buscador: cifras → ese número (`codeFrom` = `codeTo`); letras → `q`.
 - `F3 · Solo pendientes` alterna (`invoiced=false`); con el filtro puesto el botón dice
   `Ver todos · F3`. El filtro va en la URL (`?pending=1`).
 - `Nuevo · F2`, `Abrir · Enter`, `Borrar · F8` y páginas, como el catálogo. Borrar solo vale con
   un albarán pendiente (sin factura); la pregunta: "¿Borrar el albarán 1045?" con el cliente.
-- Lista vacía: "Todavía no hay albaranes. Pulsa F2 para hacer el primero."
+- Lista vacía: "Todavía no hay albaranes. Pulsa F2 para hacer el primero."; con "Solo pendientes",
+  "No hay albaranes pendientes de facturar."
 
 ### 4.3. Editor (`/delivery-notes/new`, `/delivery-notes/[id]`)
 
@@ -86,7 +87,7 @@ código") y Fecha (hoy en un alta). Al lado, en solo lectura, el formato: "Albar
 | Código | Artículo por código; al lado (columna Artículo) su nombre. "No existe ningún artículo con ese código" |
 | Lote | 8 cifras, obligatorio. Si la línea tiene más lotes, al lado "+1" o "+2" |
 | Cantidad | Hasta 2 decimales, mayor que cero ("Tiene que ser mayor que cero") |
-| Precio | Hasta 2 decimales. Al encontrar el artículo, si el precio está vacío, se propone el último precio de ese artículo a ese cliente (la línea con ese artículo del albarán más reciente del cliente); vacío si nunca se le sirvió |
+| Precio | Hasta 2 decimales. Al encontrar el artículo, si el precio está vacío, se propone el último precio de ese artículo a ese cliente (la línea con ese artículo del albarán más reciente del cliente); vacío si nunca se le sirvió. Mientras nadie lo toque, el precio propuesto sigue a su artículo (al teclear otro código se vacía y se propone el del nuevo) y a su cliente (al cambiar de cliente se propone de nuevo); uno tecleado o guardado no se cambia nunca |
 | Importe | Cantidad × precio redondeado a céntimos (mitad hacia arriba), solo lectura |
 
 - Una línea con los cuatro campos vacíos no cuenta: no se valida ni se envía. Una con algo escrito

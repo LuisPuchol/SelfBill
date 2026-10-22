@@ -14,3 +14,27 @@ it('answers a seeded client and article from the cache, without asking the API',
 	expect(lookups.cachedArticle(4)?.name).toBe('Tomate');
 	expect(GET).not.toHaveBeenCalled();
 });
+
+const notFound = () => ({ error: {}, response: new Response(null, { status: 404 }) });
+const found = (data: object) => ({ data, response: new Response(null, { status: 200 }) });
+
+it.each([
+	['client', 'cachedClient'],
+	['article', 'cachedArticle']
+] as const)(
+	'keeps only what it found: a %s created meanwhile is found on the next try',
+	async (lookup, cachedLookup) => {
+		const GET = vi
+			.fn()
+			.mockResolvedValueOnce(notFound())
+			.mockResolvedValueOnce(found({ id: 41, code: 9, name: 'Calabacín' }));
+		const lookups = createLookups({ GET } as unknown as typeof api);
+		await expect(lookups[lookup](9)).resolves.toBeNull();
+		expect(lookups[cachedLookup](9)).toBeNull();
+		await expect(lookups[lookup](9)).resolves.toMatchObject({ id: 41 });
+		expect(lookups[cachedLookup](9)?.name).toBe('Calabacín');
+		// Found: kept, never asked for again.
+		await expect(lookups[lookup](9)).resolves.toMatchObject({ id: 41 });
+		expect(GET).toHaveBeenCalledTimes(2);
+	}
+);

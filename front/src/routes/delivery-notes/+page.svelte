@@ -6,7 +6,7 @@
 	import type { Column } from '#lib/components/table.js';
 	import { toast } from '#lib/components/toast.svelte.js';
 	import { deliveryNoteDeletion } from '#lib/deliverynotes/deletion.js';
-	import { stateText } from '#lib/deliverynotes/list.js';
+	import { emptyHint, stateText } from '#lib/deliverynotes/list.js';
 	import { formatDate } from '#lib/format/date.js';
 	import { formatMoney } from '#lib/format/money.js';
 	import {
@@ -75,7 +75,7 @@
 	search={data.q}
 	selectId={recallList('delivery-notes')?.openedId}
 	rowId={(row) => row.id}
-	emptyHint="Todavía no hay albaranes. Pulsa F2 para hacer el primero."
+	emptyHint={emptyHint(data.pending)}
 	onSearch={(text) =>
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- same page, only the query changes
 		goto(withParams(new URL(page.url.href), { q: text || null, page: null }), {

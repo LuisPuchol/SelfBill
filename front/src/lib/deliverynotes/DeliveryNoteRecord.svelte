@@ -200,6 +200,7 @@
 						required={!readOnly}
 						error={form.errorFor('clientCode')}
 						{readOnly}
+						onFound={() => grid?.reproposePrices()}
 					/>
 				{/key}
 			</div>

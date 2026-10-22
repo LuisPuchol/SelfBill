@@ -117,9 +117,10 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - Duplicar un albarán.
 - Si el cliente original de un albarán se borró, la vista previa de los tipos recalcula IVA y recargo al cambiar de cliente, pero la API compara con el régimen guardado en el albarán (que la respuesta no trae): la vista previa puede no coincidir.
 - Un albarán en una factura en borrador deja cambiar el cliente, pero la API lo rechaza al guardar (`INVOICE_MIXED_CLIENTS`): avisar antes.
-- Con "Solo pendientes" activo y todos los albaranes facturados, la lista dice "Todavía no hay albaranes…".
 - Un error propio de un campo ("Tienen que ser 8 cifras", "Este dato es obligatorio") se queda visible después de que la rejilla rellene la celda (precio propuesto, lotes) hasta el siguiente Enter o "+".
 - En la rejilla, el importe de la línea sale sin "€" ni separador de miles; en la lista y los totales, con `formatMoney`.
+- Cambiar de cliente y pulsar "+" sin Enter, con precios propuestos sin tocar, los manda vacíos: la API
+  lo rechaza bajo cada precio. Vaciarlos al teclear el cliente, como ya se hace con el código del artículo.
 
 ### Pendiente del bloque de Ajustes
 - Borrar una vigencia de IVA: la API no tiene endpoint.

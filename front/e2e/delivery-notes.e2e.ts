@@ -126,6 +126,8 @@ test('a delivery note by keyboard', async ({ page, request }) => {
 	await page.keyboard.type('3');
 	await page.keyboard.press('Enter');
 	await page.keyboard.type('0,33');
+	// Enter on the last price adds a line; "+" right after it saves without that empty line.
+	await page.keyboard.press('Enter');
 	await page.keyboard.press('NumpadAdd');
 
 	const toast = page.getByText(/^Albarán \d+ guardado$/);
@@ -134,8 +136,13 @@ test('a delivery note by keyboard', async ({ page, request }) => {
 	await expect(cliente).toHaveValue('');
 	await expect(fecha).toHaveValue(shown(today()));
 	await expect(cell(page, 0, 'Código')).toHaveValue('');
+	await expect(cell(page, 1, 'Código')).toHaveCount(0);
 
 	const code = Number((await toast.textContent())?.match(/\d+/)?.[0]);
+	// Back to the list: the new note is there, still to be invoiced.
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL(/\/delivery-notes$/);
+	await expect(page.getByRole('row', { name: new RegExp(`^${code} `) })).toContainText('Pendiente');
 	const list = await request.get(`/api/delivery-notes?codeFrom=${code}&codeTo=${code}`);
 	const [note] = ((await list.json()) as { content: Note[] }).content;
 	expect(note.clientId).toBe(client.id);
@@ -149,6 +156,7 @@ test('a delivery note by keyboard', async ({ page, request }) => {
 test('editing a note keeps it and returns to the list', async ({ page, request }) => {
 	const client = await ensureClient(request, 9404, 'Bar Edición e2e');
 	const article = await ensureArticle(request, 9405, 'Lechuga edición e2e');
+	const other = await ensureArticle(request, 9409, 'Escarola edición e2e');
 	const note = await createNote(request, client.id, `${today()}T07:15:30`, {
 		articleId: article.id,
 		quantity: 2,
@@ -167,6 +175,11 @@ test('editing a note keeps it and returns to the list', async ({ page, request }
 
 	await cell(page, 0, 'Cantidad').click();
 	await page.keyboard.type('5');
+	// Another article, and "+" right after its Enter, without waiting for its name: it saves once
+	// the article is found, and the saved price stays.
+	await cell(page, 0, 'Código').click();
+	await page.keyboard.type('9409');
+	await page.keyboard.press('Enter');
 	await page.keyboard.press('NumpadAdd');
 	await expect(page.getByText(`Albarán ${note.code} guardado`)).toBeVisible();
 	await expect(page).toHaveURL(/\/delivery-notes$/);
@@ -179,7 +192,7 @@ test('editing a note keeps it and returns to the list', async ({ page, request }
 	const edited = await getNote(request, note.id);
 	expect(edited.code).toBe(note.code);
 	expect(edited.date).toBe(`${today()}T07:15:30`);
-	expect(edited.lines).toMatchObject([{ articleId: article.id, quantity: 5, price: 1.5 }]);
+	expect(edited.lines).toMatchObject([{ articleId: other.id, quantity: 5, price: 1.5 }]);
 });
 
 test('a missing note shows the not-found page', async ({ page }) => {
@@ -211,7 +224,7 @@ async function issuedNote(request: APIRequestContext, clientCode: number, name: 
 		surchargeType: 'WITH_SURCHARGE',
 		defaultDeliveryNoteFormat: 'VALUED'
 	});
-	const article = await ensureArticle(request, clientCode + 100, `${name} artículo`);
+	const article = await ensureArticle(request, clientCode + 20, `${name} artículo`);
 	const note = await createNote(request, client.id, `${today()}T09:00:00`, {
 		articleId: article.id,
 		quantity: 2,
