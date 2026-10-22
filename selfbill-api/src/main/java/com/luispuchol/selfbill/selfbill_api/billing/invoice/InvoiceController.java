@@ -93,6 +93,18 @@ public class InvoiceController {
         return invoiceService.createInvoice(request);
     }
 
+    @Operation(summary = "Create and issue an invoice in one step", description = """
+            Does what creating a draft and issuing it do, in a single transaction: if anything fails, no invoice \
+            is created and the delivery notes stay free.""")
+    @ApiErrors({ CLIENT_NOT_FOUND, DELIVERY_NOTE_NOT_FOUND, INVOICE_MIXED_CLIENTS,
+            INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED, INVOICE_MIXED_MONTHS, INVOICE_MIXED_TAX_RATES,
+            CLIENT_FISCAL_DATA_MISSING, USER_PROFILE_NOT_FOUND })
+    @PostMapping("/issue")
+    @ResponseStatus(HttpStatus.CREATED)
+    public InvoiceResponse createAndIssue(@RequestBody @Valid InvoiceRequest request) {
+        return invoiceService.createAndIssue(request);
+    }
+
     @Operation(summary = "Change the delivery notes of a draft invoice", description = """
             Replaces the set of delivery notes and recalculates the invoice. \
             Delivery notes left out become free again.""")

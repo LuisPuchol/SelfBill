@@ -241,6 +241,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/invoices/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create and issue an invoice in one step
+         * @description Does what creating a draft and issuing it do, in a single transaction: if anything fails, no invoice is created and the delivery notes stay free.
+         */
+        post: operations["createAndIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/delivery-notes": {
         parameters: {
             query?: never;
@@ -2241,6 +2261,75 @@ export interface operations {
              *     - `EMAIL_SEND_FAILED`: Failed to send email to: {0}
              */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createAndIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceResponse"];
+                };
+            };
+            /**
+             * @description Bad Request
+             *
+             *     - `VALIDATION_ERROR`: Validation error
+             *     - `CLIENT_FISCAL_DATA_MISSING`: Client {0} is missing {1}, required to issue an invoice
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Not Found
+             *
+             *     - `CLIENT_NOT_FOUND`: Client not found: {0}
+             *     - `DELIVERY_NOTE_NOT_FOUND`: Delivery note not found: {0}
+             *     - `USER_PROFILE_NOT_FOUND`: User profile not found
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Conflict
+             *
+             *     - `INVOICE_MIXED_CLIENTS`: All delivery notes must belong to the same client
+             *     - `INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED`: Delivery note {0} already has an associated invoice
+             *     - `INVOICE_MIXED_MONTHS`: All delivery notes of an invoice must be from the same month
+             *     - `INVOICE_MIXED_TAX_RATES`: All delivery notes of an invoice must have the same VAT and surcharge rates
+             */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

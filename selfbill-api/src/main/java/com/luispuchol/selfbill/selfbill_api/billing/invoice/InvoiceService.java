@@ -82,6 +82,12 @@ public class InvoiceService {
         return invoiceMapper.toResponse(invoice);
     }
 
+    // One outer transaction: if issuing fails, the draft is rolled back with it
+    @Transactional
+    public InvoiceResponse createAndIssue(InvoiceRequest request) {
+        return issueInvoice(createInvoice(request).id());
+    }
+
     @Transactional
     public InvoiceResponse updateInvoice(Integer id, InvoiceRequest request) {
         Invoice invoice = findInvoice(id);
