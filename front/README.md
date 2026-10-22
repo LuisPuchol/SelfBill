@@ -33,3 +33,7 @@ Especificación de la base: [../docs/superpowers/specs/2026-10-13-front-base-des
   `UnsavedGuard`.
 - Cada acción principal tiene su tecla y su `ActionButton`, ambos construidos desde el mismo
   `KeyAction`; el `enabled` del botón ignora el foco. Los botones van en `ScreenHeader`.
+- Los campos de una celda de tabla llevan `compact`: la etiqueta solo la lee el lector de pantalla y el error ocupa menos.
+- `ListScreen.extraActions` añade una tecla y su botón a la lista; `deletion.canDelete` deja fuera de borrar las filas que no deben.
+- `RecordScreen`: `readOnly` quita guardar y borrar, `canDelete` condiciona el borrado y `onLast` dice adónde va el cursor tras el último campo.
+- `RecordForm`: `firstField` (si no es `code`), `mapFieldPath` (campo de pantalla de un error de la API) y `comparable` (qué cuenta como cambio sin guardar).
