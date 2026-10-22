@@ -21,6 +21,12 @@
 		pendingForDelete,
 		confirmBeforeSave,
 		fieldMessages,
+		firstField,
+		comparable,
+		mapFieldPath,
+		readOnly,
+		canDelete,
+		onLast,
 		goToList,
 		toast
 	}: {
@@ -33,6 +39,12 @@
 		pendingForDelete: (id: number) => Promise<string | null>;
 		confirmBeforeSave?: (values: ArticleValues, original: ArticleValues) => Promise<string | null>;
 		fieldMessages?: Record<string, string>;
+		firstField?: string;
+		comparable?: (values: ArticleValues) => unknown;
+		mapFieldPath?: (path: string) => string;
+		readOnly?: boolean;
+		canDelete?: () => boolean;
+		onLast?: () => void;
 		goToList: (savedId?: number) => void;
 		toast: (message: string) => void;
 	} = $props();
@@ -52,13 +64,22 @@
 		pendingForDelete,
 		confirmBeforeSave,
 		fieldMessages,
+		firstField,
+		comparable,
+		mapFieldPath,
 		goToList,
 		toast
 	});
 </script>
 
 <KeyboardRoot />
-<RecordScreen {form} title={form.id === null ? 'Artículo nuevo' : `Artículo ${form.values.code}`}>
+<RecordScreen
+	{form}
+	{readOnly}
+	{canDelete}
+	{onLast}
+	title={form.id === null ? 'Artículo nuevo' : `Artículo ${form.values.code}`}
+>
 	<NumberField
 		label="Código"
 		name="code"

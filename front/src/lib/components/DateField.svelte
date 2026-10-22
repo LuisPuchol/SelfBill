@@ -10,7 +10,8 @@
 		name,
 		value = $bindable(todayIso()),
 		required = false,
-		error
+		error,
+		readOnly = false
 	}: {
 		label: string;
 		/** API field path; also the input's id */
@@ -20,6 +21,8 @@
 		required?: boolean;
 		/** From outside (e.g. the API); wins over the field's own */
 		error?: string;
+		/** Shown but not editable, e.g. a document that can no longer change */
+		readOnly?: boolean;
 	} = $props();
 
 	const nav = getFormNav();
@@ -78,6 +81,7 @@
 			aria-describedby={describedBy}
 			use:selectOnFocus
 			autocomplete="off"
+			readonly={readOnly}
 			onblur={() => check(false)}
 		/>
 	{/snippet}

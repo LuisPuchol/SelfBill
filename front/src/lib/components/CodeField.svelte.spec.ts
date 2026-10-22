@@ -54,6 +54,18 @@ describe('CodeField', () => {
 		expect(lookup).toHaveBeenCalledTimes(1);
 	});
 
+	it('+ right after Enter waits for the lookup and then saves once', async () => {
+		const pending = deferred<string | null>();
+		const onSave = vi.fn();
+		render(CodeHarness, { lookup: () => pending.promise, onSave });
+		await articulo().click();
+		await userEvent.keyboard('5{Enter}{NumpadAdd}');
+		expect(onSave).not.toHaveBeenCalled();
+		pending.resolve('Pepino');
+		await vi.waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+		await expect.element(page.getByText('Pepino')).toBeVisible();
+	});
+
 	it('editing the code clears the old name', async () => {
 		render(CodeHarness, { lookup: async () => 'Tomate' });
 		await articulo().click();
@@ -99,5 +111,15 @@ describe('CodeField', () => {
 		await expect.element(articulo()).toHaveFocus();
 		await expect.element(page.getByText('Pepino')).not.toBeInTheDocument();
 		await expect.element(page.getByTestId('articleId')).toHaveTextContent('null');
+	});
+
+	it('a compact one calls onFound and hides the name', async () => {
+		const onFound = vi.fn();
+		render(CodeHarness, { lookup: async () => 'Tomate', compact: true, onFound });
+		await articulo().click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cantidad()).toHaveFocus();
+		expect(onFound).toHaveBeenCalledWith(12);
+		await expect.element(page.getByText('Tomate')).not.toBeInTheDocument();
 	});
 });

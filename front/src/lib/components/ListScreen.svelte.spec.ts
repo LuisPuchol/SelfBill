@@ -538,4 +538,34 @@ describe('ListScreen', () => {
 			await expect.element(button('Borrar')).toBeDisabled();
 		});
 	});
+
+	describe('extra actions and canDelete', () => {
+		it('an extra action has its key and its button', async () => {
+			const run = vi.fn();
+			await render(ListHarness, {
+				...spies(),
+				extraActions: [{ action: { key: 'F3', label: 'Solo pendientes', run } }]
+			});
+			await expect.element(bar()).toHaveTextContent('F3 Solo pendientes');
+			await userEvent.keyboard('{F3}');
+			expect(run).toHaveBeenCalledTimes(1);
+			await button('Solo pendientes').click();
+			expect(run).toHaveBeenCalledTimes(2);
+		});
+
+		it('canDelete false greys out Borrar and ignores F8', async () => {
+			const d = deletion();
+			await render(ListHarness, {
+				...spies(),
+				deletion: { ...d, canDelete: (r: Row) => r.code !== 1 }
+			});
+			await expect.element(button('Borrar')).toBeDisabled();
+			await userEvent.keyboard('{F8}');
+			await expect.element(dialog()).not.toBeInTheDocument();
+			await userEvent.keyboard('{ArrowDown}');
+			await expect.element(button('Borrar')).toBeEnabled();
+			await userEvent.keyboard('{F8}');
+			await expect.element(dialog()).toHaveTextContent('¿Borrar el cliente 2?');
+		});
+	});
 });

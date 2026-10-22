@@ -10,7 +10,9 @@
 		value = $bindable(''),
 		length,
 		required = false,
-		error
+		error,
+		compact = false,
+		readOnly = false
 	}: {
 		label: string;
 		/** API field path; also the input's id */
@@ -22,6 +24,10 @@
 		required?: boolean;
 		/** From outside (e.g. the API); wins over the field's own */
 		error?: string;
+		/** For a table cell: label for screen readers only, smaller error line */
+		compact?: boolean;
+		/** Shown but not editable, e.g. a document that can no longer change */
+		readOnly?: boolean;
 	} = $props();
 
 	const nav = getFormNav();
@@ -50,7 +56,7 @@
 	$effect(() => nav?.register({ name, el: input, commit }));
 </script>
 
-<Field id={name} {label} error={error || ownError}>
+<Field id={name} {label} {compact} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<input
 			bind:this={input}
@@ -65,6 +71,7 @@
 			aria-describedby={describedBy}
 			use:selectOnFocus
 			autocomplete="off"
+			readonly={readOnly}
 			onblur={() => check(false)}
 			{oninput}
 		/>

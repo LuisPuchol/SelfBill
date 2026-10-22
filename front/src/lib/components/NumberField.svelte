@@ -12,7 +12,9 @@
 		decimals = 2,
 		required = false,
 		error,
-		validate
+		validate,
+		compact = false,
+		readOnly = false
 	}: {
 		label: string;
 		/** API field path; also the input's id */
@@ -25,6 +27,10 @@
 		error?: string;
 		/** Own check for a number, as rounded: the message, or nothing when it is fine */
 		validate?: (value: number) => string | undefined;
+		/** For a table cell: label for screen readers only, smaller error line */
+		compact?: boolean;
+		/** Shown but not editable, e.g. a document that can no longer change */
+		readOnly?: boolean;
 	} = $props();
 
 	const nav = getFormNav();
@@ -76,7 +82,8 @@
 		if (event.code !== 'NumpadDecimal' || (event.key !== '.' && event.key !== ',')) return;
 		if (event.ctrlKey || event.altKey || event.metaKey) return;
 		event.preventDefault();
-		if (decimals === 0) return;
+		// setRangeText would write even into a read-only input.
+		if (decimals === 0 || readOnly) return;
 		// Windows writes "." or "," depending on its settings: always a comma here.
 		const end = input.value.length;
 		input.setRangeText(',', input.selectionStart ?? end, input.selectionEnd ?? end, 'end');
@@ -86,7 +93,7 @@
 	$effect(() => nav?.register({ name, el: input, commit }));
 </script>
 
-<Field id={name} {label} error={error || ownError}>
+<Field id={name} {label} {compact} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<input
 			bind:this={input}
@@ -100,6 +107,7 @@
 			aria-describedby={describedBy}
 			use:selectOnFocus
 			autocomplete="off"
+			readonly={readOnly}
 			onblur={() => check(false)}
 			{onkeydown}
 		/>

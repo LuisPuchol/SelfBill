@@ -85,10 +85,6 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 ### Pendiente del bloque de catálogo
 - `CodeField`: un código inicial que no existe muestra el error antes de tocar el campo y deja
   pasar Enter; al no encontrarlo, `value = null`.
-- El "+" del pad pulsado justo después de Enter en un `CodeField` con la consulta en curso se
-  ignora (decidir con el editor de albaranes).
-- Vacíos mezclados: al montar el payload del albarán, los lotes opcionales
-  (`traceabilityCode2/3`, `@Pattern("\\d{8}")`) deben ir como `null`, no como `''`.
 - En artículos, el aviso de borrar no cuenta los albaranes que están en facturas en borrador (`invoiced=false`
   solo mira si el albarán no tiene factura).
 - Regla: `decimals` de `NumberField` igual a la escala de la API (2).
@@ -114,6 +110,17 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
   vacía más allá de la última, reemplazando la entrada del historial.
 - Los botones ignoran los clics seguidos (para que un doble clic no pulse lo que aparece debajo):
   tres clics rápidos en "Página siguiente" pasan una sola página. AvPág no tiene ese límite.
+
+### Pendiente del bloque de albaranes
+- Imprimir y enviar un albarán (bloque del PDF).
+- Teclear el número del albarán.
+- Duplicar un albarán.
+- Si el cliente original de un albarán se borró, la vista previa de los tipos recalcula IVA y recargo al cambiar de cliente, pero la API compara con el régimen guardado en el albarán (que la respuesta no trae): la vista previa puede no coincidir.
+- Un albarán en una factura en borrador deja cambiar el cliente, pero la API lo rechaza al guardar (`INVOICE_MIXED_CLIENTS`): avisar antes.
+- Un error propio de un campo ("Tienen que ser 8 cifras", "Este dato es obligatorio") se queda visible después de que la rejilla rellene la celda (precio propuesto, lotes) hasta el siguiente Enter o "+".
+- En la rejilla, el importe de la línea sale sin "€" ni separador de miles; en la lista y los totales, con `formatMoney`.
+- Cambiar de cliente y pulsar "+" sin Enter, con precios propuestos sin tocar, los manda vacíos: la API
+  lo rechaza bajo cada precio. Vaciarlos al teclear el cliente, como ya se hace con el código del artículo.
 
 ### Pendiente del bloque de Ajustes
 - Borrar una vigencia de IVA: la API no tiene endpoint.

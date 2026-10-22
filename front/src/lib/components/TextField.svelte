@@ -14,7 +14,8 @@
 		type = 'text',
 		validate,
 		maxlength,
-		autocomplete = 'off'
+		autocomplete = 'off',
+		compact = false
 	}: {
 		label: string;
 		/** API field path; also the input's id */
@@ -31,6 +32,8 @@
 		maxlength?: number;
 		/** Browser autofill: off, except where it would offer a saved login (a mail password) */
 		autocomplete?: 'off' | 'new-password';
+		/** For a table cell: label for screen readers only, smaller error line */
+		compact?: boolean;
 	} = $props();
 
 	const nav = getFormNav();
@@ -52,7 +55,7 @@
 	$effect(() => nav?.register({ name, el: input, commit }));
 </script>
 
-<Field id={name} {label} {hint} error={error || ownError}>
+<Field id={name} {label} {hint} {compact} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<input
 			bind:this={input}

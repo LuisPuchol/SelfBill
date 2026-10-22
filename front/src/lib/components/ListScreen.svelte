@@ -24,6 +24,8 @@
 		selectId,
 		rowId,
 		deletion,
+		extraActions = [],
+		emptyHint,
 		onSearch,
 		onPage,
 		onOpen,
@@ -56,7 +58,13 @@
 			reload(): void | Promise<void>;
 			/** After a done delete, before reloading: e.g. forget the remembered row */
 			onDeleted?(id: number): void;
+			/** Rows that cannot be deleted: F8 and "Borrar" ignore them. All can be, by default. */
+			canDelete?(row: T): boolean;
 		};
+		/** More keys and buttons for the header, after "Borrar" */
+		extraActions?: { action: KeyAction; variant?: 'normal' | 'primary' | 'danger' }[];
+		/** Replaces the message of a list with nothing in it and no search */
+		emptyHint?: string;
 		onSearch: (text: string) => void;
 		onPage: (n: number) => void;
 		onOpen: (row: T) => void;
@@ -99,7 +107,7 @@
 	const searched = $derived(search.trim());
 	const emptyText = $derived(
 		searched === ''
-			? `Todavía no hay ${entity.many}. Pulsa F2 para dar de alta el primero.`
+			? (emptyHint ?? `Todavía no hay ${entity.many}. Pulsa F2 para dar de alta el primero.`)
 			: isCodeSearch(searched)
 				? `No existe ningún ${entity.one} con el código ${searched}.`
 				: `No hay ningún ${entity.one} que coincida con «${searched}».`
@@ -222,6 +230,7 @@
 		const row = rows[selected];
 		// Until the rows come back from a delete, the marked one may be the row just deleted.
 		if (!deleting || !flow || row === undefined || afterDelete !== null) return;
+		if (deleting.canDelete?.(row) === false) return;
 		// Rows an earlier Enter was waiting for must not open behind the question.
 		pendingOpen = null;
 		void flow.ask({ id: rowId(row), code: deleting.code(row), name: deleting.describe(row) });
@@ -260,7 +269,10 @@
 	const deleteSelected: KeyAction = {
 		key: 'F8',
 		label: 'Borrar',
-		when: () => flow !== undefined && rows.length > 0,
+		when: () => {
+			const row = rows[selected];
+			return flow !== undefined && row !== undefined && deleting?.canDelete?.(row) !== false;
+		},
 		run: askDelete
 	};
 	const nextPage: KeyAction = {
@@ -284,6 +296,7 @@
 		previousPage,
 		create,
 		deleteSelected,
+		...extraActions.map((extra) => extra.action),
 		text === ''
 			? {
 					key: 'Escape',
@@ -312,6 +325,9 @@
 	{#if flow}
 		<ActionButton action={deleteSelected} variant="danger" />
 	{/if}
+	{#each extraActions as extra (extra.action.key)}
+		<ActionButton action={extra.action} variant={extra.variant} />
+	{/each}
 </ScreenHeader>
 <div class="mb-4 flex max-w-xl flex-col gap-1">
 	<label for="list-search" class="font-medium">Buscar (código o nombre)</label>

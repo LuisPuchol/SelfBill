@@ -12,6 +12,9 @@
 
 	type Format = 'PLAIN' | 'VALUED';
 
+	let { compact = false, dateReadOnly = false }: { compact?: boolean; dateReadOnly?: boolean } =
+		$props();
+
 	let nav = $state<FormNav>();
 	let lot = $state('');
 	let date = $state(todayIso());
@@ -24,7 +27,7 @@
 <KeyboardRoot />
 <Form bind:nav onLast={() => {}}>
 	<DigitsField label="Lote" name="traceabilityCode1" length={8} bind:value={lot} required />
-	<DateField label="Fecha" name="date" bind:value={date} required />
+	<DateField label="Fecha" name="date" bind:value={date} required readOnly={dateReadOnly} />
 	<ChoiceField
 		label="Formato"
 		name="format"
@@ -35,7 +38,7 @@
 		bind:value={format}
 		required
 	/>
-	<TextField label="Fin" name="last" bind:value={last} />
+	<TextField label="Fin" name="last" bind:value={last} {compact} required={compact} />
 	<NumberField label="Entero" name="whole" decimals={0} bind:value={whole} />
 	<NumberField
 		label="Porcentaje"

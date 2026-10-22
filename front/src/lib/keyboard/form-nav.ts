@@ -15,7 +15,8 @@ const FORM_NAV = Symbol('form-nav');
 /** Enter / Shift+Enter navigation over the registered fields, in page order. */
 export class FormNav {
 	#fields: NavField[] = [];
-	#busy = false;
+	/** The commit or validateAll() in progress, settled (never rejected) when it ends. */
+	#running: Promise<void> | undefined;
 	#last: NavField | undefined;
 	/**
 	 * First field that failed validateAll() while a dialog kept the cursor out of it: the next
@@ -34,7 +35,7 @@ export class FormNav {
 
 	/** True while waiting for a commit or a validateAll(): next() does nothing meanwhile. */
 	get busy(): boolean {
-		return this.#busy;
+		return this.#running !== undefined;
 	}
 
 	register(field: NavField): () => void {
@@ -53,17 +54,12 @@ export class FormNav {
 	}
 
 	async next(): Promise<void> {
-		if (this.#busy) return;
+		if (this.#running) return;
 		const field = this.#current();
 		if (!field) return;
 		let ok = field.commit?.() ?? true;
 		if (typeof ok !== 'boolean') {
-			this.#busy = true;
-			try {
-				ok = await ok;
-			} finally {
-				this.#busy = false;
-			}
+			ok = await this.#run(ok);
 			// The user may have moved elsewhere (or the field gone) meanwhile: leave the cursor be.
 			if (this.#current() !== field) return;
 		}
@@ -77,22 +73,38 @@ export class FormNav {
 	/**
 	 * Before saving: runs every field's commit in page order, so every error shows, and puts the
 	 * cursor on the first field that fails. Fields reached with the mouse, or never visited, are
-	 * only checked here. False, without checking again, while a commit is already running.
+	 * only checked here. A commit still running (Enter, then "+") is waited for first, so is an earlier
+	 * validateAll(): they never run the commits at the same time. So a field's commit must never call
+	 * validateAll() nor save: it would wait on itself forever.
 	 */
 	async validateAll(): Promise<boolean> {
-		if (this.#busy) return false;
-		this.#busy = true;
+		// Loop: several waiters wake together, and only the first may take the turn.
+		while (this.#running) await this.#running;
+		return this.#run(this.#validate());
+	}
+
+	async #validate(): Promise<boolean> {
+		const ordered = this.#ordered();
+		// Started in page order; the async ones (lookups) are awaited together.
+		const results = await Promise.all(ordered.map(async (field) => field.commit?.() ?? true));
+		const failed = ordered.find((_, i) => !results[i]);
+		failed?.el.focus();
+		// Behind a modal dialog (the unsaved-changes question) the cursor cannot get there yet.
+		this.#lastFailed = failed && !failed.el.contains(document.activeElement) ? failed : undefined;
+		return failed === undefined;
+	}
+
+	/** Marks the nav busy until `work` ends, however it ends. */
+	async #run<T>(work: Promise<T>): Promise<T> {
+		const done = work.then(
+			() => undefined,
+			() => undefined
+		);
+		this.#running = done;
 		try {
-			const ordered = this.#ordered();
-			// Started in page order; the async ones (lookups) are awaited together.
-			const results = await Promise.all(ordered.map(async (field) => field.commit?.() ?? true));
-			const failed = ordered.find((_, i) => !results[i]);
-			failed?.el.focus();
-			// Behind a modal dialog (the unsaved-changes question) the cursor cannot get there yet.
-			this.#lastFailed = failed && !failed.el.contains(document.activeElement) ? failed : undefined;
-			return failed === undefined;
+			return await work;
 		} finally {
-			this.#busy = false;
+			this.#running = undefined;
 		}
 	}
 

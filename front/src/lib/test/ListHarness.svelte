@@ -33,7 +33,8 @@
 		onNew,
 		onExit,
 		onPage = () => {},
-		deletion
+		deletion,
+		extraActions
 	}: {
 		rows?: Row[];
 		search?: string;
@@ -45,6 +46,7 @@
 		onExit: () => void;
 		onPage?: (n: number) => void;
 		deletion?: ComponentProps<typeof ListScreen<Row>>['deletion'];
+		extraActions?: ComponentProps<typeof ListScreen<Row>>['extraActions'];
 	} = $props();
 </script>
 
@@ -64,6 +66,7 @@
 	{onNew}
 	{onExit}
 	{deletion}
+	{extraActions}
 />
 <ErrorDialog />
 <KeyBar />

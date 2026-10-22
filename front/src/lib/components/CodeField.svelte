@@ -12,7 +12,10 @@
 		lookup,
 		notFoundMessage,
 		required = false,
-		error
+		error,
+		compact = false,
+		readOnly = false,
+		onFound
 	}: {
 		label: string;
 		/** API field path; also the input's id */
@@ -24,6 +27,12 @@
 		required?: boolean;
 		/** From outside (e.g. the API); wins over the field's own */
 		error?: string;
+		/** For a table cell: label for screen readers only, smaller error line, and the found name is not shown (the grid has its own column) */
+		compact?: boolean;
+		/** Shown but not editable, e.g. a document that can no longer change */
+		readOnly?: boolean;
+		/** After a successful lookup; also after the first lookup of a code passed in */
+		onFound?: (code: number) => void;
 	} = $props();
 
 	const nav = getFormNav();
@@ -47,6 +56,7 @@
 		}
 		foundName = found;
 		value = code;
+		onFound?.(code);
 		return true;
 	}
 
@@ -81,7 +91,7 @@
 	$effect(() => nav?.register({ name, el: input, commit }));
 </script>
 
-<Field id={name} {label} error={error || ownError}>
+<Field id={name} {label} {compact} error={error || ownError}>
 	{#snippet children(describedBy)}
 		<div class="flex items-center gap-3">
 			<input
@@ -96,9 +106,10 @@
 				aria-describedby={describedBy}
 				use:selectOnFocus
 				autocomplete="off"
+				readonly={readOnly}
 				{oninput}
 			/>
-			{#if foundName}
+			{#if foundName && !compact}
 				<span>{foundName}</span>
 			{/if}
 		</div>
