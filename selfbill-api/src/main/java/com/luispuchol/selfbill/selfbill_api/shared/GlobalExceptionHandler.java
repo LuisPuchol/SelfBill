@@ -11,6 +11,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -49,6 +50,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .forEach(error -> errors.putIfAbsent(error.getField(), String.valueOf(error.getDefaultMessage())));
         ex.getValueResults().forEach(result -> errors.putIfAbsent(result.getMethodParameter().getParameterName(),
                 String.valueOf(result.getResolvableErrors().get(0).getDefaultMessage())));
+        return handleExceptionInternal(ex, validationProblem(errors), headers, status, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMissingServletRequestParameter(MissingServletRequestParameterException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        Map<String, String> errors = Map.of(ex.getParameterName(), "must not be null");
         return handleExceptionInternal(ex, validationProblem(errors), headers, status, request);
     }
 

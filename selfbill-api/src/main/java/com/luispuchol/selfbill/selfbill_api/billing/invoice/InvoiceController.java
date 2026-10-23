@@ -15,10 +15,14 @@ import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_NOT_
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.MAIL_NOT_CONFIGURED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_NOT_FOUND;
 
+import java.time.LocalDate;
+import java.util.List;
+
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -64,6 +68,17 @@ public class InvoiceController {
     public Page<InvoiceResponse> getAllInvoices(@ParameterObject InvoiceFilter filter,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
         return invoiceService.getAllInvoices(filter, pageable);
+    }
+
+    @Operation(summary = "Get the invoices that are pending to issue", description = """
+            Groups the delivery notes that are in no invoice, up to the given day inclusive, into one row per \
+            client, calendar month and VAT and surcharge rates: each row is an invoice that can be created and \
+            issued. Delivery notes in a draft invoice are not pending. Amounts are the ones issuing the row would \
+            give. Ordered by client code, month and rates.""")
+    @GetMapping("/pending")
+    public List<PendingInvoiceResponse> getPendingInvoices(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Schema(example = "2026-10-31") LocalDate dateTo) {
+        return invoiceService.getPendingInvoices(dateTo);
     }
 
     @Operation(summary = "Get an invoice by id")

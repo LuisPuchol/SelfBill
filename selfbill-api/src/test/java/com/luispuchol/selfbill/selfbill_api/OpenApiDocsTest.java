@@ -33,6 +33,7 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/clients'].get.parameters[?(@.name == 'q')]").exists())
                 .andExpect(jsonPath("$.paths['/api/tax-config/history'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/invoices/issue'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/invoices/pending'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/invoices/{id}/pdf'].get.responses['200'].content['application/pdf']")
                         .exists());
     }

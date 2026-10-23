@@ -43,6 +43,21 @@ class InvoiceLifecycleTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Reports the client code and the subtotal of each section")
+    void reportsClientCodeAndSectionSubtotals() {
+        DeliveryNoteResponse first = createDeliveryNote(clientId, "10", "2");
+        DeliveryNoteResponse second = createDeliveryNote(clientId, "3", "1.5");
+        InvoiceResponse invoice = createInvoice(first.id(), second.id());
+
+        InvoiceResponse reloaded = invoiceService.getInvoiceById(invoice.id());
+
+        assertThat(reloaded.clientCode()).isEqualTo(1);
+        assertThat(reloaded.sections()).hasSize(2);
+        assertThat(reloaded.sections().get(0).subtotal()).isEqualByComparingTo(first.total());
+        assertThat(reloaded.sections().get(1).subtotal()).isEqualByComparingTo(second.total());
+    }
+
+    @Test
     @DisplayName("Issuing assigns correlative numbers and a discarded draft consumes none")
     void issueAssignsCorrelativeNumbers() {
         InvoiceResponse discarded = createInvoice(createDeliveryNote(clientId, "1", "1").id());

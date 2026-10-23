@@ -3,24 +3,30 @@ package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNote;
+import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteFilter;
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteRepository;
+import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteSpecification;
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteTaxRegime;
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentMessages;
 import com.luispuchol.selfbill.selfbill_api.billing.document.DocumentSender;
@@ -62,6 +68,60 @@ public class InvoiceService {
     public InvoiceResponse getInvoiceById(Integer id) {
         return invoiceMapper.toResponse(findInvoice(id));
     }
+    public List<PendingInvoiceResponse> getPendingInvoices(LocalDate dateTo) {
+        List<DeliveryNote> pending = deliveryNoteRepository.findAll(
+                DeliveryNoteSpecification.withFilter(DeliveryNoteFilter.builder().invoiced(false).dateTo(dateTo).build()),
+                Sort.by("date", "code"));
+
+        // Same grouping an invoice demands: one client, one calendar month, one pair of rates
+        record Key(Client client, YearMonth month, BigDecimal vat, BigDecimal surcharge) {
+        }
+        return pending.stream()
+                .collect(Collectors.groupingBy(
+                        note -> new Key(note.getClient(), YearMonth.from(note.getDate()),
+                                note.getVatPercentage().stripTrailingZeros(),
+                                note.getSurchargePercentage().stripTrailingZeros()),
+                        LinkedHashMap::new, Collectors.toList()))
+                .entrySet().stream()
+                .sorted(Comparator.<Map.Entry<Key, List<DeliveryNote>>, Integer>comparing(e -> e.getKey().client().getCode())
+                        .thenComparing(e -> e.getKey().month())
+                        .thenComparing(e -> e.getKey().vat())
+                        .thenComparing(e -> e.getKey().surcharge()))
+                .map(e -> toPendingInvoice(e.getKey().client(), e.getKey().month(), e.getValue()))
+                .toList();
+    }
+
+    private static PendingInvoiceResponse toPendingInvoice(Client client, YearMonth month,
+            List<DeliveryNote> notes) {
+        BigDecimal vatPercentage = notes.get(0).getVatPercentage();
+        BigDecimal surchargePercentage = notes.get(0).getSurchargePercentage();
+        BigDecimal subtotal = notes.stream().map(DeliveryNote::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal vatAmount = percentageOf(subtotal, vatPercentage);
+        BigDecimal surchargeAmount = percentageOf(subtotal, surchargePercentage);
+        return PendingInvoiceResponse.builder()
+                .clientId(client.getId())
+                .clientCode(client.getCode())
+                .clientName(client.getName())
+                .month(month.toString())
+                .vatPercentage(vatPercentage)
+                .surchargePercentage(surchargePercentage)
+                .subtotal(subtotal)
+                .vatAmount(vatAmount)
+                .surchargeAmount(surchargeAmount)
+                .total(subtotal.add(vatAmount).add(surchargeAmount))
+                .clientDeleted(client.getDeletedAt() != null)
+                .missingFiscalData(missingFiscalData(client))
+                .deliveryNotes(notes.stream()
+                        .map(note -> PendingDeliveryNoteResponse.builder()
+                                .id(note.getId())
+                                .code(note.getCode())
+                                .date(note.getDate())
+                                .total(note.getTotal())
+                                .build())
+                        .toList())
+                .build();
+    }
+
 
     public InvoiceResponse getInvoiceByCode(InvoiceSeries series, Integer code) {
         return invoiceRepository.findBySeriesAndCode(series, code)
@@ -282,6 +342,17 @@ public class InvoiceService {
         if (client.getDeletedAt() != null) {
             throw new BusinessException(ErrorCode.CLIENT_NOT_FOUND, client.getId());
         }
+        List<String> missing = missingFiscalData(client);
+        if (!missing.isEmpty()) {
+            throw new BusinessException(ErrorCode.CLIENT_FISCAL_DATA_MISSING, client.getId(),
+                    String.join(", ", missing));
+        }
+        if (!userProfileService.hasProfile()) {
+            throw new BusinessException(ErrorCode.USER_PROFILE_NOT_FOUND);
+        }
+    }
+
+    static List<String> missingFiscalData(Client client) {
         List<String> missing = new ArrayList<>();
         if (!StringUtils.hasText(client.getNif())) {
             missing.add("nif");
@@ -295,13 +366,7 @@ public class InvoiceService {
         if (!StringUtils.hasText(client.getCity())) {
             missing.add("city");
         }
-        if (!missing.isEmpty()) {
-            throw new BusinessException(ErrorCode.CLIENT_FISCAL_DATA_MISSING, client.getId(),
-                    String.join(", ", missing));
-        }
-        if (!userProfileService.hasProfile()) {
-            throw new BusinessException(ErrorCode.USER_PROFILE_NOT_FOUND);
-        }
+        return missing;
     }
 
     private static void requireDraft(Invoice invoice) {

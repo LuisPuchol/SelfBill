@@ -1,5 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -12,6 +13,9 @@ public record InvoiceSectionResponse(
         Integer deliveryNoteId,
         Integer deliveryNoteCode,
         LocalDateTime deliveryNoteDate,
+
+        @Schema(description = "Sum of the line totals of the section")
+        BigDecimal subtotal,
 
         List<InvoiceLineResponse> lines) {
 }

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,6 +19,11 @@ public interface DeliveryNoteRepository
     @Override
     @EntityGraph(attributePaths = { "client", "invoice" })
     Page<DeliveryNote> findAll(Specification<DeliveryNote> spec, Pageable pageable);
+
+    // Pending invoices group by client: load them with the notes, not one by one
+    @Override
+    @EntityGraph(attributePaths = "client")
+    List<DeliveryNote> findAll(Specification<DeliveryNote> spec, Sort sort);
 
     boolean existsByCode(Integer code);
 

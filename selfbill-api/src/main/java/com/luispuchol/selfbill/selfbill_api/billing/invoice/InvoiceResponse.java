@@ -25,6 +25,8 @@ public record InvoiceResponse(
 
         Integer clientId,
 
+        Integer clientCode,
+
         @Schema(description = "Trade name of the client")
         String clientName,
 

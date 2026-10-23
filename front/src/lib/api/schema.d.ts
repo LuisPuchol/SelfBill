@@ -381,6 +381,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/invoices/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the invoices that are pending to issue
+         * @description Groups the delivery notes that are in no invoice, up to the given day inclusive, into one row per client, calendar month and VAT and surcharge rates: each row is an invoice that can be created and issued. Delivery notes in a draft invoice are not pending. Amounts are the ones issuing the row would give. Ordered by client code, month and rates.
+         */
+        get: operations["getPendingInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invoices/by-code/{code}": {
         parameters: {
             query?: never;
@@ -699,6 +719,8 @@ export interface components {
             status?: "DRAFT" | "ISSUED";
             /** Format: int32 */
             clientId?: number;
+            /** Format: int32 */
+            clientCode?: number;
             /** @description Trade name of the client */
             clientName?: string;
             /** @description One per delivery note. Not included in lists */
@@ -724,6 +746,8 @@ export interface components {
             deliveryNoteCode?: number;
             /** Format: date-time */
             deliveryNoteDate?: string;
+            /** @description Sum of the line totals of the section */
+            subtotal?: number;
             lines?: components["schemas"]["InvoiceLineResponse"][];
         };
         DeliveryNoteLineRequest: {
@@ -951,6 +975,42 @@ export interface components {
         PagedModelInvoiceResponse: {
             content?: components["schemas"]["InvoiceResponse"][];
             page?: components["schemas"]["PageMetadata"];
+        };
+        PendingDeliveryNoteResponse: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            code?: number;
+            /** Format: date-time */
+            date?: string;
+            total?: number;
+        };
+        /** @description One future invoice: the pending delivery notes of a client, in one month and with the same rates */
+        PendingInvoiceResponse: {
+            /** Format: int32 */
+            clientId?: number;
+            /** Format: int32 */
+            clientCode?: number;
+            /** @description Trade name of the client */
+            clientName?: string;
+            /**
+             * @description Calendar month of the delivery notes
+             * @example 2026-10
+             */
+            month?: string;
+            vatPercentage?: number;
+            surchargePercentage?: number;
+            /** @description What the invoice would have, as issuing it computes */
+            subtotal?: number;
+            vatAmount?: number;
+            surchargeAmount?: number;
+            total?: number;
+            /** @description The client was deleted, so the invoice cannot be issued */
+            clientDeleted?: boolean;
+            /** @description Fiscal data of the client that issuing requires and is empty: `nif`, `address`, `postalCode`, `city` */
+            missingFiscalData?: string[];
+            /** @description Oldest first */
+            deliveryNotes?: components["schemas"]["PendingDeliveryNoteResponse"][];
         };
         PagedModelDeliveryNoteResponse: {
             content?: components["schemas"]["DeliveryNoteResponse"][];
@@ -2793,6 +2853,29 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getPendingInvoices: {
+        parameters: {
+            query: {
+                /** @example 2026-10-31 */
+                dateTo: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingInvoiceResponse"][];
                 };
             };
         };

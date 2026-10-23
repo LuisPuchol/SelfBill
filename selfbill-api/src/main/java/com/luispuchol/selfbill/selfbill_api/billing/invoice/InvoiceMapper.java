@@ -1,5 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ import org.mapstruct.Mapping;
 public interface InvoiceMapper {
 
     @Mapping(target = "clientId", source = "client.id")
+    @Mapping(target = "clientCode", source = "client.code")
     @Mapping(target = "clientName", source = "client.name")
     @Mapping(target = "sections", source = "lines")
     InvoiceResponse toResponse(Invoice invoice);
@@ -36,6 +38,7 @@ public interface InvoiceMapper {
                             .deliveryNoteId(first.getDeliveryNote() != null ? first.getDeliveryNote().getId() : null)
                             .deliveryNoteCode(first.getDeliveryNoteCode())
                             .deliveryNoteDate(first.getDeliveryNoteDate())
+                            .subtotal(group.stream().map(InvoiceLine::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add))
                             .lines(group.stream().map(this::toLineResponse).toList())
                             .build();
                 })
