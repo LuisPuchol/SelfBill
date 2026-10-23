@@ -576,6 +576,24 @@ describe('DeliveryNoteRecord, on saving', () => {
 		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
 	});
 
+	it('"Emitir factura" greyed out unticks: back to a client that allows it, it is unticked', async () => {
+		await render(DeliveryNoteHarness, props({ initial: written() }));
+		await expect.element(cliente()).toHaveFocus();
+		await userEvent.keyboard('{F3}');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'true');
+
+		await cliente().fill('4');
+		await userEvent.keyboard('{Enter}');
+		await expect.element(page.getByText('Bar Pepe')).toBeVisible();
+		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'true');
+
+		await cliente().fill('3');
+		await userEvent.keyboard('{Enter}');
+		await expect.element(page.getByText('Frutería García')).toBeVisible();
+		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'false');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+	});
+
 	it('"Emitir factura" is greyed, with nothing to say, until there is a client', async () => {
 		await render(DeliveryNoteHarness, props());
 		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'true');

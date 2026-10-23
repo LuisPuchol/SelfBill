@@ -22,17 +22,43 @@ function stubPrint(impl: () => void = () => {}) {
 	return { print, seen };
 }
 
-afterEach(() => vi.restoreAllMocks());
+const frames = () => document.querySelectorAll('iframe');
+const page = () => new Blob(['<p>hola</p>'], { type: 'text/html' });
+/** What the browser fires once the print dialog closes. */
+const endPrinting = () =>
+	frames().forEach((frame) => frame.contentWindow?.dispatchEvent(new Event('afterprint')));
+
+afterEach(() => {
+	// No test leaves a frame open for the next one.
+	endPrinting();
+	vi.restoreAllMocks();
+});
 
 describe('printPdf', () => {
-	it('prints through a hidden iframe and cleans up', async () => {
+	it('prints through a hidden iframe, kept until printing ends', async () => {
 		const revoke = vi.spyOn(URL, 'revokeObjectURL');
 		const { print, seen } = stubPrint();
-		await printPdf(new Blob(['<p>hola</p>'], { type: 'text/html' }));
+		await printPdf(page());
 		expect(print).toHaveBeenCalledOnce();
 		expect(seen).toEqual([1]);
-		expect(document.querySelectorAll('iframe')).toHaveLength(0);
+		// The dialog may still be reading the PDF.
+		expect(frames()).toHaveLength(1);
+		expect(revoke).not.toHaveBeenCalled();
+
+		endPrinting();
+		expect(frames()).toHaveLength(0);
 		expect(revoke).toHaveBeenCalledOnce();
+	});
+
+	it('keeps at most one frame across prints', async () => {
+		const revoke = vi.spyOn(URL, 'revokeObjectURL');
+		const { print, seen } = stubPrint();
+		for (let i = 0; i < 3; i++) await printPdf(page());
+		expect(print).toHaveBeenCalledTimes(3);
+		// Each print released the frame before it.
+		expect(seen).toEqual([1, 1, 1]);
+		expect(frames()).toHaveLength(1);
+		expect(revoke).toHaveBeenCalledTimes(2);
 	});
 
 	it('cleans up when print throws', async () => {

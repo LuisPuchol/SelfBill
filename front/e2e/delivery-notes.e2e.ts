@@ -14,6 +14,21 @@ interface Note extends Saved {
 	lines: { articleId: number; traceabilityCode1: string; quantity: number; price: number }[];
 }
 
+interface InvoicedNote extends Note {
+	invoiceId: number;
+	vatPercentage: number;
+	surchargePercentage: number;
+}
+
+interface Amounts {
+	subtotal: number;
+	vatPercentage: number;
+	vatAmount: number;
+	surchargePercentage: number;
+	surchargeAmount: number;
+	total: number;
+}
+
 /** The DB lasts the whole run: a code already there (409) is fetched instead. */
 async function ensure(
 	request: APIRequestContext,
@@ -351,17 +366,37 @@ test('issuing on save leaves the note invoiced', async ({ page, request }) => {
 	await expect(page.getByRole('row', { name: new RegExp(`^${code} `) })).toContainText(
 		`Facturado nº ${number}`
 	);
+
+	// The invoice carries the note's amounts and rates, not zeros.
+	const list = await request.get(`/api/delivery-notes?codeFrom=${code}&codeTo=${code}`);
+	const [note] = ((await list.json()) as { content: InvoicedNote[] }).content;
+	const response = await request.get(`/api/invoices/${note.invoiceId}`);
+	expect(response.ok()).toBe(true);
+	const invoice = (await response.json()) as Amounts & { number: string };
+	expect(invoice.number).toBe(number);
+	const subtotal = note.lines.reduce((sum, line) => sum + line.quantity * line.price, 0);
+	expect(subtotal).toBe(6); // 2 × 3, as typed
+	expect(invoice.subtotal).toBe(subtotal);
+	expect(invoice.vatPercentage).toBe(note.vatPercentage);
+	expect(invoice.surchargePercentage).toBe(note.surchargePercentage);
+	const share = (percentage: number) => Math.round(subtotal * percentage) / 100;
+	expect(invoice.vatAmount).toBeGreaterThan(0);
+	expect(invoice.vatAmount).toBeCloseTo(share(note.vatPercentage), 2);
+	expect(invoice.surchargeAmount).toBeCloseTo(share(note.surchargePercentage), 2);
+	expect(invoice.total).toBeCloseTo(subtotal + invoice.vatAmount + invoice.surchargeAmount, 2);
 });
 
 // Needs the PDF viewer of the full Chromium (playwright.config.ts): without one, the PDF never loads.
 test('printing on save calls print', async ({ page, request }) => {
 	await ensureClient(request, 9413, 'Bar Impresión e2e');
 	await ensureArticle(request, 9414, 'Pera impresión e2e');
-	// In every frame, the PDF's too: print() counts in the page instead of opening the dialog.
+	// In every frame, the PDF's too: print() counts in the page instead of opening the dialog, and
+	// fires afterprint as a closed dialog does.
 	await page.addInitScript(() => {
 		window.print = () => {
 			const top = window.top as Window & { printed?: number };
 			top.printed = (top.printed ?? 0) + 1;
+			window.dispatchEvent(new Event('afterprint'));
 		};
 	});
 	const printed = () => page.evaluate(() => (window as Window & { printed?: number }).printed ?? 0);
@@ -382,7 +417,7 @@ test('printing on save calls print', async ({ page, request }) => {
 	// The next note of the chain, with the cursor and unticked.
 	await expect(page.getByLabel('Cliente', { exact: true })).toBeFocused();
 	await expect(print).toHaveAttribute('aria-checked', 'false');
-	// The frame it printed from is gone.
+	// Printing ended: the frame it printed from is gone.
 	await expect(page.locator('iframe')).toHaveCount(0);
 });
 

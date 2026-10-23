@@ -2,6 +2,9 @@ package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +30,21 @@ class InvoiceIssueNowTest extends DomainIntegrationTest {
         assertThat(invoice.number()).isEqualTo("1");
         assertThat(deliveryNoteService.getDeliveryNoteById(note.id()).invoiceStatus())
                 .isEqualTo(InvoiceStatus.ISSUED);
+    }
+
+    @Test
+    @DisplayName("Issues the same amounts and lines as creating a draft and then issuing it")
+    void issuesWhatTheTwoStepsIssue() {
+        Integer client = createClient(2, VatType.WITH_VAT, SurchargeType.WITH_SURCHARGE);
+        DeliveryNoteResponse twoStepNote = createDeliveryNote(client, "10", "2");
+        DeliveryNoteResponse oneStepNote = createDeliveryNote(client, "10", "2");
+
+        InvoiceResponse twoSteps = invoiceService.issueInvoice(createInvoiceFor(client, twoStepNote.id()).id());
+        InvoiceResponse oneStep = invoiceService.createAndIssue(invoiceRequestFor(client, oneStepNote.id()));
+
+        assertThat(twoSteps.total()).isEqualByComparingTo("20.90");
+        assertSameContent(oneStep, twoSteps);
+        assertSameContent(invoiceService.getInvoiceById(oneStep.id()), invoiceService.getInvoiceById(twoSteps.id()));
     }
 
     @Test
@@ -75,7 +93,22 @@ class InvoiceIssueNowTest extends DomainIntegrationTest {
     }
 
     private InvoiceRequest invoiceRequestFor(Integer client, Integer... noteIds) {
-        return InvoiceRequest.builder().clientId(client).deliveryNoteIds(java.util.List.of(noteIds)).build();
+        return InvoiceRequest.builder().clientId(client).deliveryNoteIds(List.of(noteIds)).build();
+    }
+
+    private static void assertSameContent(InvoiceResponse actual, InvoiceResponse expected) {
+        assertThat(actual.subtotal()).isEqualByComparingTo(expected.subtotal());
+        assertThat(actual.vatPercentage()).isEqualByComparingTo(expected.vatPercentage());
+        assertThat(actual.vatAmount()).isEqualByComparingTo(expected.vatAmount());
+        assertThat(actual.surchargePercentage()).isEqualByComparingTo(expected.surchargePercentage());
+        assertThat(actual.surchargeAmount()).isEqualByComparingTo(expected.surchargeAmount());
+        assertThat(actual.total()).isEqualByComparingTo(expected.total());
+        assertThat(actual.sections()).singleElement().satisfies(section -> assertThat(section.lines())
+                .singleElement()
+                .usingRecursiveComparison()
+                .ignoringFields("id", "createdAt", "updatedAt")
+                .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                .isEqualTo(expected.sections().getFirst().lines().getFirst()));
     }
 
     private void assertNothingCreated(DeliveryNoteResponse note) {

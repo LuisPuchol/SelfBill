@@ -124,6 +124,7 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - En la rejilla, el importe de la línea sale sin "€" ni separador de miles; en la lista y los totales, con `formatMoney`.
 - Cambiar de cliente y pulsar "+" sin Enter, con precios propuestos sin tocar, los manda vacíos: la API
   lo rechaza bajo cada precio. Vaciarlos al teclear el cliente, como ya se hace con el código del artículo.
+- Si se pierde la conexión con el diálogo de error abierto, al volver el cursor no queda en Cliente.
 
 ### Pendiente del bloque de Ajustes
 - Borrar una vigencia de IVA: la API no tiene endpoint.

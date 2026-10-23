@@ -85,7 +85,11 @@ public class InvoiceService {
     // One outer transaction: if issuing fails, the draft is rolled back with it
     @Transactional
     public InvoiceResponse createAndIssue(InvoiceRequest request) {
-        return issueInvoice(createInvoice(request).id());
+        InvoiceResponse draft = createInvoice(request);
+        // Writes the draft first, as a draft saved earlier is: otherwise the draft's lines, inserted by an
+        // auto-flush along the way, are left behind when issuing rebuilds them
+        invoiceRepository.flush();
+        return issueInvoice(draft.id());
     }
 
     @Transactional
@@ -178,8 +182,11 @@ public class InvoiceService {
                 .forEach(deliveryNote -> deliveryNote.setInvoice(null));
     }
 
+    // Both sides of the association: a later step of the same transaction reads the invoice's notes
     private void include(Invoice invoice, List<DeliveryNote> deliveryNotes) {
         deliveryNotes.forEach(deliveryNote -> deliveryNote.setInvoice(invoice));
+        invoice.getDeliveryNotes().clear();
+        invoice.getDeliveryNotes().addAll(deliveryNotes);
         recalculate(invoice, deliveryNotes);
     }
 

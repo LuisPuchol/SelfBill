@@ -194,7 +194,11 @@
 	const blocker = $derived(
 		invoiceBlocker({ client, hasProfile, inInvoice: saved?.invoiceId != null })
 	);
-	/** A greyed box asks for nothing, also when it was ticked for another client. */
+	// Greyed out, the box unticks: ticked for one client, it is not for the next one that allows it.
+	$effect.pre(() => {
+		if (!blocker.enabled) issueOnSave = false;
+	});
+	/** A greyed box asks for nothing, even before the effect above has run. */
 	const issuing = $derived(issueOnSave && blocker.enabled);
 
 	// The keys and the boxes share these actions.
