@@ -10,4 +10,5 @@
 	initial={data.initial}
 	periods={data.periods}
 	lookups={data.lookups}
+	hasProfile={data.hasProfile}
 />

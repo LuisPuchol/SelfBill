@@ -1,10 +1,14 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { components } from '../api/schema';
+	import CheckAction from '../components/CheckAction.svelte';
 	import CodeField from '../components/CodeField.svelte';
 	import DateField from '../components/DateField.svelte';
+	import { showError, showMessage } from '../components/errors.svelte';
 	import RecordScreen from '../components/RecordScreen.svelte';
 	import { timeNow } from '../format/date';
+	import { useKeys } from '../keyboard/keymap.svelte';
+	import type { KeyAction } from '../keyboard/keys';
 	import { RecordForm, type Saved } from '../records/record-form.svelte';
 	import { deliveryNoteDeletion } from './deletion';
 	import {
@@ -15,6 +19,7 @@
 		timeOf,
 		type NoteValues
 	} from './form';
+	import { invoiceBlocker } from './invoice-blocker';
 	import LinesGrid from './LinesGrid.svelte';
 	import type { Lookups } from './lookups';
 	import Totals from './Totals.svelte';
@@ -37,6 +42,10 @@
 		proposePrice,
 		goToList,
 		toast,
+		hasProfile,
+		issueInvoice,
+		fetchPdf,
+		print,
 		guard
 	}: {
 		/** Null for a new note */
@@ -56,6 +65,13 @@
 		proposePrice: (clientId: number, articleId: number) => Promise<number | null>;
 		goToList: (savedId?: number) => void | Promise<void>;
 		toast: (message: string) => void;
+		/** Whether the owner's data is filled in: issuing an invoice needs it */
+		hasProfile: boolean;
+		/** Creates and issues an invoice with just this note */
+		issueInvoice: (clientId: number, noteId: number) => Promise<{ number: string }>;
+		fetchPdf: (noteId: number) => Promise<Blob>;
+		/** Opens the browser's print dialog for the PDF */
+		print: (pdf: Blob) => Promise<void>;
 		/** The page's unsaved-changes guard, which needs the form */
 		guard?: Snippet<[RecordForm<NoteValues>]>;
 	} = $props();
@@ -78,6 +94,10 @@
 		return notePayload(values, ids, saved ? timeOf(saved) : timeNow());
 	}
 
+	/** "Al guardar": unticked on every note opened or started, also the next one of a chain. */
+	let printOnSave = $state(false);
+	let issueOnSave = $state(false);
+
 	// What a page does: the options are read once, when the record opens.
 	// svelte-ignore state_referenced_locally
 	const form: RecordForm<NoteValues> = new RecordForm<NoteValues>({
@@ -90,13 +110,18 @@
 		create: async (body) => toSaved(await create(body as DeliveryNoteRequest)),
 		update: async (noteId, body) => toSaved(await update(noteId, body as DeliveryNoteRequest)),
 		remove: (noteId) => remove(noteId),
-		// The next note of the day's round: same date.
-		blank: async (): Promise<NoteValues> => blankNote(form.values.date),
+		// The next note of the day's round: same date, nothing ticked.
+		blank: async (): Promise<NoteValues> => {
+			printOnSave = false;
+			issueOnSave = false;
+			return blankNote(form.values.date);
+		},
 		pendingForDelete: deliveryNoteDeletion.pendingForDelete,
 		mapFieldPath: (path) => (sent ? formFieldPath(path, sent) : path),
 		// An empty line is never sent: adding one is not a change.
 		comparable: comparableNote,
 		firstField: 'clientCode',
+		afterSave,
 		goToList,
 		toast
 	});
@@ -165,6 +190,67 @@
 		return proposePrice(clientId, articleId);
 	}
 
+	/** Whether "Emitir factura" can be ticked, and why not. */
+	const blocker = $derived(
+		invoiceBlocker({ client, hasProfile, inInvoice: saved?.invoiceId != null })
+	);
+	/** A greyed box asks for nothing, also when it was ticked for another client. */
+	const issuing = $derived(issueOnSave && blocker.enabled);
+
+	// The keys and the boxes share these actions.
+	const printBox: KeyAction = {
+		key: 'F9',
+		label: 'Imprimir albarán',
+		when: () => !readOnly,
+		run: () => {
+			printOnSave = !printOnSave;
+		}
+	};
+	const issueBox: KeyAction = {
+		key: 'F3',
+		label: 'Emitir factura',
+		when: () => !readOnly && blocker.enabled,
+		run: () => {
+			issueOnSave = !issueOnSave;
+		}
+	};
+	useKeys([printBox, issueBox]);
+
+	/** What the boxes ask for, once the note is saved: the invoice issued goes in the toast. */
+	async function afterSave(note: Saved): Promise<string | void> {
+		// Read before waiting: a box ticked meanwhile is for the next save.
+		const clientId = client?.id;
+		const issue = issuing;
+		const printNote = printOnSave;
+		let issued: string | undefined;
+		let issueFailure: { err: unknown } | undefined;
+		if (issue && clientId !== undefined) {
+			try {
+				const invoice = await issueInvoice(clientId, note.id);
+				issued = `Factura ${invoice.number} emitida`;
+			} catch (err) {
+				issueFailure = { err };
+			}
+		}
+		let printFailed = false;
+		if (printNote) {
+			try {
+				await print(await fetchPdf(note.id));
+			} catch {
+				printFailed = true;
+			}
+		}
+		// One dialog for all that went wrong: a second one would only replace the first.
+		const printMessage = 'No se ha podido imprimir el albarán.';
+		if (issueFailure) {
+			showError(issueFailure.err, {
+				lead: 'El albarán se ha guardado, pero no se ha podido emitir la factura:',
+				also: printFailed ? printMessage : undefined
+			});
+		} else if (printFailed) showMessage(printMessage);
+		return issued;
+	}
+
 	let grid = $state<ReturnType<typeof LinesGrid>>();
 	const banner = 'mb-4 rounded border-2 bg-surface p-3';
 </script>
@@ -185,42 +271,63 @@
 			Está en una factura en borrador: si lo cambias, la factura se recalcula.
 		</p>
 	{/if}
-	<div class="mb-2 flex flex-wrap items-start gap-x-6">
-		<div class="flex w-96 items-start gap-3" oninput={() => (clientTyped = true)}>
-			<div class="min-w-0 flex-1">
-				<!-- The field reads its code only when created: a chained new note brings a new one -->
-				{#key form.values}
-					<!-- Only looking, nothing is asked for: Enter walks on past a deleted client's empty code -->
-					<CodeField
-						label="Cliente"
-						name="clientCode"
-						bind:value={form.values.clientCode}
-						lookup={(code) => lookups.client(code).then((found) => found?.name ?? null)}
-						notFoundMessage="No existe ningún cliente con ese código"
+	<!-- The totals up here, beside the note's data: the lines below grow without moving them -->
+	<div class="mb-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+		<div>
+			<div class="mb-2 flex flex-wrap items-start gap-x-6">
+				<div class="flex w-96 items-start gap-3" oninput={() => (clientTyped = true)}>
+					<div class="min-w-0 flex-1">
+						<!-- The field reads its code only when created: a chained new note brings a new one -->
+						{#key form.values}
+							<!-- Only looking, nothing is asked for: Enter walks on past a deleted client's empty code -->
+							<CodeField
+								label="Cliente"
+								name="clientCode"
+								bind:value={form.values.clientCode}
+								lookup={(code) => lookups.client(code).then((found) => found?.name ?? null)}
+								notFoundMessage="No existe ningún cliente con ese código"
+								required={!readOnly}
+								error={form.errorFor('clientCode')}
+								{readOnly}
+								onFound={() => grid?.reproposePrices()}
+							/>
+						{/key}
+					</div>
+					{#if deletedClientName}
+						<span class="mt-7 flex h-12 items-center">{deletedClientName}</span>
+					{/if}
+				</div>
+				<div class="w-44">
+					<DateField
+						label="Fecha"
+						name="date"
 						required={!readOnly}
-						error={form.errorFor('clientCode')}
+						bind:value={form.values.date}
+						error={form.errorFor('date')}
 						{readOnly}
-						onFound={() => grid?.reproposePrices()}
 					/>
-				{/key}
+				</div>
+				{#if format}
+					<p class="mt-7 flex h-12 items-center text-muted">{FORMATS[format]}</p>
+				{/if}
 			</div>
-			{#if deletedClientName}
-				<span class="mt-7 flex h-12 items-center">{deletedClientName}</span>
-			{/if}
+			<!-- Out of the Enter walk: a click or the key ticks them -->
+			<div class="flex flex-wrap items-start gap-x-4 gap-y-2">
+				<span class="flex h-12 items-center text-lg text-muted">Al guardar:</span>
+				<CheckAction action={printBox} checked={printOnSave} />
+				<!-- Room kept for the longest reason (two lines at this width): the header neither grows
+					nor widens when one appears, and the lines below stay put -->
+				<div class="w-96">
+					<CheckAction
+						action={issueBox}
+						checked={issuing}
+						reason={blocker.reason}
+						reasonLines={2}
+					/>
+				</div>
+			</div>
 		</div>
-		<div class="w-44">
-			<DateField
-				label="Fecha"
-				name="date"
-				required={!readOnly}
-				bind:value={form.values.date}
-				error={form.errorFor('date')}
-				{readOnly}
-			/>
-		</div>
-		{#if format}
-			<p class="mt-7 flex h-12 items-center text-muted">{FORMATS[format]}</p>
-		{/if}
+		<Totals lines={form.values.lines} {rates} {notice} />
 	</div>
 	<LinesGrid
 		bind:this={grid}
@@ -231,6 +338,5 @@
 		proposePrice={offerPrice}
 		errorFor={(name) => form.errorFor(name)}
 	/>
-	<Totals lines={form.values.lines} {rates} {notice} />
 </RecordScreen>
 {@render guard?.(form)}

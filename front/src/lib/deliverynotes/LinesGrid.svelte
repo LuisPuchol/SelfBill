@@ -4,6 +4,7 @@
 	import ActionButton from '../components/ActionButton.svelte';
 	import CodeField from '../components/CodeField.svelte';
 	import DigitsField from '../components/DigitsField.svelte';
+	import { fillViewport } from '../components/fill-viewport';
 	import NumberField from '../components/NumberField.svelte';
 	import { lineTotalCents } from '../format/money';
 	import { formatDecimal } from '../format/number';
@@ -227,6 +228,9 @@
 		lots,
 		remove
 	]);
+
+	// On the cells: a separate-borders table keeps them on the column titles when those stick on top.
+	const th = 'border-b border-line py-2 font-medium';
 </script>
 
 {#if !readOnly}
@@ -235,82 +239,87 @@
 		<ActionButton action={remove} />
 	</div>
 {/if}
-<table class="w-full border-collapse bg-surface text-ink">
-	<thead>
-		<tr class="border-b border-line text-muted">
-			<th class="w-28 px-1 py-2 text-left font-medium">Código</th>
-			<th class="px-2 py-2 text-left font-medium">Artículo</th>
-			<th class="w-48 px-1 py-2 text-left font-medium">Lote</th>
-			<th class="w-32 px-1 py-2 text-right font-medium">Cantidad</th>
-			<th class="w-32 px-1 py-2 text-right font-medium">Precio</th>
-			<th class="w-32 px-2 py-2 text-right font-medium">Importe</th>
-		</tr>
-	</thead>
-	<tbody {onfocusin}>
-		{#each lines as line, i (line)}
-			<tr class="align-top">
-				<td class="px-1 pt-1" oninput={(event) => oncodeinput(line, event)}>
-					<CodeField
-						label="Código"
-						name="lines[{i}].articleCode"
-						bind:value={line.articleCode}
-						lookup={lookupArticle}
-						notFoundMessage="No existe ningún artículo con ese código"
-						required={cellsRequired(line, i)}
-						error={errorFor(`lines[${i}].articleCode`)}
-						compact
-						{readOnly}
-						onFound={(code) => onArticleFound(line, code)}
-					/>
-				</td>
-				<td class="px-2 pt-4">
-					{nameOf(line)}
-				</td>
-				<td class="px-1 pt-1">
-					<div class="flex items-start gap-2">
-						<DigitsField
-							label="Lote"
-							name="lines[{i}].lot1"
-							length={8}
-							bind:value={line.lot1}
+<!-- Its own scroll, filling the window: the note's header above it (totals, boxes) never leaves the
+	view. The focused cell scrolls into sight below the column titles, which stay on top. Relative: the
+	fields' screen-reader labels (absolute) scroll inside it, not past the page's end. -->
+<div class="relative scroll-pt-12 overflow-y-auto" use:fillViewport>
+	<table class="w-full border-separate border-spacing-0 bg-surface text-ink">
+		<thead class="sticky top-0 z-10 bg-surface">
+			<tr class="text-muted">
+				<th class="{th} w-28 px-1 text-left">Código</th>
+				<th class="{th} px-2 text-left">Artículo</th>
+				<th class="{th} w-48 px-1 text-left">Lote</th>
+				<th class="{th} w-32 px-1 text-right">Cantidad</th>
+				<th class="{th} w-32 px-1 text-right">Precio</th>
+				<th class="{th} w-32 px-2 text-right">Importe</th>
+			</tr>
+		</thead>
+		<tbody {onfocusin}>
+			{#each lines as line, i (line)}
+				<tr class="align-top">
+					<td class="px-1 pt-1" oninput={(event) => oncodeinput(line, event)}>
+						<CodeField
+							label="Código"
+							name="lines[{i}].articleCode"
+							bind:value={line.articleCode}
+							lookup={lookupArticle}
+							notFoundMessage="No existe ningún artículo con ese código"
 							required={cellsRequired(line, i)}
-							error={errorFor(`lines[${i}].lot1`)}
+							error={errorFor(`lines[${i}].articleCode`)}
+							compact
+							{readOnly}
+							onFound={(code) => onArticleFound(line, code)}
+						/>
+					</td>
+					<td class="px-2 pt-4">
+						{nameOf(line)}
+					</td>
+					<td class="px-1 pt-1">
+						<div class="flex items-start gap-2">
+							<DigitsField
+								label="Lote"
+								name="lines[{i}].lot1"
+								length={8}
+								bind:value={line.lot1}
+								required={cellsRequired(line, i)}
+								error={errorFor(`lines[${i}].lot1`)}
+								compact
+								{readOnly}
+							/>
+							{#if extraLots(line) > 0}
+								<span class="flex h-12 items-center text-muted">+{extraLots(line)}</span>
+							{/if}
+						</div>
+					</td>
+					<td class="px-1 pt-1">
+						<NumberField
+							label="Cantidad"
+							name="lines[{i}].quantity"
+							bind:value={line.quantity}
+							required={cellsRequired(line, i)}
+							validate={(v) => (v > 0 ? undefined : 'Tiene que ser mayor que cero')}
+							error={errorFor(`lines[${i}].quantity`)}
 							compact
 							{readOnly}
 						/>
-						{#if extraLots(line) > 0}
-							<span class="flex h-12 items-center text-muted">+{extraLots(line)}</span>
-						{/if}
-					</div>
-				</td>
-				<td class="px-1 pt-1">
-					<NumberField
-						label="Cantidad"
-						name="lines[{i}].quantity"
-						bind:value={line.quantity}
-						required={cellsRequired(line, i)}
-						validate={(v) => (v > 0 ? undefined : 'Tiene que ser mayor que cero')}
-						error={errorFor(`lines[${i}].quantity`)}
-						compact
-						{readOnly}
-					/>
-				</td>
-				<td class="px-1 pt-1" oninput={() => offers.delete(line)}>
-					<NumberField
-						label="Precio"
-						name="lines[{i}].price"
-						bind:value={line.price}
-						required={cellsRequired(line, i)}
-						error={errorFor(`lines[${i}].price`)}
-						compact
-						{readOnly}
-					/>
-				</td>
-				<td class="tabular px-2 pt-4 text-right">{amount(line)}</td>
-			</tr>
-		{/each}
-	</tbody>
-</table>
+					</td>
+					<td class="px-1 pt-1" oninput={() => offers.delete(line)}>
+						<NumberField
+							label="Precio"
+							name="lines[{i}].price"
+							bind:value={line.price}
+							required={cellsRequired(line, i)}
+							error={errorFor(`lines[${i}].price`)}
+							compact
+							{readOnly}
+						/>
+					</td>
+					<td class="tabular px-2 pt-4 text-right">{amount(line)}</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+</div>
 
 <LotsDialog
 	bind:open={lotsOpen}

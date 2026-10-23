@@ -1,6 +1,6 @@
 import { tick } from 'svelte';
 import { ApiError, type ErrorCode } from '../api/errors';
-import { showError } from '../components/errors.svelte';
+import { showError, whenNoError } from '../components/errors.svelte';
 import { DeleteFlow } from './delete-flow.svelte';
 import { FormState } from './form-state.svelte';
 
@@ -161,7 +161,8 @@ export class RecordForm<V extends { code: number | null }> extends FormState<V> 
 		}
 		this.reset(next);
 		await tick();
-		this.nav?.focus(this.#options.firstField ?? 'code');
+		// A dialog opened on the way (afterSave) keeps the cursor out until it is closed.
+		whenNoError(() => this.nav?.focus(this.#options.firstField ?? 'code'));
 		return true;
 	}
 

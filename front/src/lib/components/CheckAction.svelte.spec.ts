@@ -49,4 +49,16 @@ describe('CheckAction', () => {
 		await expect.element(box()).toHaveAttribute('tabindex', '-1');
 		expect(run).toHaveBeenCalledOnce();
 	});
+
+	it('reasonLines: the lines for the reason are kept, empty, without one', async () => {
+		// Its height comes from the stylesheet (checked in the e2e): here, that the line is kept.
+		const reasonLine = () => box().element().nextElementSibling;
+		const { unmount } = await render(CheckHarness, { action: action(), checked: false });
+		expect(reasonLine()).toBeNull();
+		unmount();
+		await render(CheckHarness, { action: action(), checked: false, reasonLines: 2 });
+		expect(reasonLine()?.tagName).toBe('P');
+		expect(reasonLine()?.textContent).toBe('');
+		expect((reasonLine() as HTMLElement).style.minHeight).toBe('2lh');
+	});
 });

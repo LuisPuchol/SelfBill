@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import DeliveryNoteHarness from '#lib/test/DeliveryNoteHarness.svelte';
 import type { api } from '#lib/api/client.js';
 import { ApiError } from '#lib/api/errors.js';
+import { errorState } from '#lib/components/errors.svelte.js';
 import type { components } from '../api/schema';
 import { blankNote, emptyLine, noteValues, type LineValues } from '#lib/deliverynotes/form.js';
 import { createLookups } from '#lib/deliverynotes/lookups.js';
@@ -15,14 +16,21 @@ const garcia = {
 	id: 7,
 	code: 3,
 	name: 'Frutería García',
+	nif: 'B12345674',
+	address: 'Calle Mayor 1',
+	postalCode: '46001',
+	city: 'Valencia',
 	vatType: 'WITH_VAT',
 	surchargeType: 'WITH_SURCHARGE',
 	defaultDeliveryNoteFormat: 'VALUED'
 } as const;
+/** Without NIF nor postal code: no invoice for it. */
 const pepe = {
 	id: 8,
 	code: 4,
 	name: 'Bar Pepe',
+	address: 'Plaza Mayor 2',
+	city: 'Valencia',
 	vatType: 'WITH_VAT',
 	surchargeType: 'WITHOUT_SURCHARGE',
 	defaultDeliveryNoteFormat: 'PLAIN'
@@ -37,6 +45,8 @@ const ana = {
 	defaultDeliveryNoteFormat: 'VALUED'
 } as const;
 const period = { validFrom: '2026-01-01', vatPercentage: 4, surchargePercentage: 0.5 };
+
+const pdf = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
 
 /** The real cache, seeded with the catalog; any other code is a 404. */
 function lookups() {
@@ -68,6 +78,12 @@ function props(overrides: Record<string, unknown> = {}) {
 			.mockResolvedValue(null),
 		goToList: vi.fn<(savedId?: number) => void>(),
 		toast: vi.fn<(message: string) => void>(),
+		hasProfile: true,
+		issueInvoice: vi
+			.fn<(clientId: number, noteId: number) => Promise<{ number: string }>>()
+			.mockResolvedValue({ number: '23' }),
+		fetchPdf: vi.fn<(noteId: number) => Promise<Blob>>().mockResolvedValue(pdf),
+		print: vi.fn<(pdf: Blob) => Promise<void>>().mockResolvedValue(undefined),
 		...overrides
 	};
 }
@@ -152,6 +168,15 @@ const totals = () => page.getByRole('region', { name: 'Totales' });
 const bar = () => page.getByRole('contentinfo');
 const dialog = () => page.getByRole('dialog');
 const dirty = () => page.getByTestId('dirty');
+const printBox = () => page.getByRole('checkbox', { name: /Imprimir albarán/ });
+const issueBox = () => page.getByRole('checkbox', { name: /Emitir factura/ });
+/** Where an element sits in the page, whatever the scroll. */
+const pageTop = (el: Element) => el.getBoundingClientRect().top + window.scrollY;
+/** Each mock was first called after the one before it. */
+function inOrder(...mocks: { mock: { invocationCallOrder: number[] } }[]) {
+	const order = mocks.map((m) => m.mock.invocationCallOrder[0]);
+	expect(order).toEqual([...order].sort((a, b) => a - b));
+}
 
 describe('DeliveryNoteRecord, header', () => {
 	it("finds the client by code and shows its trade name and its note's format", async () => {
@@ -189,6 +214,21 @@ describe('DeliveryNoteRecord, totals', () => {
 		await expect.element(totals().getByText('Recargo (0,5 %)')).toBeVisible();
 		await expect.element(totals().getByText('0,15 €')).toBeVisible();
 		await expect.element(totals().getByText('32,38 €')).toBeVisible();
+	});
+
+	it('sit in the header, above the lines, and stay put as lines are added', async () => {
+		await render(DeliveryNoteHarness, props({ initial: written() }));
+		const box = totals().element();
+		expect(
+			box.compareDocumentPosition(cell(0, 'Código').element()) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		const top = pageTop(box);
+		await cell(1, 'Precio').click();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(cell(2, 'Código')).toHaveFocus();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(2, 'Lote')).toHaveFocus();
+		expect(pageTop(totals().element())).toBe(top);
 	});
 
 	it('says so when no VAT period covers the date', async () => {
@@ -459,5 +499,218 @@ describe('DeliveryNoteRecord, invoice state', () => {
 		await vi.waitFor(() => expect(p.goToList).toHaveBeenCalledExactlyOnceWith());
 		expect(p.remove).toHaveBeenCalledExactlyOnceWith(99);
 		expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 borrado');
+	});
+});
+
+describe('DeliveryNoteRecord, on saving', () => {
+	// The error dialog is closed while its component is still there: one closing after the unmount
+	// would dismiss the next test's error.
+	afterEach(async () => {
+		if (errorState.view === null) return;
+		await userEvent.keyboard('{Enter}');
+		await expect.element(dialog()).not.toBeInTheDocument();
+	});
+
+	it('both boxes start unticked; F9 and F3 tick and untick them like a click', async () => {
+		await render(DeliveryNoteHarness, props({ initial: written() }));
+		await expect.element(page.getByText('Al guardar:')).toBeVisible();
+		await expect.element(printBox()).toHaveAttribute('aria-checked', 'false');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+		await expect.element(bar()).toHaveTextContent('F3 Emitir factura');
+		await expect.element(bar()).toHaveTextContent('F9 Imprimir albarán');
+		await expect.element(cliente()).toHaveFocus();
+
+		await userEvent.keyboard('{F9}');
+		await expect.element(printBox()).toHaveAttribute('aria-checked', 'true');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+		await userEvent.keyboard('{F3}');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'true');
+		await userEvent.keyboard('{F9}');
+		await expect.element(printBox()).toHaveAttribute('aria-checked', 'false');
+
+		await issueBox().click();
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+		await printBox().click();
+		await expect.element(printBox()).toHaveAttribute('aria-checked', 'true');
+		// Out of the Enter walk: the cursor stays where it was.
+		await expect.element(cliente()).toHaveFocus();
+	});
+
+	it('an opened note starts with both unticked', async () => {
+		await render(DeliveryNoteHarness, props(editing()));
+		await expect.element(printBox()).toHaveAttribute('aria-checked', 'false');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'false');
+	});
+
+	it('"Emitir factura" is greyed, with the reason, for a client without NIF nor postal code', async () => {
+		await render(DeliveryNoteHarness, props({ initial: { ...written(), clientCode: 4 } }));
+		await expect
+			.element(page.getByText('Faltan datos del cliente para facturar: NIF y código postal'))
+			.toBeVisible();
+		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'true');
+		await expect.element(bar()).not.toHaveTextContent('Emitir factura');
+		await userEvent.keyboard('{F3}');
+		await issueBox().click({ force: true });
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+		// Printing needs none of it.
+		await expect.element(printBox()).toHaveAttribute('aria-disabled', 'false');
+	});
+
+	it('"Emitir factura" is greyed without the owner\'s data', async () => {
+		await render(DeliveryNoteHarness, props({ initial: written(), hasProfile: false }));
+		await expect.element(page.getByText('Faltan los datos del titular (Ajustes)')).toBeVisible();
+		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'true');
+		await userEvent.keyboard('{F3}');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+	});
+
+	it('"Emitir factura" is greyed for a note already in an invoice', async () => {
+		await render(
+			DeliveryNoteHarness,
+			props(editing({ ...saved, invoiceId: 3, invoiceStatus: 'DRAFT' }))
+		);
+		await expect.element(page.getByText('Ya está en una factura')).toBeVisible();
+		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'true');
+		await userEvent.keyboard('{F3}');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+	});
+
+	it('"Emitir factura" is greyed, with nothing to say, until there is a client', async () => {
+		await render(DeliveryNoteHarness, props());
+		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'true');
+		await expect.element(page.getByText(/^Falta/)).not.toBeInTheDocument();
+	});
+
+	it('a read-only note: both greyed, and neither the keys nor a click tick them', async () => {
+		await render(DeliveryNoteHarness, props(editing(issued())));
+		await expect.element(printBox()).toHaveAttribute('aria-disabled', 'true');
+		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'true');
+		await expect.element(bar()).not.toHaveTextContent(/Imprimir|Emitir/);
+		await userEvent.keyboard('{F9}{F3}');
+		await printBox().click({ force: true });
+		await issueBox().click({ force: true });
+		await expect.element(printBox()).toHaveAttribute('aria-checked', 'false');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+	});
+
+	it('with both ticked: saves, issues, prints, in that order; the next note starts unticked', async () => {
+		const p = props({ initial: written() });
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F9}{F3}{NumpadAdd}');
+
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado · Factura 23 emitida')
+		);
+		expect(p.issueInvoice).toHaveBeenCalledExactlyOnceWith(7, 99);
+		expect(p.fetchPdf).toHaveBeenCalledExactlyOnceWith(99);
+		expect(p.print).toHaveBeenCalledExactlyOnceWith(pdf);
+		inOrder(p.create, p.issueInvoice, p.fetchPdf, p.print, p.toast);
+
+		// The next note of the chain, for a client that can be invoiced: still unticked.
+		await expect.element(cliente()).toHaveValue('');
+		await expect.element(cliente()).toHaveFocus();
+		await userEvent.keyboard('3{Enter}');
+		await expect.element(fecha()).toHaveFocus();
+		await expect.element(issueBox()).toHaveAttribute('aria-disabled', 'false');
+		await expect.element(issueBox()).toHaveAttribute('aria-checked', 'false');
+		await expect.element(printBox()).toHaveAttribute('aria-checked', 'false');
+		expect(p.goToList).not.toHaveBeenCalled();
+	});
+
+	it('unticked, saving neither issues nor prints', async () => {
+		const p = props({ initial: written() });
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{NumpadAdd}');
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado')
+		);
+		expect(p.issueInvoice).not.toHaveBeenCalled();
+		expect(p.fetchPdf).not.toHaveBeenCalled();
+		expect(p.print).not.toHaveBeenCalled();
+	});
+
+	it('an edit that prints: prints, then back to the list', async () => {
+		const p = props(editing());
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F9}{NumpadAdd}');
+		await vi.waitFor(() => expect(p.goToList).toHaveBeenCalledExactlyOnceWith(99));
+		expect(p.fetchPdf).toHaveBeenCalledExactlyOnceWith(99);
+		inOrder(p.update, p.fetchPdf, p.print, p.toast, p.goToList);
+		expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado');
+		expect(p.issueInvoice).not.toHaveBeenCalled();
+	});
+
+	it('the invoice refused: the dialog says the note was saved and why, and the chain goes on', async () => {
+		const p = props({ initial: written() });
+		p.issueInvoice.mockRejectedValue(
+			new ApiError(400, 'CLIENT_FISCAL_DATA_MISSING', 'missing', {})
+		);
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F3}{F9}{NumpadAdd}');
+
+		await expect
+			.element(
+				dialog().getByText(
+					/^El albarán se ha guardado, pero no se ha podido emitir la factura: Al cliente le faltan datos para emitir la factura/
+				)
+			)
+			.toBeVisible();
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado')
+		);
+		// Printing goes on: the note is saved.
+		expect(p.print).toHaveBeenCalledOnce();
+		await expect.element(cliente()).toHaveValue('');
+		await userEvent.keyboard('{Enter}');
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(cliente()).toHaveFocus();
+	});
+
+	it('the PDF not coming: the dialog says it could not print', async () => {
+		const p = props({ initial: written() });
+		p.fetchPdf.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'boom', {}));
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F9}{NumpadAdd}');
+		await expect.element(dialog()).toHaveTextContent('No se ha podido imprimir el albarán');
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado')
+		);
+		expect(p.print).not.toHaveBeenCalled();
+	});
+
+	it('issuing and printing both failing: one dialog says both', async () => {
+		const p = props({ initial: written() });
+		p.issueInvoice.mockRejectedValue(new ApiError(400, 'CLIENT_FISCAL_DATA_MISSING', 'x', {}));
+		p.fetchPdf.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'boom', {}));
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F3}{F9}{NumpadAdd}');
+
+		await expect
+			.element(dialog().getByText(/^El albarán se ha guardado, pero no se ha podido emitir/))
+			.toBeVisible();
+		await expect.element(dialog().getByText('No se ha podido imprimir el albarán.')).toBeVisible();
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado')
+		);
+		// One Enter and it is gone: no second dialog behind it.
+		await userEvent.keyboard('{Enter}');
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(cliente()).toHaveFocus();
+	});
+
+	it('an unexpected error issuing still says the note was saved', async () => {
+		const p = props({ initial: written() });
+		p.issueInvoice.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'boom', {}));
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F3}{NumpadAdd}');
+		await expect
+			.element(
+				dialog().getByText(
+					/^El albarán se ha guardado, pero no se ha podido emitir la factura: Ha ocurrido un error inesperado/
+				)
+			)
+			.toBeVisible();
+		await expect.element(dialog().getByText('Detalles técnicos')).toBeVisible();
 	});
 });

@@ -5,6 +5,7 @@
 	import type { components } from '../api/schema';
 	import { toast } from '../components/toast.svelte';
 	import UnsavedGuard from '../components/UnsavedGuard.svelte';
+	import { printPdf } from '../print';
 	import { recallList, rememberList } from '../records/list-memory';
 	import { deliveryNoteDeletion } from './deletion';
 	import DeliveryNoteRecord from './DeliveryNoteRecord.svelte';
@@ -17,13 +18,16 @@
 		initial,
 		saved,
 		periods,
-		lookups
+		lookups,
+		hasProfile
 	}: {
 		id: number | null;
 		initial: NoteValues;
 		saved?: components['schemas']['DeliveryNoteResponse'];
 		periods: components['schemas']['TaxConfigResponse'][];
 		lookups: Lookups;
+		/** Whether the owner's data is filled in, for issuing an invoice */
+		hasProfile: boolean;
 	} = $props();
 
 	async function proposePrice(clientId: number, articleId: number): Promise<number | null> {
@@ -32,6 +36,19 @@
 		);
 		return lastPrice(notes.content ?? [], articleId);
 	}
+
+	async function issueInvoice(clientId: number, noteId: number): Promise<{ number: string }> {
+		const invoice = await request(
+			api.POST('/api/invoices/issue', { body: { clientId, deliveryNoteIds: [noteId] } })
+		);
+		// An issued invoice always has its number.
+		return { number: invoice.number! };
+	}
+
+	const fetchPdf = (noteId: number): Promise<Blob> =>
+		request(
+			api.GET('/api/delivery-notes/{id}/pdf', { params: { path: { id: noteId } }, parseAs: 'blob' })
+		);
 
 	async function goToList(savedId?: number): Promise<void> {
 		const memory = recallList('delivery-notes');
@@ -56,6 +73,10 @@
 	{proposePrice}
 	{goToList}
 	{toast}
+	{hasProfile}
+	{issueInvoice}
+	{fetchPdf}
+	print={printPdf}
 >
 	{#snippet guard(form)}
 		<UnsavedGuard

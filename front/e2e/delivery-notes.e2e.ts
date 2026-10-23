@@ -30,7 +30,12 @@ async function ensure(
 	return (await created.json()) as Saved;
 }
 
-async function ensureClient(request: APIRequestContext, code: number, name: string) {
+async function ensureClient(
+	request: APIRequestContext,
+	code: number,
+	name: string,
+	extra: Record<string, string> = {}
+) {
 	// 409: the tax config already exists
 	await request.post('/api/tax-config', {
 		data: { validFrom: '2026-01-01', vatPercentage: 4, surchargePercentage: 0.5 }
@@ -41,7 +46,28 @@ async function ensureClient(request: APIRequestContext, code: number, name: stri
 		businessName: `${name} SL`,
 		vatType: 'WITH_VAT',
 		surchargeType: 'WITH_SURCHARGE',
-		defaultDeliveryNoteFormat: 'VALUED'
+		defaultDeliveryNoteFormat: 'VALUED',
+		...extra
+	});
+}
+
+/** A client whose notes can be invoiced: issuing needs the owner and the client's fiscal data. */
+async function invoiceableClient(request: APIRequestContext, code: number, name: string) {
+	// 409: another test created the owner already
+	await request.post('/api/user-profile', {
+		data: {
+			fullName: 'María López',
+			fiscalName: 'Frutas López S.L.',
+			nif: 'B87654321',
+			address: 'Mercavalencia, nave 3',
+			email: 'facturas@ejemplo.es'
+		}
+	});
+	return ensureClient(request, code, name, {
+		nif: 'B12345674',
+		address: 'Calle Mayor 1',
+		postalCode: '46001',
+		city: 'Valencia'
 	});
 }
 
@@ -200,30 +226,9 @@ test('a missing note shows the not-found page', async ({ page }) => {
 	await expect(page.getByText('No se ha encontrado')).toBeVisible();
 });
 
-/** An issued invoice with one note of a fresh client: issuing needs the owner and the client's fiscal data. */
+/** An issued invoice with one note of a fresh client. */
 async function issuedNote(request: APIRequestContext, clientCode: number, name: string) {
-	// 409: another test created the owner already
-	await request.post('/api/user-profile', {
-		data: {
-			fullName: 'María López',
-			fiscalName: 'Frutas López S.L.',
-			nif: 'B87654321',
-			address: 'Mercavalencia, nave 3',
-			email: 'facturas@ejemplo.es'
-		}
-	});
-	const client = await ensure(request, '/api/clients', {
-		code: clientCode,
-		name,
-		businessName: `${name} SL`,
-		nif: 'B12345674',
-		address: 'Calle Mayor 1',
-		postalCode: '46001',
-		city: 'Valencia',
-		vatType: 'WITH_VAT',
-		surchargeType: 'WITH_SURCHARGE',
-		defaultDeliveryNoteFormat: 'VALUED'
-	});
+	const client = await invoiceableClient(request, clientCode, name);
 	const article = await ensureArticle(request, clientCode + 20, `${name} artículo`);
 	const note = await createNote(request, client.id, `${today()}T09:00:00`, {
 		articleId: article.id,
@@ -295,4 +300,168 @@ test('an issued note opens read-only', async ({ page, request }) => {
 	await expect(page.getByRole('row', { name: new RegExp(`^${note.code} `) })).toBeVisible();
 	expect(writes).toEqual([]);
 	expect(await getNote(request, note.id)).toEqual(before);
+});
+
+/** In a new note, by keyboard: the client, today, and one line of the article, 2 × 3,00. */
+async function typeNote(page: Page, clientCode: number, articleCode: number) {
+	await expect(page.getByLabel('Cliente', { exact: true })).toBeFocused();
+	await page.keyboard.type(String(clientCode));
+	await page.keyboard.press('Enter');
+	await expect(page.getByLabel('Fecha', { exact: true })).toBeFocused();
+	await page.keyboard.press('Enter');
+	await expect(cell(page, 0, 'Código')).toBeFocused();
+	await page.keyboard.type(String(articleCode));
+	await page.keyboard.press('Enter');
+	await expect(cell(page, 0, 'Lote')).toBeFocused();
+	await page.keyboard.type('01221026');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('2');
+	await page.keyboard.press('Enter');
+	await expect(cell(page, 0, 'Precio')).toBeFocused();
+	await page.keyboard.type('3');
+}
+
+const checkbox = (page: Page, name: RegExp) => page.getByRole('checkbox', { name });
+
+test('issuing on save leaves the note invoiced', async ({ page, request }) => {
+	await invoiceableClient(request, 9411, 'Frutas Factura e2e');
+	await ensureArticle(request, 9412, 'Melón factura e2e');
+
+	await page.goto('/delivery-notes');
+	await ready(page, 'Nuevo');
+	await page.keyboard.press('F2');
+	await expect(page.getByRole('heading', { name: 'Albarán nuevo' })).toBeVisible();
+	await ready(page, 'Guardar');
+	await typeNote(page, 9411, 9412);
+	const issue = checkbox(page, /Emitir factura/);
+	await expect(issue).toHaveAttribute('aria-disabled', 'false');
+	await page.keyboard.press('F3');
+	await expect(issue).toHaveAttribute('aria-checked', 'true');
+	await page.keyboard.press('NumpadAdd');
+
+	const toast = page.getByText(/^Albarán \d+ guardado · Factura \S+ emitida$/);
+	await expect(toast).toBeVisible();
+	const [, code, number] = /^Albarán (\d+) guardado · Factura (\S+) emitida$/.exec(
+		(await toast.textContent()) ?? ''
+	)!;
+	// The next note of the chain.
+	await expect(page.getByLabel('Cliente', { exact: true })).toBeFocused();
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL(/\/delivery-notes$/);
+	await expect(page.getByRole('row', { name: new RegExp(`^${code} `) })).toContainText(
+		`Facturado nº ${number}`
+	);
+});
+
+// Needs the PDF viewer of the full Chromium (playwright.config.ts): without one, the PDF never loads.
+test('printing on save calls print', async ({ page, request }) => {
+	await ensureClient(request, 9413, 'Bar Impresión e2e');
+	await ensureArticle(request, 9414, 'Pera impresión e2e');
+	// In every frame, the PDF's too: print() counts in the page instead of opening the dialog.
+	await page.addInitScript(() => {
+		window.print = () => {
+			const top = window.top as Window & { printed?: number };
+			top.printed = (top.printed ?? 0) + 1;
+		};
+	});
+	const printed = () => page.evaluate(() => (window as Window & { printed?: number }).printed ?? 0);
+
+	await page.goto('/delivery-notes/new');
+	await ready(page, 'Guardar');
+	await typeNote(page, 9413, 9414);
+	const print = checkbox(page, /Imprimir albarán/);
+	await page.keyboard.press('F9');
+	await expect(print).toHaveAttribute('aria-checked', 'true');
+	const pdf = page.waitForResponse((r) => /\/api\/delivery-notes\/\d+\/pdf$/.test(r.url()));
+	await page.keyboard.press('NumpadAdd');
+
+	expect((await pdf).ok()).toBe(true);
+	await expect.poll(printed).toBe(1);
+	await expect(page.getByText(/^Albarán \d+ guardado$/)).toBeVisible();
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+	// The next note of the chain, with the cursor and unticked.
+	await expect(page.getByLabel('Cliente', { exact: true })).toBeFocused();
+	await expect(print).toHaveAttribute('aria-checked', 'false');
+	// The frame it printed from is gone.
+	await expect(page.locator('iframe')).toHaveCount(0);
+});
+
+test('the reason under "Emitir factura" has its line kept: the lines do not move', async ({
+	page,
+	request
+}) => {
+	await invoiceableClient(request, 9417, 'Frutas Con Datos e2e');
+	// The same regime and format, so only the reason changes.
+	await ensureClient(request, 9418, 'Bar Sin Datos e2e');
+
+	await page.goto('/delivery-notes/new');
+	await ready(page, 'Guardar');
+	const cliente = page.getByLabel('Cliente', { exact: true });
+	const issue = checkbox(page, /Emitir factura/);
+	const lineTop = async () => (await cell(page, 0, 'Código').boundingBox())!.y;
+	await page.keyboard.type('9417');
+	await page.keyboard.press('Enter');
+	await expect(issue).toHaveAttribute('aria-disabled', 'false');
+	const top = await lineTop();
+
+	await cliente.click();
+	await page.keyboard.type('9418');
+	await page.keyboard.press('Enter');
+	await expect(page.getByText(/^Faltan datos del cliente para facturar/)).toBeVisible();
+	await expect(issue).toHaveAttribute('aria-disabled', 'true');
+	expect(await lineTop()).toBe(top);
+});
+
+test('a long note scrolls its lines, never the page: the totals stay in sight', async ({
+	page,
+	request
+}) => {
+	const client = await ensureClient(request, 9415, 'Frutería Larga e2e');
+	const article = await ensureArticle(request, 9416, 'Patata larga e2e');
+	const lines = Array.from({ length: 20 }, (_, i) => ({
+		articleId: article.id,
+		traceabilityCode1: '01221026',
+		quantity: i + 1,
+		price: 1
+	}));
+	const created = await request.post('/api/delivery-notes', {
+		data: { date: `${today()}T10:00:00`, clientId: client.id, lines }
+	});
+	expect(created.ok()).toBe(true);
+	const note = (await created.json()) as Note;
+
+	await page.setViewportSize({ width: 1920, height: 1080 });
+	await page.goto(`/delivery-notes/${note.id}`);
+	await ready(page, 'Guardar');
+	const totals = page.getByRole('region', { name: 'Totales' });
+	const pageScrolls = () =>
+		page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight);
+	/** Inside the window, below the column titles and above the key bar. */
+	async function inSight(field: ReturnType<typeof cell>) {
+		await expect(field).toBeInViewport({ ratio: 1 });
+		const box = (await field.boundingBox())!;
+		const titles = (await page.getByRole('columnheader', { name: 'Código' }).boundingBox())!;
+		const bar = (await page.locator('footer').boundingBox())!;
+		expect(box.y).toBeGreaterThanOrEqual(titles.y + titles.height - 1);
+		expect(box.y + box.height).toBeLessThanOrEqual(bar.y);
+	}
+
+	// Enter past the last price: a new line, in sight, and the header where it was.
+	await cell(page, 19, 'Precio').click();
+	await page.keyboard.press('Enter');
+	await expect(cell(page, 20, 'Código')).toBeFocused();
+	await inSight(cell(page, 20, 'Código'));
+	await expect(totals).toBeInViewport({ ratio: 1 });
+	expect(await pageScrolls()).toBe(false);
+
+	// ↑ all the way up: the first line comes out below the column titles.
+	for (let i = 0; i < 20; i++) await page.keyboard.press('ArrowUp');
+	await expect(cell(page, 0, 'Código')).toBeFocused();
+	await inSight(cell(page, 0, 'Código'));
+	// ↓ back down to the last one.
+	for (let i = 0; i < 20; i++) await page.keyboard.press('ArrowDown');
+	await expect(cell(page, 20, 'Código')).toBeFocused();
+	await inSight(cell(page, 20, 'Código'));
+	await expect(totals).toBeInViewport({ ratio: 1 });
+	expect(await pageScrolls()).toBe(false);
 });

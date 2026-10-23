@@ -535,6 +535,21 @@ describe('RecordScreen afterSave', () => {
 		dismissError();
 	});
 
+	it('with its dialog open, the next record gets the cursor once the dialog is closed', async () => {
+		const o = options();
+		const afterSave = vi.fn(async () => {
+			throw new ApiError(409, 'ARTICLE_DUPLICATE_CODE', '', {});
+		});
+		await render(RecordHarness, { ...o, afterSave });
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect.element(code()).toHaveValue('102');
+		// The dialog keeps it: the cursor would land behind it.
+		await expect.element(name()).toHaveFocus();
+		dismissError();
+		await expect.element(code()).toHaveFocus();
+	});
+
 	it('is not called when the save is refused', async () => {
 		const o = options();
 		o.create.mockRejectedValue(new ApiError(409, 'ARTICLE_DUPLICATE_CODE', '', {}));

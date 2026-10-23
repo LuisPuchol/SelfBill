@@ -6,10 +6,12 @@ import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ params }) => {
 	const id = Number(params.id);
-	const [saved, periods] = await loaded(
+	const [saved, periods, profile] = await loaded(
 		Promise.all([
 			request(api.GET('/api/delivery-notes/{id}', { params: { path: { id } } })),
-			request(api.GET('/api/tax-config/history'))
+			request(api.GET('/api/tax-config/history')),
+			// Issuing an invoice needs the owner's data: none yet is a 404.
+			orNull(request(api.GET('/api/user-profile')))
 		])
 	);
 	// The note has ids and the form codes: its client and articles, by id. One deleted since is
@@ -33,5 +35,5 @@ export const load: PageLoad = async ({ params }) => {
 		client: client?.code ?? null,
 		article: (articleId) => found.find((article) => article.id === articleId)?.code ?? null
 	});
-	return { id, saved, periods, lookups, initial };
+	return { id, saved, periods, hasProfile: profile !== null, lookups, initial };
 };

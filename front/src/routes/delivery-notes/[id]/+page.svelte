@@ -13,5 +13,6 @@
 		saved={data.saved}
 		periods={data.periods}
 		lookups={data.lookups}
+		hasProfile={data.hasProfile}
 	/>
 {/key}
