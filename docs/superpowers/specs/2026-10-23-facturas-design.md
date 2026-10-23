@@ -112,8 +112,8 @@ Facturar hasta [23/10/2026]
 
 **"+ Facturar todos"** (activo con la lista cargada y alguna fila facturable):
 
-1. Diálogo "¿Emitir 27 facturas?": "Con fecha de hoy, 23/10/2026." y, si las hay, "No se facturan
-   2 clientes a los que les faltan datos." Teclas: "+ Emitir", "Enter No emitir" (y Esc).
+1. Diálogo "¿Emitir 27 facturas?": "Con fecha de hoy, 23/10/2026." y, si las hay, "Se dejan sin
+   facturar 2 filas con aviso." ("Se deja sin facturar 1 fila con aviso."). Teclas: "+ Emitir", "Enter No emitir" (y Esc).
 2. Emite una por una, en el orden de la lista, con un diálogo "Emitiendo facturas… 12 de 27" sin
    teclas.
 3. Al terminar recarga la lista (las facturadas desaparecen) y:
@@ -161,7 +161,7 @@ Desde [23/09/2026]  Hasta [23/10/2026]
   enviada por correo". Mal: diálogo con el texto de la API (cliente sin email, correo sin
   configurar, fallo al enviar).
 - **F8 Borrar**: el diálogo de borrar de siempre: "¿Borrar la factura 3847?", el cliente y "Sus
-  albaranes vuelven a quedar pendientes. El número 3847 no se vuelve a usar." Bien: aviso "Factura
+  albaranes vuelven a quedar pendientes de facturar. Su número no se vuelve a usar." Bien: aviso "Factura
   3847 borrada" y recarga.
 - Sin facturas: "No hay facturas entre el 23/09/2026 y el 23/10/2026."
 
