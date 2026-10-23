@@ -22,6 +22,11 @@ function joinNames(names: string[]): string {
 	return `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`;
 }
 
+/** The Spanish names of the missing fiscal fields from their API keys, in print order: "NIF y código postal" */
+export function missingDataText(keys: readonly string[]): string {
+	return joinNames(CLIENT_FIELDS.filter(([key]) => keys.includes(key)).map(([, name]) => name));
+}
+
 /** Whether "Emitir factura" can be ticked, and when it cannot, why (null: nothing to say). */
 export function invoiceBlocker({ client, hasProfile, inInvoice }: InvoiceBlockerInput): {
 	enabled: boolean;
@@ -29,11 +34,11 @@ export function invoiceBlocker({ client, hasProfile, inInvoice }: InvoiceBlocker
 } {
 	if (!client) return { enabled: false, reason: null };
 	if (inInvoice) return { enabled: false, reason: 'Ya está en una factura' };
-	const missing = CLIENT_FIELDS.filter(([key]) => !client[key]?.trim()).map(([, name]) => name);
+	const missing = CLIENT_FIELDS.filter(([key]) => !client[key]?.trim()).map(([key]) => key);
 	if (missing.length > 0) {
 		return {
 			enabled: false,
-			reason: `Faltan datos del cliente para facturar: ${joinNames(missing)}`
+			reason: `Faltan datos del cliente para facturar: ${missingDataText(missing)}`
 		};
 	}
 	if (!hasProfile) return { enabled: false, reason: 'Faltan los datos del titular (Ajustes)' };

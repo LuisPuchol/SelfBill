@@ -11,6 +11,29 @@ const rows = [
 ];
 
 describe('DataTable', () => {
+	it('without onOpen, Enter does nothing', async () => {
+		render(TableHarness, {});
+		await userEvent.keyboard('{Enter}');
+		await expect.element(page.getByRole('button', { name: 'Abrir' })).not.toBeInTheDocument();
+		await page.getByText('Hotel Sol').dblClick();
+		await expect.element(page.getByTestId('selected')).toHaveTextContent('2');
+	});
+
+	it('scroll mode keeps the titles in a scroll box', async () => {
+		render(TableHarness, { onOpen: vi.fn(), scroll: true });
+		const box = page.getByRole('table').element().parentElement as HTMLElement;
+		expect(box.style.maxHeight).not.toBe('');
+		expect(getComputedStyle(box).overflowY).toBe('auto');
+		const th = page.getByRole('columnheader').first().element();
+		expect(getComputedStyle(th).position).toBe('sticky');
+	});
+
+	it('arrows still move in scroll mode', async () => {
+		const onOpen = vi.fn();
+		render(TableHarness, { onOpen, scroll: true });
+		await userEvent.keyboard('{ArrowDown}{Enter}');
+		expect(onOpen).toHaveBeenCalledExactlyOnceWith(rows[1]);
+	});
 	it('renders the rows', async () => {
 		render(TableHarness, { onOpen: vi.fn() });
 		await expect.element(page.getByText('Bar Pepe')).toBeVisible();

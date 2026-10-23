@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { invoiceBlocker } from './invoice-blocker';
+import { invoiceBlocker, missingDataText } from './invoice-blocker';
 
 const full = { nif: 'B1', address: 'Calle 1', postalCode: '46001', city: 'Valencia' };
 const ok = { client: full, hasProfile: true, inInvoice: false };
@@ -33,5 +33,15 @@ describe('invoiceBlocker', () => {
 		expect(invoiceBlocker({ ...bad, inInvoice: false }).reason).toMatch(
 			/^Faltan datos del cliente/
 		);
+	});
+});
+
+describe('missingDataText', () => {
+	it('names the fields in order, whatever the input order', () => {
+		expect(missingDataText(['postalCode', 'nif'])).toBe('NIF y código postal');
+		expect(missingDataText(['nif', 'address', 'city'])).toBe('NIF, dirección y población');
+		expect(missingDataText(['city'])).toBe('población');
+		expect(missingDataText([])).toBe('');
+		expect(missingDataText(['other', 'city'])).toBe('población');
 	});
 });

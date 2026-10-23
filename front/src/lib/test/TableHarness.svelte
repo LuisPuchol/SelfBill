@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '../../routes/layout.css';
 	import KeyboardRoot from '../keyboard/KeyboardRoot.svelte';
 	import KeyBar from '../components/KeyBar.svelte';
 	import DataTable from '../components/DataTable.svelte';
@@ -21,7 +22,11 @@
 		{ label: 'Importe', value: (r) => formatMoney(r.amount), align: 'right' }
 	];
 
-	let { rows = all, onOpen }: { rows?: Row[]; onOpen: (row: Row) => void } = $props();
+	let {
+		rows = all,
+		onOpen,
+		scroll
+	}: { rows?: Row[]; onOpen?: (row: Row) => void; scroll?: boolean } = $props();
 
 	// svelte-ignore state_referenced_locally
 	let data = $state(rows);
@@ -33,5 +38,5 @@
 <button onclick={() => (data = [...data].reverse())}>Cambiar filas</button>
 <button>Otro</button>
 <p data-testid="selected">{selected}</p>
-<DataTable {columns} rows={data} {onOpen} bind:selected />
+<DataTable {columns} rows={data} {onOpen} {scroll} bind:selected />
 <KeyBar />

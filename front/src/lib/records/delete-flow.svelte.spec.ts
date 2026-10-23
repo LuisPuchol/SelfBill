@@ -118,3 +118,20 @@ describe('DeleteFlow', () => {
 		expect(remove).not.toHaveBeenCalled();
 	});
 });
+
+describe('DeleteFlow, feminine entity', () => {
+	it('uses the feminine article and participle, with a text code', async () => {
+		const toast = vi.fn();
+		const flow = new DeleteFlow({
+			entity: { one: 'factura', Label: 'Factura', feminine: true },
+			remove: async () => {},
+			pendingForDelete: async () => null,
+			toast,
+			onDeleted: vi.fn()
+		});
+		await flow.ask({ id: 1, code: 'S-12', name: 'Frutas Paco' });
+		expect(flow.dialog?.title).toBe('¿Borrar la factura S-12?');
+		await flow.confirm();
+		expect(toast).toHaveBeenCalledWith('Factura S-12 borrada');
+	});
+});

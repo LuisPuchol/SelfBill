@@ -2,13 +2,14 @@ import { showError } from '../components/errors.svelte';
 
 export interface DeleteTarget {
 	id: number;
-	code: number | null;
+	code: number | string | null;
 	name: string;
 }
 
 /** What an entity knows about deleting its records; shared by its record and its list. */
 export interface DeleteOptions {
-	entity: { one: string; Label: string };
+	/** `feminine`: "la factura", "Factura 3 borrada" */
+	entity: { one: string; Label: string; feminine?: boolean };
 	remove(id: number): Promise<void>;
 	/** The body of the question, or null when nothing depends on the record */
 	pendingForDelete(id: number): Promise<string | null>;
@@ -43,7 +44,7 @@ export class DeleteFlow {
 			const body = await this.#options.pendingForDelete(target.id);
 			this.#target = target;
 			this.dialog = {
-				title: `¿Borrar el ${this.#options.entity.one} ${target.code}?`,
+				title: `¿Borrar ${this.#options.entity.feminine ? 'la' : 'el'} ${this.#options.entity.one} ${target.code}?`,
 				name: target.name,
 				body
 			};
@@ -69,7 +70,9 @@ export class DeleteFlow {
 			this.#busy = false;
 		}
 		this.dialog = null;
-		this.#options.toast(`${this.#options.entity.Label} ${target.code} borrado`);
+		this.#options.toast(
+			`${this.#options.entity.Label} ${target.code} ${this.#options.entity.feminine ? 'borrada' : 'borrado'}`
+		);
 		await this.#options.onDeleted(target);
 	}
 

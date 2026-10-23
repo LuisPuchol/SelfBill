@@ -4,6 +4,7 @@
 	import { createSubscriber } from 'svelte/reactivity';
 	import { isEditable } from '../keyboard/keys';
 	import { useKeys } from '../keyboard/keymap.svelte';
+	import { fillViewport } from './fill-viewport';
 	import type { Column } from './table';
 
 	let {
@@ -12,15 +13,19 @@
 		onOpen,
 		selected = $bindable(0),
 		emptyText = 'No hay nada que mostrar.',
-		openLabel = 'Abrir'
+		openLabel = 'Abrir',
+		scroll = false
 	}: {
 		columns: Column<T>[];
 		rows: T[];
-		onOpen: (row: T) => void;
+		/** Absent: the table only selects, with no Enter action and no double click */
+		onOpen?: (row: T) => void;
 		selected?: number;
 		emptyText?: string;
 		/** The label of the Enter action */
 		openLabel?: string;
+		/** Fill the window below the table's top and scroll inside, the titles staying on top */
+		scroll?: boolean;
 	} = $props();
 
 	let body: HTMLElement | undefined = $state();
@@ -71,55 +76,73 @@
 	useKeys(() => [
 		{ key: 'ArrowUp', label: 'Anterior', hidden: true, when: canMove, run: () => move(-1) },
 		{ key: 'ArrowDown', label: 'Siguiente', hidden: true, when: canMove, run: () => move(1) },
-		{
-			key: 'Enter',
-			label: openLabel,
-			when: canMove,
-			run: () => {
-				const row = rows[selected];
-				if (row !== undefined) onOpen(row);
-			}
-		}
+		...(onOpen
+			? [
+					{
+						key: 'Enter',
+						label: openLabel,
+						when: canMove,
+						run: () => {
+							const row = rows[selected];
+							if (row !== undefined) onOpen(row);
+						}
+					}
+				]
+			: [])
 	]);
+
+	// Under the scroll box's top edge the row border would scroll away, so a shadow draws the line.
+	const stuck = 'sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--color-line)]';
 </script>
 
 {#if rows.length === 0}
 	<p class="p-6 text-muted">{emptyText}</p>
 {:else}
-	<table class="w-full border-collapse bg-surface text-ink">
-		<thead>
-			<tr class="border-b border-line text-muted">
-				{#each columns as column (column.label)}
-					<th
-						scope="col"
-						class="px-3 py-2 font-medium {column.align === 'right' ? 'text-right' : 'text-left'}"
-					>
-						{column.label}
-					</th>
-				{/each}
-			</tr>
-		</thead>
-		<tbody bind:this={body}>
-			{#each rows as row, i (i)}
-				<tr
-					aria-selected={i === selected}
-					class="cursor-default border-b border-line {i === selected ? 'bg-field-active' : ''}"
-					onclick={(e) => {
-						if (e.detail < 2 || e.currentTarget === pressedRow) selected = i;
-					}}
-					ondblclick={(e) => {
-						if (e.currentTarget !== pressedRow) return;
-						selected = i;
-						onOpen(row);
-					}}
-				>
+	{#snippet table()}
+		<table class="w-full border-collapse bg-surface text-ink">
+			<thead>
+				<tr class="border-b border-line text-muted">
 					{#each columns as column (column.label)}
-						<td class="px-3 py-2 {column.align === 'right' ? 'tabular text-right' : 'text-left'}">
-							{column.value(row)}
-						</td>
+						<th
+							scope="col"
+							class="px-3 py-2 font-medium {column.align === 'right'
+								? 'text-right'
+								: 'text-left'} {scroll ? stuck : ''}"
+						>
+							{column.label}
+						</th>
 					{/each}
 				</tr>
-			{/each}
-		</tbody>
-	</table>
+			</thead>
+			<tbody bind:this={body}>
+				{#each rows as row, i (i)}
+					<tr
+						aria-selected={i === selected}
+						class="cursor-default border-b border-line {i === selected ? 'bg-field-active' : ''}"
+						onclick={(e) => {
+							if (e.detail < 2 || e.currentTarget === pressedRow) selected = i;
+						}}
+						ondblclick={(e) => {
+							if (!onOpen || e.currentTarget !== pressedRow) return;
+							selected = i;
+							onOpen(row);
+						}}
+					>
+						{#each columns as column (column.label)}
+							<td class="px-3 py-2 {column.align === 'right' ? 'tabular text-right' : 'text-left'}">
+								{column.value(row)}
+							</td>
+						{/each}
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	{/snippet}
+	{#if scroll}
+		<div class="overflow-y-auto" use:fillViewport>
+			{@render table()}
+		</div>
+	{:else}
+		{@render table()}
+	{/if}
 {/if}
