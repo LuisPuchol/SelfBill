@@ -12,6 +12,7 @@ Especificación de la base: [../docs/superpowers/specs/2026-10-13-front-base-des
 - `npm run api:types`: regenera `src/lib/api/schema.d.ts` desde la API (también necesita la API en el 8080).
 - `npm test`: tests unitarios y de componentes.
 - `npm run test:e2e`: construye el jar y lanza Playwright contra él en el puerto 18080 con una BD temporal.
+  Corre en el Chromium completo (`channel: 'chromium'` en `playwright.config.ts`): en una máquina nueva hace falta `npx playwright install chromium`.
 - `npm run package`: build del front + jar; es el entregable.
 - `npm run check` / `npm run lint`: tipos y estilo.
 
@@ -37,3 +38,5 @@ Especificación de la base: [../docs/superpowers/specs/2026-10-13-front-base-des
 - `ListScreen.extraActions` añade una tecla y su botón a la lista; `deletion.canDelete` deja fuera de borrar las filas que no deben.
 - `RecordScreen`: `readOnly` quita guardar y borrar, `canDelete` condiciona el borrado y `onLast` dice adónde va el cursor tras el último campo.
 - `RecordForm`: `firstField` (si no es `code`), `mapFieldPath` (campo de pantalla de un error de la API) y `comparable` (qué cuenta como cambio sin guardar).
+- `RecordForm`: la opción `afterSave` corre tras guardar, antes del aviso y del encadenado; su texto se añade al aviso.
+- `CheckAction`: casilla con su tecla, construida desde un `KeyAction` como `ActionButton`; nunca toma el foco.

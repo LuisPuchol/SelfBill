@@ -112,7 +112,10 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
   tres clics rápidos en "Página siguiente" pasan una sola página. AvPág no tiene ese límite.
 
 ### Pendiente del bloque de albaranes
-- Imprimir y enviar un albarán (bloque del PDF).
+- Imprimir albarán ya funciona desde el editor, pero el contenido del PDF sigue siendo provisional; falta enviarlo por correo.
+- Imprimir sin diálogo: arrancar Edge con `--kiosk-printing` en el acceso directo de la app.
+- En pantallas pequeñas (1366×768 o menos) la rejilla del albarán deja ver pocas líneas: la cabecera con totales y casillas ocupa mucho.
+- Los avisos (toasts) pueden quedar debajo de los títulos fijos de la rejilla; y al bajar a una línea de abajo, su línea de error puede quedar cortada (falta margen inferior al desplazar).
 - Teclear el número del albarán.
 - Duplicar un albarán.
 - Si el cliente original de un albarán se borró, la vista previa de los tipos recalcula IVA y recargo al cambiar de cliente, pero la API compara con el régimen guardado en el albarán (que la respuesta no trae): la vista previa puede no coincidir.
