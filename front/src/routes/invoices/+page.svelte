@@ -1,5 +1,5 @@
 <script lang="ts">
-	import SectionPlaceholder from '#lib/components/SectionPlaceholder.svelte';
+	import InvoicesMenu from '#lib/invoices/InvoicesMenu.svelte';
 </script>
 
-<SectionPlaceholder href="/invoices" />
+<InvoicesMenu />
