@@ -5,14 +5,12 @@ type Invoice = components['schemas']['InvoiceResponse'];
 /** How many invoices the ledger loads in one go; beyond it the dates must be narrowed. */
 export const LEDGER_LIMIT = 2000;
 
-/** The ledger's period on entry: from a month before today, up to today. */
+/** The ledger's period on entry: today minus 30 days, up to today. */
 export function defaultRange(today: string): { from: string; to: string } {
 	const [year, month, day] = today.split('-').map(Number);
-	// The same day a month earlier, or the last day of that month when it has no such day.
-	const date = new Date(Date.UTC(year, month - 2, 1));
-	const last = new Date(Date.UTC(year, month - 1, 0)).getUTCDate();
-	date.setUTCDate(Math.min(day, last));
-	return { from: date.toISOString().slice(0, 10), to: today };
+	// UTC arithmetic: no daylight-saving shift
+	const from = new Date(Date.UTC(year, month - 1, day - 30));
+	return { from: from.toISOString().slice(0, 10), to: today };
 }
 
 const cents = (amount: number | undefined) => Math.round((amount ?? 0) * 100);

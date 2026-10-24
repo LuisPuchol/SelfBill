@@ -184,7 +184,7 @@ describe('Ledger', () => {
 		p.fetchPdf.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'boom', {}));
 		await loaded(p);
 		await userEvent.keyboard('{Enter}{Enter}{F9}');
-		await expect.element(dialog()).toHaveTextContent('No se ha podido imprimir la factura');
+		await expect.element(dialog().getByText('No se ha podido imprimir la factura.')).toBeVisible();
 		expect(p.print).not.toHaveBeenCalled();
 	});
 

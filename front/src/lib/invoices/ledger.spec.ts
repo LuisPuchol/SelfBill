@@ -2,15 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { defaultRange, periodTotals } from './ledger';
 
 describe('defaultRange', () => {
-	it('goes back a month', () => {
-		expect(defaultRange('2026-10-23')).toEqual({ from: '2026-09-23', to: '2026-10-23' });
-	});
-	it('clamps to the last day of the shorter month', () => {
-		expect(defaultRange('2026-03-30').from).toBe('2026-02-28');
-		expect(defaultRange('2026-10-31').from).toBe('2026-09-30');
-	});
-	it('crosses the year', () => {
-		expect(defaultRange('2026-01-15').from).toBe('2025-12-15');
+	it.each([
+		['2026-10-23', '2026-09-23'],
+		['2026-03-30', '2026-02-28'],
+		['2026-10-31', '2026-10-01'],
+		['2026-01-15', '2025-12-16']
+	])('%s starts 30 days earlier, on %s', (today, from) => {
+		expect(defaultRange(today)).toEqual({ from, to: today });
 	});
 });
 
