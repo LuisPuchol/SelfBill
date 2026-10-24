@@ -157,3 +157,73 @@ test('billing issues the pending notes up to a date', async ({ page, request }) 
 		expect(invoice.total).toBe(totalOf.get(saved.id));
 	}
 });
+
+test('the ledger shows an issued invoice and deleting frees its notes', async ({
+	page,
+	request
+}) => {
+	// This test's notes are dated in 2026-03, which no other test uses.
+	const client = await invoiceableClient(request, 9470, 'Frutas Libro e2e');
+	const article = await ensure(request, '/api/articles', { code: 9471, name: 'Pera libro e2e' });
+	const note = await createNote(request, client.id, '2026-03-10T09:00:00', {
+		articleId: article.id,
+		quantity: 4,
+		price: 2.5
+	});
+	const issued = await request.post('/api/invoices/issue', {
+		data: { clientId: client.id, deliveryNoteIds: [note.id] }
+	});
+	expect(issued.ok()).toBe(true);
+	const invoice = (await issued.json()) as { id: number; number: string; total: number };
+
+	await page.goto('/');
+	await ready(page, '1–6');
+	await page.keyboard.press('2');
+	await expect(page).toHaveURL('/invoices');
+	await ready(page, '1–2');
+	await page.keyboard.press('2');
+	await expect(page).toHaveURL('/invoices/ledger');
+	await ready(page, 'Borrar');
+
+	// Issued today: the default period shows it; it is the newest, so the last row.
+	const rows = page.getByRole('table').first().getByRole('row');
+	const mine = rows.filter({ hasText: 'Frutas Libro e2e' });
+	await expect(mine).toHaveCount(1);
+	await expect(mine).toContainText(invoice.number);
+	await expect(mine).toContainText(formatEuros(invoice.total));
+	await page.keyboard.press('Enter');
+	await page.keyboard.press('Enter');
+	await expect(page.getByLabel('Hasta')).not.toBeFocused();
+	const count = await rows.count();
+	for (let i = 2; i < count; i++) await page.keyboard.press('ArrowDown');
+	await expect(mine).toHaveAttribute('aria-selected', 'true');
+	await expect(page.getByRole('region')).toContainText(`Factura ${invoice.number}`);
+
+	await page.keyboard.press('F8');
+	await expect(page.getByRole('dialog')).toContainText(`¿Borrar la factura ${invoice.number}?`);
+	await page.keyboard.press('F8');
+	await expect(page.getByText(`Factura ${invoice.number} borrada`)).toBeVisible();
+	await expect(mine).toHaveCount(0);
+
+	const pending = await getJson<Pending[]>(request, '/api/invoices/pending?dateTo=2026-03-31');
+	const row = pending.find((p) => p.clientCode === 9470);
+	expect(row?.deliveryNotes.map((n) => n.id)).toEqual([note.id]);
+
+	// Back to the menu (table → Desde → menu), and Facturar sees the note again.
+	await page.keyboard.press('Escape');
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL('/invoices');
+	await ready(page, '1–2');
+	await page.keyboard.press('1');
+	await expect(page.getByLabel('Facturar hasta')).toBeFocused();
+	await page.keyboard.type('310326');
+	await page.keyboard.press('Enter');
+	await expect(
+		page.getByRole('table').first().getByRole('row').filter({ hasText: 'Frutas Libro e2e' })
+	).toHaveCount(1);
+});
+
+/** "1.234,50 €" as the app prints it. */
+function formatEuros(amount: number): string {
+	return `${amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+}
