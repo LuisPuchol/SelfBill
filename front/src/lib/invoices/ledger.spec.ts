@@ -1,16 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRange, periodTotals } from './ledger';
-
-describe('defaultRange', () => {
-	it.each([
-		['2026-10-23', '2026-09-23'],
-		['2026-03-30', '2026-02-28'],
-		['2026-10-31', '2026-10-01'],
-		['2026-01-15', '2025-12-16']
-	])('%s starts 30 days earlier, on %s', (today, from) => {
-		expect(defaultRange(today)).toEqual({ from, to: today });
-	});
-});
+import { periodTotals } from './ledger';
 
 describe('periodTotals', () => {
 	it('sums in cents', () => {

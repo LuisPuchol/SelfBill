@@ -14,7 +14,8 @@
 		selected = $bindable(0),
 		emptyText = 'No hay nada que mostrar.',
 		openLabel = 'Abrir',
-		scroll = false
+		scroll = false,
+		active = true
 	}: {
 		columns: Column<T>[];
 		rows: T[];
@@ -26,6 +27,8 @@
 		openLabel?: string;
 		/** Fill the window below the table's top and scroll inside, the titles staying on top */
 		scroll?: boolean;
+		/** False: another table has the keys; this one only selects by click, in a quieter style */
+		active?: boolean;
 	} = $props();
 
 	let body: HTMLElement | undefined = $state();
@@ -71,7 +74,7 @@
 		const active = document.activeElement;
 		return !isEditable(active) && active?.tagName !== 'BUTTON' && active?.tagName !== 'A';
 	};
-	const canMove = () => rows.length > 0 && notTyping();
+	const canMove = () => active && rows.length > 0 && notTyping();
 
 	useKeys(() => [
 		{ key: 'ArrowUp', label: 'Anterior', hidden: true, when: canMove, run: () => move(-1) },
@@ -118,7 +121,11 @@
 				{#each rows as row, i (i)}
 					<tr
 						aria-selected={i === selected}
-						class="cursor-default border-b border-line {i === selected ? 'bg-field-active' : ''}"
+						class="cursor-default border-b border-line {i !== selected
+							? ''
+							: active
+								? 'bg-field-active'
+								: 'bg-field-active/40'}"
 						onclick={(e) => {
 							if (e.detail < 2 || e.currentTarget === pressedRow) selected = i;
 						}}

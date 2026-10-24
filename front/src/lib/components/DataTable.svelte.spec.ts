@@ -11,6 +11,17 @@ const rows = [
 ];
 
 describe('DataTable', () => {
+	it('an inactive table ignores the keys', async () => {
+		const onOpen = vi.fn();
+		const view = render(TableHarness, { onOpen, active: false });
+		await userEvent.keyboard('{ArrowDown}{Enter}');
+		await expect.element(page.getByTestId('selected')).toHaveTextContent('0');
+		expect(onOpen).not.toHaveBeenCalled();
+		await view.rerender({ onOpen, active: true });
+		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(page.getByTestId('selected')).toHaveTextContent('1');
+	});
+
 	it('without onOpen, Enter does nothing', async () => {
 		render(TableHarness, {});
 		await userEvent.keyboard('{Enter}');

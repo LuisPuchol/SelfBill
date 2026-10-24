@@ -5,7 +5,7 @@
 	import type { components } from '../api/schema';
 	import { toast } from '../components/toast.svelte';
 	import UnsavedGuard from '../components/UnsavedGuard.svelte';
-	import { printPdf } from '../print';
+	import { printDocument } from '../print';
 	import { recallList, rememberList } from '../records/list-memory';
 	import { deliveryNoteDeletion } from './deletion';
 	import DeliveryNoteRecord from './DeliveryNoteRecord.svelte';
@@ -76,7 +76,7 @@
 	{hasProfile}
 	{issueInvoice}
 	{fetchPdf}
-	print={printPdf}
+	print={printDocument}
 >
 	{#snippet guard(form)}
 		<UnsavedGuard

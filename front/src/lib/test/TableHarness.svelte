@@ -25,8 +25,9 @@
 	let {
 		rows = all,
 		onOpen,
-		scroll
-	}: { rows?: Row[]; onOpen?: (row: Row) => void; scroll?: boolean } = $props();
+		scroll,
+		active
+	}: { active?: boolean; rows?: Row[]; onOpen?: (row: Row) => void; scroll?: boolean } = $props();
 
 	// svelte-ignore state_referenced_locally
 	let data = $state(rows);
@@ -38,5 +39,5 @@
 <button onclick={() => (data = [...data].reverse())}>Cambiar filas</button>
 <button>Otro</button>
 <p data-testid="selected">{selected}</p>
-<DataTable {columns} rows={data} {onOpen} {scroll} bind:selected />
+<DataTable {columns} rows={data} {onOpen} {scroll} {active} bind:selected />
 <KeyBar />

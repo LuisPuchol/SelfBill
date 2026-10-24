@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PRINT_TIMEOUT_MS, printPdf } from './print';
+import { PRINT_TIMEOUT_MS, printDocument } from './print';
 
 /** Replaces `print` on every iframe created; `seen` records how many iframes existed while printing. */
 function stubPrint(impl: () => void = () => {}) {
@@ -34,11 +34,11 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe('printPdf', () => {
+describe('printDocument', () => {
 	it('prints through a hidden iframe, kept until printing ends', async () => {
 		const revoke = vi.spyOn(URL, 'revokeObjectURL');
 		const { print, seen } = stubPrint();
-		await printPdf(page());
+		await printDocument(page());
 		expect(print).toHaveBeenCalledOnce();
 		expect(seen).toEqual([1]);
 		// The dialog may still be reading the PDF.
@@ -50,10 +50,16 @@ describe('printPdf', () => {
 		expect(revoke).toHaveBeenCalledOnce();
 	});
 
+	it('prints an HTML document too', async () => {
+		const { print } = stubPrint();
+		await printDocument(new Blob(['<p>x</p>'], { type: 'text/html' }));
+		expect(print).toHaveBeenCalledOnce();
+	});
+
 	it('keeps at most one frame across prints', async () => {
 		const revoke = vi.spyOn(URL, 'revokeObjectURL');
 		const { print, seen } = stubPrint();
-		for (let i = 0; i < 3; i++) await printPdf(page());
+		for (let i = 0; i < 3; i++) await printDocument(page());
 		expect(print).toHaveBeenCalledTimes(3);
 		// Each print released the frame before it.
 		expect(seen).toEqual([1, 1, 1]);
@@ -66,7 +72,7 @@ describe('printPdf', () => {
 		stubPrint(() => {
 			throw new Error('boom');
 		});
-		await expect(printPdf(new Blob(['x'], { type: 'text/html' }))).rejects.toThrow('boom');
+		await expect(printDocument(new Blob(['x'], { type: 'text/html' }))).rejects.toThrow('boom');
 		expect(document.querySelectorAll('iframe')).toHaveLength(0);
 		expect(revoke).toHaveBeenCalledOnce();
 	});
@@ -86,7 +92,7 @@ describe('printPdf', () => {
 			vi.spyOn(document, 'createElement').mockImplementation(((tag: string) =>
 				tag === 'iframe' ? frame : create(tag)) as typeof document.createElement);
 			vi.spyOn(document.body, 'appendChild').mockImplementation((n) => n);
-			const result = expect(printPdf(new Blob(['x']))).rejects.toThrow('too long');
+			const result = expect(printDocument(new Blob(['x']))).rejects.toThrow('too long');
 			await vi.advanceTimersByTimeAsync(PRINT_TIMEOUT_MS);
 			await result;
 			expect(frame.remove).toHaveBeenCalledOnce();

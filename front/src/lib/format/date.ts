@@ -37,3 +37,11 @@ export function todayIso(now = new Date()): string {
 export function timeNow(now = new Date()): string {
 	return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
+
+/** A listing's period on entry: today minus 30 days, up to today. */
+export function defaultRange(today: string): { from: string; to: string } {
+	const [year, month, day] = today.split('-').map(Number);
+	// UTC arithmetic: no daylight-saving shift
+	const from = new Date(Date.UTC(year, month - 1, day - 30));
+	return { from: from.toISOString().slice(0, 10), to: today };
+}

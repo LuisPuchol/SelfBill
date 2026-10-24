@@ -12,13 +12,13 @@
 	import ScreenHeader from '../components/ScreenHeader.svelte';
 	import StaticTable from '../components/StaticTable.svelte';
 	import type { Column } from '../components/table';
-	import { formatDate } from '../format/date';
+	import { defaultRange, formatDate } from '../format/date';
 	import { formatMoney } from '../format/money';
 	import type { FormNav } from '../keyboard/form-nav';
 	import type { KeyAction } from '../keyboard/keys';
 	import { useKeys } from '../keyboard/keymap.svelte';
 	import { DeleteFlow, type DeleteOptions } from '../records/delete-flow.svelte';
-	import { defaultRange, LEDGER_LIMIT, periodTotals } from './ledger';
+	import { LEDGER_LIMIT, periodTotals } from './ledger';
 
 	type Invoice = components['schemas']['InvoiceResponse'];
 	type Section = NonNullable<Invoice['sections']>[number];

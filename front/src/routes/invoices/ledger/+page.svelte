@@ -6,7 +6,7 @@
 	import { invoiceDeletion } from '#lib/invoices/deletion.js';
 	import Ledger from '#lib/invoices/Ledger.svelte';
 	import { LEDGER_LIMIT } from '#lib/invoices/ledger.js';
-	import { printPdf } from '#lib/print.js';
+	import { printDocument } from '#lib/print.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -36,7 +36,7 @@
 	loadInvoice={(id) => request(api.GET('/api/invoices/{id}', { params: { path: { id } } }))}
 	fetchPdf={(id) =>
 		request(api.GET('/api/invoices/{id}/pdf', { params: { path: { id } }, parseAs: 'blob' }))}
-	print={printPdf}
+	print={printDocument}
 	sendEmail={async (id) => {
 		await request(api.POST('/api/invoices/{id}/email', { params: { path: { id } } }));
 	}}

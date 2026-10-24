@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, parseDateDigits, timeNow, todayIso } from './date';
+import { defaultRange, formatDate, parseDateDigits, timeNow, todayIso } from './date';
 
 describe('formatDate', () => {
 	it('prints dd/mm/yyyy from date or datetime', () => {
@@ -32,5 +32,16 @@ describe('todayIso', () => {
 describe('timeNow', () => {
 	it('gives the local time as hh:mm:ss', () => {
 		expect(timeNow(new Date(2026, 9, 13, 7, 5, 9))).toBe('07:05:09');
+	});
+});
+
+describe('defaultRange', () => {
+	it.each([
+		['2026-10-23', '2026-09-23'],
+		['2026-03-30', '2026-02-28'],
+		['2026-10-31', '2026-10-01'],
+		['2026-01-15', '2025-12-16']
+	])('%s starts 30 days earlier, on %s', (today, from) => {
+		expect(defaultRange(today)).toEqual({ from, to: today });
 	});
 });
