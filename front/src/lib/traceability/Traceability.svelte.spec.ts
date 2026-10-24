@@ -185,6 +185,79 @@ describe('Traceability', () => {
 		await expect.element(notesTable()).not.toHaveTextContent('31594');
 	});
 
+	it('a lots answer for the old period is not cached after a reload', async () => {
+		const late = deferred<Lot[]>();
+		const p = props();
+		let first = true;
+		p.loadLots.mockImplementation(async (id) => {
+			if (id === 2 && first) {
+				first = false;
+				return late.promise;
+			}
+			return lotsOf[id];
+		});
+		await render(TraceabilityHarness, p);
+		await expect.element(row(articlesTable(), 1)).toBeVisible();
+		await row(articlesTable(), 1).click();
+		await userEvent.keyboard('{Escape}');
+		await userEvent.keyboard('01042026{Enter}300426{Enter}');
+		await vi.waitFor(() =>
+			expect(p.loadArticles).toHaveBeenLastCalledWith('2026-04-01', '2026-04-30')
+		);
+		await expect.element(toField()).not.toHaveFocus();
+		late.resolve([{ code: '99999999', quantity: 1 }]);
+		await new Promise((r) => setTimeout(r, 50));
+		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(row(lotsTable(), 0)).toHaveTextContent('02200524');
+		expect(p.loadLots).toHaveBeenLastCalledWith(2, '2026-04-01', '2026-04-30');
+		await expect.element(lotsTable()).not.toHaveTextContent('99999999');
+	});
+
+	it('a notes answer for the old period is not cached after a reload', async () => {
+		const late = deferred<Delivery[]>();
+		const p = props();
+		let first = true;
+		p.loadDeliveries.mockImplementation(async (id, code) => {
+			if (id === 2 && first) {
+				first = false;
+				return late.promise;
+			}
+			return deliveriesOf(id, code);
+		});
+		await render(TraceabilityHarness, p);
+		await expect.element(row(articlesTable(), 1)).toBeVisible();
+		await row(articlesTable(), 1).click();
+		await userEvent.keyboard('{Escape}');
+		await userEvent.keyboard('01042026{Enter}300426{Enter}');
+		await vi.waitFor(() =>
+			expect(p.loadArticles).toHaveBeenLastCalledWith('2026-04-01', '2026-04-30')
+		);
+		await expect.element(toField()).not.toHaveFocus();
+		late.resolve([delivery(11111, 1, 'TARDE')]);
+		await new Promise((r) => setTimeout(r, 50));
+		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(row(notesTable(), 0)).toHaveTextContent('31594');
+		expect(p.loadDeliveries).toHaveBeenLastCalledWith(2, '02200524', '2026-04-01', '2026-04-30');
+		await expect.element(notesTable()).not.toHaveTextContent('TARDE');
+	});
+
+	it('F9 waits for the notes of the marked lot', async () => {
+		const pending = deferred<Delivery[]>();
+		const p = props();
+		p.loadDeliveries.mockReturnValueOnce(pending.promise);
+		await render(TraceabilityHarness, p);
+		await expect.element(row(lotsTable(), 0)).toBeVisible();
+		await expect.element(button('Imprimir')).toHaveAttribute('aria-disabled', 'true');
+		await row(lotsTable(), 0).click();
+		await userEvent.keyboard('{F9}');
+		expect(p.print).not.toHaveBeenCalled();
+		pending.resolve([delivery(31594, 10)]);
+		await expect.element(row(notesTable(), 0)).toBeVisible();
+		await expect.element(button('Imprimir')).not.toHaveAttribute('aria-disabled', 'true');
+		await userEvent.keyboard('{F9}');
+		await vi.waitFor(() => expect(p.print).toHaveBeenCalledOnce());
+	});
+
 	it('Enter and Esc move between columns', async () => {
 		const p = props();
 		await loaded(p);

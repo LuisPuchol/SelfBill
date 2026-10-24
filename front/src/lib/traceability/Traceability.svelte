@@ -99,6 +99,8 @@
 	const deliveriesCache = new SvelteMap<string, Delivery[]>();
 	let lotsState = $state.raw<{ articleId: number; rows: Lot[] } | null>(null);
 	let deliveriesState = $state.raw<{ key: string; rows: Delivery[] } | null>(null);
+	/** Raised when the articles load again: an answer that started before is for another period. */
+	let generation = 0;
 	let lotsSeq = 0;
 	let deliveriesSeq = 0;
 
@@ -123,6 +125,7 @@
 		const article = markedArticle;
 		untrack(() => {
 			const seq = ++lotsSeq;
+			const gen = generation;
 			// The mark goes to the first lot with the lots of another article
 			selectedLot = 0;
 			if (article?.articleId === undefined) {
@@ -137,7 +140,7 @@
 			}
 			loadLots(id, shownFrom, shownTo).then(
 				(rows) => {
-					lotsCache.set(id, rows);
+					if (gen === generation) lotsCache.set(id, rows);
 					if (seq === lotsSeq) lotsState = { articleId: id, rows };
 				},
 				(err: unknown) => {
@@ -152,6 +155,7 @@
 		const lot = markedLot;
 		untrack(() => {
 			const seq = ++deliveriesSeq;
+			const gen = generation;
 			if (article?.articleId === undefined || lot?.code === undefined) {
 				deliveriesState = null;
 				return;
@@ -166,7 +170,7 @@
 			}
 			loadDeliveries(id, code, shownFrom, shownTo).then(
 				(rows) => {
-					deliveriesCache.set(key, rows);
+					if (gen === generation) deliveriesCache.set(key, rows);
 					if (seq === deliveriesSeq) deliveriesState = { key, rows };
 				},
 				(err: unknown) => {
@@ -190,6 +194,7 @@
 			return false;
 		}
 		if (id !== loadId) return false;
+		generation++;
 		lotsCache.clear();
 		deliveriesCache.clear();
 		shownFrom = dateFrom;
