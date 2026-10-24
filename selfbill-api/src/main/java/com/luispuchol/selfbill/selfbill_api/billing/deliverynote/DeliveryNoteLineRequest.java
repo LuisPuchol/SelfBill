@@ -37,6 +37,6 @@ public record DeliveryNoteLineRequest(
         @NotNull(message = "Price cannot be null")
         BigDecimal price) {
 
-    static final String TRACEABILITY_CODE_PATTERN = "\\d{8}";
-    static final String TRACEABILITY_CODE_MESSAGE = "Traceability code must be 8 digits";
+    public static final String TRACEABILITY_CODE_PATTERN = "\\d{8}";
+    public static final String TRACEABILITY_CODE_MESSAGE = "Traceability code must be 8 digits";
 }

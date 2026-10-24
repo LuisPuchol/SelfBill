@@ -347,6 +347,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/traceability/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the lots of an article in a period
+         * @description Lots of the article with the quantity delivered of each in the period, both days inclusive. All three code slots of a line count, and a lot repeated in one line counts once for that line. Ordered by code.
+         */
+        get: operations["getLots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/traceability/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the delivery notes that carry a lot of an article
+         * @description Delivery notes dated within the period, both days inclusive, with a line of the article that carries the code in any of its three slots. The quantity is the sum of those lines. Ordered by date and code.
+         */
+        get: operations["getDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/traceability/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the articles sold in a period
+         * @description Articles with at least one line in a delivery note dated within the period, both days inclusive. Ordered by article code.
+         */
+        get: operations["getArticles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tax-config/history": {
         parameters: {
             query?: never;
@@ -961,6 +1021,38 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        /** @description A lot of an article and the quantity delivered of it in the period */
+        TraceabilityLotResponse: {
+            /** @example 01210426 */
+            code?: string;
+            /** @description Sum of the lines that carry the lot in any slot, a line counted once */
+            quantity?: number;
+        };
+        /** @description A delivery note that carries a lot of an article */
+        TraceabilityDeliveryResponse: {
+            /** Format: int32 */
+            deliveryNoteId?: number;
+            /** Format: int32 */
+            deliveryNoteCode?: number;
+            /** Format: date-time */
+            date?: string;
+            /** Format: int32 */
+            clientId?: number;
+            /** Format: int32 */
+            clientCode?: number;
+            /** @description Trade name of the client */
+            clientName?: string;
+            /** @description Quantity of the article with that lot in this delivery note, all its lines added */
+            quantity?: number;
+        };
+        /** @description An article with at least one delivery note line in the period */
+        TraceabilityArticleResponse: {
+            /** Format: int32 */
+            articleId?: number;
+            /** Format: int32 */
+            articleCode?: number;
+            articleName?: string;
         };
         PageMetadata: {
             /** Format: int64 */
@@ -2766,6 +2858,111 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getLots: {
+        parameters: {
+            query: {
+                articleId: number;
+                /** @example 2026-10-01 */
+                dateFrom: string;
+                /** @example 2026-10-31 */
+                dateTo: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceabilityLotResponse"][];
+                };
+            };
+            /**
+             * @description Bad Request
+             *
+             *     - `VALIDATION_ERROR`: Validation error
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getDeliveries: {
+        parameters: {
+            query: {
+                articleId: number;
+                /** @example 01210426 */
+                code: string;
+                /** @example 2026-10-01 */
+                dateFrom: string;
+                /** @example 2026-10-31 */
+                dateTo: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceabilityDeliveryResponse"][];
+                };
+            };
+            /**
+             * @description Bad Request
+             *
+             *     - `VALIDATION_ERROR`: Validation error
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getArticles: {
+        parameters: {
+            query: {
+                /** @example 2026-10-01 */
+                dateFrom: string;
+                /** @example 2026-10-31 */
+                dateTo: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceabilityArticleResponse"][];
                 };
             };
         };

@@ -34,6 +34,9 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/tax-config/history'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/invoices/issue'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/invoices/pending'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/traceability/articles'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/traceability/lots'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/traceability/deliveries'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/invoices/{id}/pdf'].get.responses['200'].content['application/pdf']")
                         .exists());
     }
