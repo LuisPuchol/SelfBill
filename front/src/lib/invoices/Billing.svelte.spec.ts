@@ -117,6 +117,16 @@ function deferred<T>() {
 }
 
 describe('Billing, the list', () => {
+	it('an empty list keeps the cursor in the date, selected', async () => {
+		const p = props({ loadPending: vi.fn().mockResolvedValue([]) });
+		await render(BillingHarness, p);
+		await expect.element(dateField()).toHaveFocus();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(page.getByText(/No hay albaranes pendientes/)).toBeVisible();
+		await expect.element(dateField()).toHaveFocus();
+		expect(selection()).toEqual([0, 10]);
+	});
+
 	it('opens in the date with today selected', async () => {
 		const p = props();
 		await render(BillingHarness, p);

@@ -100,6 +100,29 @@ function deferred<T>() {
 }
 
 describe('Ledger', () => {
+	it('an empty list keeps the cursor in the date, selected', async () => {
+		const p = props({
+			loadInvoices: vi.fn().mockResolvedValue({ invoices: [], truncated: false })
+		});
+		await render(LedgerHarness, p);
+		await expect.element(page.getByText(/No hay facturas entre/)).toBeVisible();
+		await toField().click();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(toField()).toHaveFocus();
+		const input = toField().element() as HTMLInputElement;
+		expect([input.selectionStart, input.selectionEnd]).toEqual([0, 10]);
+	});
+
+	it('the panel shows no empty text while an invoice is loading', async () => {
+		const pending = deferred<Invoice>();
+		const p = props({ loadInvoice: vi.fn().mockReturnValue(pending.promise) });
+		await loaded(p);
+		await expect.element(panel()).toBeVisible();
+		await expect.element(panel().getByText('No hay nada que mostrar.')).not.toBeInTheDocument();
+		pending.resolve(detailOf(first, 31804, 40.8));
+		await expect.element(panel().getByRole('table')).toBeVisible();
+	});
+
 	it('loads the default period on entry', async () => {
 		const p = props();
 		await loaded(p);

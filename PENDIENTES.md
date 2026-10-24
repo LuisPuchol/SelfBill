@@ -34,6 +34,8 @@ refacturar. Verifactu cierra esa vía: una factura registrada no se borra ni se 
 Entonces hacen falta el estado `ANNULLED`, el bloqueo del borrado, `invoiceType`,
 `rectifies`, el hash encadenado y el envío a la AEAT.
 
+En el Libro de facturas, F8 Borrar pasa a Rectificar en la serie con IVA; la serie S conserva el borrado (CONCEPTO §9.2).
+
 El flujo completo y los cambios concretos están en CONCEPTO.md §9.
 
 Obligatorio desde el 1-ene-2027 (sociedades) o el 1-jul-2027 (resto), según el
@@ -132,3 +134,14 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - Probar la cuenta de correo desde Ajustes.
 - Con la base restaurada en otro equipo sin `secret.key`, la contraseña del correo no se puede descifrar pero Ajustes dice "Guardada": comprobar al leer si se puede descifrar.
 - Si se cambia el email de proveedor (Gmail → Outlook) sin vaciar servidor y puerto, se quedan los del anterior.
+
+### Pendiente del bloque de facturas
+- Imprimir o enviar de una vez todas las facturas de un periodo, cuando exista el PDF real.
+- Si se pierde la conexión justo al recargar tras emitir en lote, el resumen puede abrirse encima de la pantalla de sin conexión.
+- Al volver la conexión, Enter no recarga Facturar ni el Libro hasta pulsar Esc: el cursor no vuelve a la fecha.
+- El diálogo "Emitiendo facturas…" se cierra antes de recargar: un instante se ven las filas ya emitidas.
+- Un error inesperado al emitir en lote sale como "Error inesperado" sin dejar rastro en la consola.
+- Imprimir: una conexión perdida al pedir el PDF sale como "No se ha podido imprimir…" en vez de la pantalla de sin conexión (también en el albarán).
+- Con más de 2000 facturas en el periodo, los totales del libro solo suman las que se muestran.
+- Facturar y el Libro repiten la misma lógica de lista (cargar, recordar la posición, Esc, el pie): extraerla si llega una tercera pantalla así. `DataTable` y `StaticTable` también repiten el marcado de la tabla.
+- Tests que faltan: tipos 4 y 4,00 en una misma fila y el orden por tipos en `pending`; una fecha válida por HTTP; "+" gris con todas las filas con aviso; una fila de cliente borrado en la pantalla; Desde posterior a Hasta; F9/F4 con el cursor en una fecha; el panel derecho de Facturar con ~30 albaranes a 1280×800.

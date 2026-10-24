@@ -40,3 +40,4 @@ Especificación de la base: [../docs/superpowers/specs/2026-10-13-front-base-des
 - `RecordForm`: `firstField` (si no es `code`), `mapFieldPath` (campo de pantalla de un error de la API) y `comparable` (qué cuenta como cambio sin guardar).
 - `RecordForm`: la opción `afterSave` corre tras guardar, antes del aviso y del encadenado; su texto se añade al aviso.
 - `CheckAction`: casilla con su tecla, construida desde un `KeyAction` como `ActionButton`; nunca toma el foco.
+- `DataTable` con `scroll` (caja con scroll propio y títulos fijos) y `onOpen` opcional (sin Enter); `StaticTable` para una tabla de solo lectura junto a una `DataTable`.

@@ -68,6 +68,7 @@ public class InvoiceService {
     public InvoiceResponse getInvoiceById(Integer id) {
         return invoiceMapper.toResponse(findInvoice(id));
     }
+
     public List<PendingInvoiceResponse> getPendingInvoices(LocalDate dateTo) {
         List<DeliveryNote> pending = deliveryNoteRepository.findAll(
                 DeliveryNoteSpecification.withFilter(DeliveryNoteFilter.builder().invoiced(false).dateTo(dateTo).build()),
@@ -121,7 +122,6 @@ public class InvoiceService {
                         .toList())
                 .build();
     }
-
 
     public InvoiceResponse getInvoiceByCode(InvoiceSeries series, Integer code) {
         return invoiceRepository.findBySeriesAndCode(series, code)

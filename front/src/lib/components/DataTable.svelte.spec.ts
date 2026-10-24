@@ -28,11 +28,25 @@ describe('DataTable', () => {
 		expect(getComputedStyle(th).position).toBe('sticky');
 	});
 
-	it('arrows still move in scroll mode', async () => {
-		const onOpen = vi.fn();
-		render(TableHarness, { onOpen, scroll: true });
-		await userEvent.keyboard('{ArrowDown}{Enter}');
-		expect(onOpen).toHaveBeenCalledExactlyOnceWith(rows[1]);
+	it('moving up in scroll mode never leaves the marked row under the titles', async () => {
+		const many = Array.from({ length: 40 }, (_, i) => ({ name: `Cliente ${i}`, amount: i }));
+		render(TableHarness, { rows: many, scroll: true });
+		const box = page.getByRole('table').element().parentElement as HTMLElement;
+		expect(box.scrollHeight).toBeGreaterThan(box.clientHeight);
+		const th = page.getByRole('columnheader').first().element();
+		const marked = () => document.querySelector('[aria-selected="true"]') as HTMLElement;
+		await userEvent.keyboard('{ArrowDown}'.repeat(39));
+		await vi.waitFor(() => expect(box.scrollTop).toBeGreaterThan(0));
+		for (let i = 0; i < 39; i++) {
+			await userEvent.keyboard('{ArrowUp}');
+			await tick();
+			await vi.waitFor(() =>
+				expect(marked().getBoundingClientRect().top).toBeGreaterThanOrEqual(
+					th.getBoundingClientRect().bottom - 0.5
+				)
+			);
+		}
+		expect(box.scrollTop).toBe(0);
 	});
 	it('renders the rows', async () => {
 		render(TableHarness, { onOpen: vi.fn() });

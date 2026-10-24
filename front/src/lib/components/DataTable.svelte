@@ -139,7 +139,7 @@
 		</table>
 	{/snippet}
 	{#if scroll}
-		<div class="overflow-y-auto" use:fillViewport>
+		<div class="scroll-pt-12 overflow-y-auto" use:fillViewport>
 			{@render table()}
 		</div>
 	{:else}

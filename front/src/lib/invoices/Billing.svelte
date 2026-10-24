@@ -139,11 +139,15 @@
 		return true;
 	}
 
-	/** Enter in the date: the list, and the cursor to the table, whose keys need it out of the field. */
+	/**
+	 * Enter in the date: the list, and the cursor to the table, whose keys need it out of the field.
+	 * With no rows there is no table to go to: the cursor stays, ready for another date.
+	 */
 	async function enter(): Promise<void> {
-		if ((await load(dateTo)) && nav?.hasFocus()) {
-			(document.activeElement as HTMLElement).blur();
-		}
+		if (!(await load(dateTo)) || !nav?.hasFocus()) return;
+		const field = document.activeElement as HTMLInputElement;
+		if (pending !== null && pending.length > 0) field.blur();
+		else field.select();
 	}
 
 	/** So that no list is issued for a date other than the one written. */

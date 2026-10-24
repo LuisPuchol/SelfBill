@@ -165,11 +165,15 @@
 		return true;
 	}
 
-	/** Enter in "Hasta": the list, and the cursor to the table, whose keys need it out of the field. */
+	/**
+	 * Enter in "Hasta": the list, and the cursor to the table, whose keys need it out of the field.
+	 * With no rows there is no table to go to: the cursor stays, ready for other dates.
+	 */
 	async function enter(): Promise<void> {
-		if ((await load(from, to)) && nav?.hasFocus()) {
-			(document.activeElement as HTMLElement).blur();
-		}
+		if (!(await load(from, to)) || !nav?.hasFocus()) return;
+		const field = document.activeElement as HTMLInputElement;
+		if (rows !== null && rows.length > 0) field.blur();
+		else field.select();
 	}
 
 	/** So that nothing is printed or deleted for dates other than the ones written. */
@@ -295,7 +299,8 @@
 					Factura {marked.number} · {formatDate(marked.date ?? '')}
 				</h2>
 				<p>{marked.clientName}</p>
-				<StaticTable columns={noteColumns} rows={sections} scroll />
+				<!-- No empty text: until the answer arrives there are no sections yet -->
+				<StaticTable columns={noteColumns} rows={sections} emptyText="" scroll />
 			</section>
 		{/if}
 	</div>
