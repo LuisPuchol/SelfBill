@@ -13,11 +13,20 @@ import javax.imageio.ImageIO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 
 /** Reads a rendered PDF back as text, the way the tests check what is printed. */
 final class PdfText {
 
     private PdfText() {
+    }
+
+    /** What application.properties does for the app: the plain tests run without Spring's logging setup. */
+    static void quietFontWarning() {
+        ((Logger) LoggerFactory.getLogger("org.apache.fontbox.ttf.CmapSubtable")).setLevel(Level.ERROR);
     }
 
     static String text(byte[] pdf) {

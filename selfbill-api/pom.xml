@@ -99,6 +99,13 @@
 			<groupId>io.github.openhtmltopdf</groupId>
 			<artifactId>openhtmltopdf-pdfbox</artifactId>
 			<version>1.1.87</version>
+			<exclusions>
+				<!-- PDFBox's logging API: Spring's spring-jcl already provides it -->
+				<exclusion>
+					<groupId>commons-logging</groupId>
+					<artifactId>commons-logging</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<dependency>

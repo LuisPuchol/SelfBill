@@ -27,6 +27,7 @@ import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.util.Matrix;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.luispuchol.selfbill.selfbill_api.billing.document.PrintedDocument.Issuer;
@@ -46,6 +47,11 @@ class PdfRendererTest {
     private static final float POINTS_PER_MM = 72 / 25.4f;
 
     private final PdfRenderer renderer = new PdfRenderer();
+
+    @BeforeAll
+    static void quietFontWarning() {
+        PdfText.quietFontWarning();
+    }
 
     private static Line line() {
         return new Line("316", "PIMIENTO VERDE KG", "02260424", "5,30", "1,90", "10,07");

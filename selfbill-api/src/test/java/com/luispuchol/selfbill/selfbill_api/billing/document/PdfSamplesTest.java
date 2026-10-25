@@ -24,6 +24,7 @@ import javax.imageio.ImageIO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.luispuchol.selfbill.selfbill_api.billing.document.PrintedDocument.Line;
@@ -48,6 +49,11 @@ class PdfSamplesTest {
 
     private final PdfRenderer renderer = new PdfRenderer();
     private final Random random = new Random(3852);
+
+    @BeforeAll
+    static void quietFontWarning() {
+        PdfText.quietFontWarning();
+    }
 
     @Test
     void writesTheSamples() throws IOException {
