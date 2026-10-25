@@ -3,6 +3,7 @@ package com.luispuchol.selfbill.selfbill_api.settings.profile;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_ALREADY_EXISTS;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_INVALID_LOGO_FORMAT;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_LOGO_NOT_FOUND;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_LOGO_TOO_LARGE;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.USER_PROFILE_NOT_FOUND;
 
 import org.springframework.http.HttpStatus;
@@ -59,7 +60,7 @@ public class UserProfileController {
     }
 
     @Operation(summary = "Upload profile logo (JPEG or PNG)", description = "Replaces the current logo")
-    @ApiErrors({ USER_PROFILE_INVALID_LOGO_FORMAT, USER_PROFILE_NOT_FOUND })
+    @ApiErrors({ USER_PROFILE_INVALID_LOGO_FORMAT, USER_PROFILE_LOGO_TOO_LARGE, USER_PROFILE_NOT_FOUND })
     @PostMapping(value = "/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void uploadLogo(@RequestParam("file") MultipartFile file) {

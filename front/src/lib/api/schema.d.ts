@@ -2161,6 +2161,19 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /**
+             * @description Payload Too Large
+             *
+             *     - `USER_PROFILE_LOGO_TOO_LARGE`: Logo must not exceed 2 MB
+             */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getAllInvoices: {
