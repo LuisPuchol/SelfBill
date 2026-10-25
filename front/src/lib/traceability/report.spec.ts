@@ -33,7 +33,7 @@ describe('traceabilityReport', () => {
 		expect(html).toContain('Total cantidad 151,00');
 		expect(html).toContain('Del 24/09/2026 al 24/10/2026');
 		expect(html.match(/<tr>/g)?.length).toBe(3); // header + 2 rows
-		for (const text of ['20/05/2026', '6', 'Frutas Paco', '31594', '20,00'])
+		for (const text of ['20/05/2026', '<td>6 Frutas Paco</td>', '31594', '20,00'])
 			expect(html).toContain(text);
 	});
 

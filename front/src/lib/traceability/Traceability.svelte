@@ -279,7 +279,7 @@
 	const toLotsAction: KeyAction = {
 		key: 'Enter',
 		label: 'Lotes',
-		when: () => column === 'articles' && lots.length > 0 && notTyping(),
+		when: () => column === 'articles' && markedArticle !== undefined && notTyping(),
 		run: () => {
 			column = 'lots';
 		}

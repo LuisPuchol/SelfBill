@@ -22,6 +22,22 @@ describe('DataTable', () => {
 		await expect.element(page.getByTestId('selected')).toHaveTextContent('1');
 	});
 
+	it('the marked row shows a bar when active and only a grey mark when inactive', async () => {
+		const view = render(TableHarness, { active: true });
+		const rowsEl = () => Array.from(document.querySelectorAll('tbody tr')) as HTMLElement[];
+		const activeStyle = getComputedStyle(rowsEl()[0]);
+		const activeShadow = activeStyle.boxShadow;
+		expect(activeShadow).not.toBe('none');
+		await view.rerender({ active: false });
+		const marked = getComputedStyle(rowsEl()[0]);
+		expect(marked.boxShadow).not.toBe(activeShadow);
+		expect(marked.boxShadow).toBe('none');
+		expect(marked.backgroundColor).not.toBe(getComputedStyle(rowsEl()[1]).backgroundColor);
+		expect(marked.backgroundColor).not.toBe(
+			getComputedStyle(page.getByRole('table').element()).backgroundColor
+		);
+	});
+
 	it('without onOpen, Enter does nothing', async () => {
 		render(TableHarness, {});
 		await userEvent.keyboard('{Enter}');

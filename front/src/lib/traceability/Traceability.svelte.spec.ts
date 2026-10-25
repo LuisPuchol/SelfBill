@@ -280,6 +280,24 @@ describe('Traceability', () => {
 		expect(p.onExit).toHaveBeenCalledOnce();
 	});
 
+	it('Enter moves to the lots even before they arrive', async () => {
+		const late = deferred<Lot[]>();
+		const p = props();
+		p.loadLots.mockReset();
+		p.loadLots.mockReturnValueOnce(late.promise);
+		await render(TraceabilityHarness, p);
+		await expect.element(row(articlesTable(), 1)).toBeVisible();
+		// Desde and Hasta, then the articles take the cursor with their lots still pending
+		await userEvent.keyboard('{Enter}{Enter}');
+		await expect.element(fromField()).not.toHaveFocus();
+		await userEvent.keyboard('{Enter}');
+		late.resolve(lotsOf[2]);
+		await expect.element(row(lotsTable(), 1)).toBeVisible();
+		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(row(lotsTable(), 1)).toHaveAttribute('aria-selected', 'true');
+		await expect.element(row(articlesTable(), 0)).toHaveAttribute('aria-selected', 'true');
+	});
+
 	it('a click on a lot marks it and activates the lots', async () => {
 		const p = props();
 		await loaded(p);

@@ -111,6 +111,11 @@ test('the lots of an article, the notes of a lot, and F9 prints them', async ({
 	await expect(lots.nth(2)).toContainText('03020426');
 	await expect(lots.nth(2)).toContainText('3,00');
 
+	// The first lot lists both notes, one of them with the lot in the second slot
+	const firstLotNotes = tables.nth(2).getByRole('row');
+	await expect(firstLotNotes).toHaveCount(3);
+	await expect(page.getByText('2 albaranes · 8,00')).toBeVisible();
+
 	await page.keyboard.press('Enter');
 	await page.keyboard.press('ArrowDown');
 	const notes = tables.nth(2).getByRole('row');

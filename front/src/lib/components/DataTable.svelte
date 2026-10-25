@@ -71,8 +71,8 @@
 	// Enter belongs to a focused button or link, and arrows to a text field.
 	const notTyping = () => {
 		subscribe();
-		const active = document.activeElement;
-		return !isEditable(active) && active?.tagName !== 'BUTTON' && active?.tagName !== 'A';
+		const focused = document.activeElement;
+		return !isEditable(focused) && focused?.tagName !== 'BUTTON' && focused?.tagName !== 'A';
 	};
 	const canMove = () => active && rows.length > 0 && notTyping();
 
@@ -124,8 +124,8 @@
 						class="cursor-default border-b border-line {i !== selected
 							? ''
 							: active
-								? 'bg-field-active'
-								: 'bg-field-active/40'}"
+								? 'bg-field-active shadow-[inset_4px_0_0_var(--color-focus)]'
+								: 'bg-line/60'}"
 						onclick={(e) => {
 							if (e.detail < 2 || e.currentTarget === pressedRow) selected = i;
 						}}

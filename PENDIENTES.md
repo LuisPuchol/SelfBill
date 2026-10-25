@@ -145,3 +145,13 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - Con más de 2000 facturas en el periodo, los totales del libro solo suman las que se muestran.
 - Facturar y el Libro repiten la misma lógica de lista (cargar, recordar la posición, Esc, el pie): extraerla si llega una tercera pantalla así. `DataTable` y `StaticTable` también repiten el marcado de la tabla.
 - Tests que faltan: tipos 4 y 4,00 en una misma fila y el orden por tipos en `pending`; una fecha válida por HTTP; "+" gris con todas las filas con aviso; una fila de cliente borrado en la pantalla; Desde posterior a Hasta; F9/F4 con el cursor en una fecha; el panel derecho de Facturar con ~30 albaranes a 1280×800.
+
+### Pendiente del bloque de trazabilidad
+- Buscar directamente por lote, sin elegir artículo.
+- Abrir el albarán desde el listado de un lote.
+- Exportar el listado de trazabilidad (CSV).
+- Sin índice por fecha en `delivery_notes` (ni por artículo en las líneas): cada consulta de trazabilidad recorre todo el histórico; medir con una base grande y añadir una migración si hace falta.
+- Los albaranes de un lote se ordenan por fecha y hora antes que por número: uno creado más tarde con la fecha de otro día sale fuera de orden dentro de ese día.
+- Al editar una fecha o si falla la carga, la columna activa puede seguir siendo la de lotes: un Esc no hace nada visible.
+- La lista de lotes y la de albaranes repiten el mismo cargador con caché; `notTyping` está copiado en `DataTable`, `ListScreen` y Trazabilidad.
+- Tests que faltan: fallo al cargar lotes o albaranes; clic en un artículo con los lotes activos; el escape del código y de comillas en el listado; suma 0,1 + 0,2 en el total; OpenAPI no documenta el 400 de `/articles`.

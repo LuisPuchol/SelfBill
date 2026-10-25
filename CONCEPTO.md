@@ -442,6 +442,8 @@ los albaranes enteros, y en cada línea se ve su código.
   (`SELECT id FROM articles WHERE code = ? AND deleted_at IS NOT NULL`). Restaurarlo no sirve
   para esto, porque obliga a cambiarle el código (§7).
 
+
+La pantalla de Trazabilidad responde a esa consulta con `/api/traceability/articles`, `/lots` y `/deliveries`: artículos vendidos en un periodo, sus lotes con cantidades y los albaranes de un lote. Cuentan los tres huecos; una línea con dos lotes suma su cantidad entera en los dos, porque no se sabe cuánto salió de cada uno.
 ---
 
 ## 11. Glosario

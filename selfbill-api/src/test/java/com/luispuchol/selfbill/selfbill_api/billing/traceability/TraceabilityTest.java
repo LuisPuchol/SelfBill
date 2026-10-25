@@ -87,10 +87,12 @@ class TraceabilityTest extends DomainIntegrationTest {
                 line(articleId, LOT_A, null, null, "4"),
                 line(articleId, LOT_A, null, null, "6"));
         note(clientId, APRIL_10, line(articleId, LOT_B, null, null, "1"));
+        DeliveryNoteResponse slot3 = note(clientId, LocalDateTime.of(2026, 4, 14, 8, 0),
+                line(articleId, LOT_B, null, LOT_A, "2"));
 
         deliveries(articleId, LOT_A)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$.length()").value(3))
                 .andExpect(jsonPath("$[0].deliveryNoteId").value(first.id()))
                 .andExpect(jsonPath("$[0].deliveryNoteCode").value(first.code()))
                 .andExpect(jsonPath("$[0].date").value("2026-04-10T08:00:00"))
@@ -100,7 +102,9 @@ class TraceabilityTest extends DomainIntegrationTest {
                 .andExpect(jsonPath("$[0].quantity").value(10))
                 .andExpect(jsonPath("$[1].deliveryNoteId").value(later.id()))
                 .andExpect(jsonPath("$[1].clientCode").value(2))
-                .andExpect(jsonPath("$[1].quantity").value(7));
+                .andExpect(jsonPath("$[1].quantity").value(7))
+                .andExpect(jsonPath("$[2].deliveryNoteId").value(slot3.id()))
+                .andExpect(jsonPath("$[2].quantity").value(2));
     }
 
     @Test
@@ -122,21 +126,44 @@ class TraceabilityTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Still traces articles and clients deleted after the note was saved")
+    void deletedCatalogRowsStillTrace() throws Exception {
+        Integer client2 = createClient(2, DeliveryNoteFormat.VALUED);
+        Integer pear = articleService.createArticle(article(2, "Pera")).id();
+        note(client2, APRIL_10, line(pear, LOT_A, null, null, "4"));
+        articleService.deleteArticle(pear);
+        clientService.deleteClient(client2);
+
+        articles().andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].articleName").value("Pera"));
+        lots(pear).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].code").value(LOT_A));
+        deliveries(pear, LOT_A).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].clientCode").value(2))
+                .andExpect(jsonPath("$[0].clientName").value("Client 2"));
+    }
+
+    @Test
     @DisplayName("Requires every parameter and a code of 8 digits")
     void requiresItsParameters() throws Exception {
         for (String missing : List.of("dateFrom", "dateTo")) {
             mockMvc.perform(without("/api/traceability/articles", missing, "dateFrom", "dateTo"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
         }
         for (String missing : List.of("articleId", "dateFrom", "dateTo")) {
             mockMvc.perform(without("/api/traceability/lots", missing, "articleId", "dateFrom", "dateTo"))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
         }
         for (String missing : List.of("articleId", "code", "dateFrom", "dateTo")) {
             mockMvc.perform(without("/api/traceability/deliveries", missing, "articleId", "code", "dateFrom",
-                    "dateTo")).andExpect(status().isBadRequest());
+                    "dateTo"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
         }
-        deliveries(articleId, "123").andExpect(status().isBadRequest());
+        deliveries(articleId, "123").andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
     }
 
     private static MockHttpServletRequestBuilder without(String path, String missing, String... names) {
