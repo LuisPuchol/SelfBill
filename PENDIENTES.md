@@ -41,13 +41,6 @@ El flujo completo y los cambios concretos están en CONCEPTO.md §9.
 Obligatorio desde el 1-ene-2027 (sociedades) o el 1-jul-2027 (resto), según el
 RDL 15/2025. Falta confirmar con la gestoría cuál aplica.
 
-### Generación real de PDF
-`PdfService` produce un PDF de prueba con una sola línea de texto. Falta la plantilla real
-de factura y las dos de albarán (simple y valorado, CONCEPTO.md §3).
-Antes hay que decidir dos snapshots que faltan (CONCEPTO §6): los datos del cliente en el
-albarán y los del titular (`UserProfile`) en la factura. Sin ellos, editar un cliente o el
-perfil reescribe la reimpresión de documentos ya entregados.
-
 ### Seguimiento de cobro
 `Invoice` no tiene vencimiento ni estado de pago. No se puede saber qué está cobrado,
 pendiente o vencido. Es de lo más útil para el uso diario y no depende de nada más.
@@ -114,7 +107,7 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
   tres clics rápidos en "Página siguiente" pasan una sola página. AvPág no tiene ese límite.
 
 ### Pendiente del bloque de albaranes
-- Imprimir albarán ya funciona desde el editor, pero el contenido del PDF sigue siendo provisional; falta enviarlo por correo.
+- Imprimir albarán ya funciona desde el editor; falta enviarlo por correo.
 - Imprimir sin diálogo: arrancar Edge con `--kiosk-printing` en el acceso directo de la app.
 - En pantallas pequeñas (1366×768 o menos) la rejilla del albarán deja ver pocas líneas: la cabecera con totales y casillas ocupa mucho.
 - Los avisos (toasts) pueden quedar debajo de los títulos fijos de la rejilla; y al bajar a una línea de abajo, su línea de error puede quedar cortada (falta margen inferior al desplazar).
@@ -130,13 +123,12 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 
 ### Pendiente del bloque de Ajustes
 - Borrar una vigencia de IVA: la API no tiene endpoint.
-- Logo del titular en Ajustes (junto con el bloque del PDF).
 - Probar la cuenta de correo desde Ajustes.
 - Con la base restaurada en otro equipo sin `secret.key`, la contraseña del correo no se puede descifrar pero Ajustes dice "Guardada": comprobar al leer si se puede descifrar.
 - Si se cambia el email de proveedor (Gmail → Outlook) sin vaciar servidor y puerto, se quedan los del anterior.
 
 ### Pendiente del bloque de facturas
-- Imprimir o enviar de una vez todas las facturas de un periodo, cuando exista el PDF real.
+- Imprimir o enviar de una vez todas las facturas de un periodo (el PDF real ya existe).
 - Si se pierde la conexión justo al recargar tras emitir en lote, el resumen puede abrirse encima de la pantalla de sin conexión.
 - Al volver la conexión, Enter no recarga Facturar ni el Libro hasta pulsar Esc: el cursor no vuelve a la fecha.
 - El diálogo "Emitiendo facturas…" se cierra antes de recargar: un instante se ven las filas ya emitidas.
@@ -155,3 +147,11 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - Al editar una fecha o si falla la carga, la columna activa puede seguir siendo la de lotes: un Esc no hace nada visible.
 - La lista de lotes y la de albaranes repiten el mismo cargador con caché; `notTyping` está copiado en `DataTable`, `ListScreen` y Trazabilidad.
 - Tests que faltan: fallo al cargar lotes o albaranes; clic en un artículo con los lotes activos; el escape del código y de comillas en el listado; suma 0,1 + 0,2 en el total; OpenAPI no documenta el 400 de `/articles`.
+
+### Pendiente del bloque de PDF
+- La cabecera del PDF tiene un alto fijo (68 mm): una dirección del titular de tres líneas con logo, o un recuadro del cliente de nueve líneas o más, quedaría cortada sin aviso.
+- El PDF se genera dentro de la transacción de lectura (con SQLite eso retiene el bloqueo de escritura unos 30–90 ms); la primera impresión tras arrancar tarda alrededor de un segundo (carga de fuentes): calentarlo al arrancar.
+- Caracteres fuera del juego de la Helvetica estándar (ł, ş, cirílico, emojis) salen como "#": incrustar una fuente si hiciera falta.
+- El logo se incrusta a tamaño original: un logo de 2 MB hace que cada PDF y cada adjunto pese unos 2 MB. Reducirlo al subirlo.
+- Si un albarán sigue en la hoja siguiente, su título "Albarán … de …" no se repite arriba.
+- El error de tamaño de subida (413) da siempre el texto del logo: revisarlo si se añade otra subida.

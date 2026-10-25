@@ -189,7 +189,18 @@ Los demás snapshots que el modelo exige:
 
 - **Datos fiscales del cliente en la factura**: nombre fiscal, NIF y dirección. Sin ellos,
   editar un cliente reescribe retroactivamente el PDF de todas sus facturas anteriores.
+- **Datos del titular en la factura**: nombre fiscal, NIF y dirección de `UserProfile`.
+  Sin ellos, editar el perfil reescribe la reimpresión de las facturas ya entregadas.
+- **Código del cliente en la factura**: sale impreso (`Cliente: 41 …`), así que también se congela.
 - **Tipo de IVA y formato en el albarán**: §3 y §4.
+
+**El albarán no guarda copia de los datos del cliente ni del titular.** Mientras su factura
+no está emitida se imprime con los datos actuales, porque sigue siendo editable. Al emitir
+la factura, el albarán se imprime con la copia de la factura y con las líneas congeladas de
+su sección, no con las tablas vivas.
+
+**Excepción deliberada: el logo no se copia.** Es una imagen del titular, no un dato fiscal;
+cambiarlo cambia también las reimpresiones de documentos antiguos.
 
 ---
 
