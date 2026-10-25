@@ -1,7 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -47,8 +46,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class InvoiceService {
-
-    private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
 
     private final InvoiceRepository invoiceRepository;
     private final DeliveryNoteRepository deliveryNoteRepository;
@@ -98,8 +95,7 @@ public class InvoiceService {
         BigDecimal vatPercentage = notes.get(0).getVatPercentage();
         BigDecimal surchargePercentage = notes.get(0).getSurchargePercentage();
         BigDecimal subtotal = notes.stream().map(DeliveryNote::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal vatAmount = percentageOf(subtotal, vatPercentage);
-        BigDecimal surchargeAmount = percentageOf(subtotal, surchargePercentage);
+        TaxAmounts amounts = TaxAmounts.of(subtotal, vatPercentage, surchargePercentage);
         return PendingInvoiceResponse.builder()
                 .clientId(client.getId())
                 .clientCode(client.getCode())
@@ -108,9 +104,9 @@ public class InvoiceService {
                 .vatPercentage(vatPercentage)
                 .surchargePercentage(surchargePercentage)
                 .subtotal(subtotal)
-                .vatAmount(vatAmount)
-                .surchargeAmount(surchargeAmount)
-                .total(subtotal.add(vatAmount).add(surchargeAmount))
+                .vatAmount(amounts.vatAmount())
+                .surchargeAmount(amounts.surchargeAmount())
+                .total(amounts.total())
                 .clientDeleted(client.getDeletedAt() != null)
                 .missingFiscalData(missingFiscalData(client))
                 .deliveryNotes(notes.stream()
@@ -279,15 +275,14 @@ public class InvoiceService {
         BigDecimal subtotal = deliveryNotes.stream()
                 .map(DeliveryNote::getTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal vatAmount = percentageOf(subtotal, vatPercentage);
-        BigDecimal surchargeAmount = percentageOf(subtotal, surchargePercentage);
+        TaxAmounts amounts = TaxAmounts.of(subtotal, vatPercentage, surchargePercentage);
 
         invoice.setSubtotal(subtotal);
         invoice.setVatPercentage(vatPercentage);
-        invoice.setVatAmount(vatAmount);
+        invoice.setVatAmount(amounts.vatAmount());
         invoice.setSurchargePercentage(surchargePercentage);
-        invoice.setSurchargeAmount(surchargeAmount);
-        invoice.setTotal(subtotal.add(vatAmount).add(surchargeAmount));
+        invoice.setSurchargeAmount(amounts.surchargeAmount());
+        invoice.setTotal(amounts.total());
     }
 
     private static BigDecimal commonRate(List<DeliveryNote> deliveryNotes, Function<DeliveryNote, BigDecimal> rate) {
@@ -301,10 +296,6 @@ public class InvoiceService {
             }
         }
         return first;
-    }
-
-    private static BigDecimal percentageOf(BigDecimal amount, BigDecimal percentage) {
-        return amount.multiply(percentage).divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP);
     }
 
     private static List<InvoiceLine> buildLines(Invoice invoice, List<DeliveryNote> deliveryNotes) {

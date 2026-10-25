@@ -76,6 +76,12 @@ public class UserProfileService {
         return new UserProfileLogo(profile.getLogoData(), profile.getLogoContentType());
     }
 
+    public Optional<UserProfileLogo> findLogo() {
+        return userProfileRepository.findFirstBy()
+                .filter(profile -> profile.getLogoData() != null)
+                .map(profile -> new UserProfileLogo(profile.getLogoData(), profile.getLogoContentType()));
+    }
+
     public boolean hasProfile() {
         return userProfileRepository.count() > 0;
     }
