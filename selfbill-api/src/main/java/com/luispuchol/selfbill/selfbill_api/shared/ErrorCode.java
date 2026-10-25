@@ -34,6 +34,7 @@ public enum ErrorCode {
     USER_PROFILE_ALREADY_EXISTS("A user profile already exists", HttpStatus.CONFLICT),
     USER_PROFILE_LOGO_NOT_FOUND("User profile logo not found", HttpStatus.NOT_FOUND),
     USER_PROFILE_INVALID_LOGO_FORMAT("Logo must be a JPEG or PNG image", HttpStatus.BAD_REQUEST),
+    USER_PROFILE_LOGO_TOO_LARGE("Logo must not exceed 2 MB", HttpStatus.PAYLOAD_TOO_LARGE),
 
     MAIL_NOT_CONFIGURED(
             "Mail account is not fully configured. Please set your email, SMTP host/port and app password in your profile",

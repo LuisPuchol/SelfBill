@@ -7,6 +7,7 @@
 	import TextField from '../components/TextField.svelte';
 	import { FormState } from '../records/form-state.svelte';
 	import { trimOrNull } from '../records/payload';
+	import LogoField from './LogoField.svelte';
 
 	type UserProfileRequest = components['schemas']['UserProfileRequest'];
 	type UserProfileResponse = components['schemas']['UserProfileResponse'];
@@ -26,6 +27,8 @@
 		initial,
 		save: persistProfile,
 		goBack,
+		uploadLogo,
+		logoSrc,
 		toast,
 		guard
 	}: {
@@ -34,6 +37,10 @@
 		/** `exists` tells a change (PUT) from a first save (POST) */
 		save: (body: UserProfileRequest, exists: boolean) => Promise<void>;
 		goBack: () => void | Promise<void>;
+		/** Sends the chosen logo at once: it does not wait for the form's save */
+		uploadLogo: (file: File) => Promise<void>;
+		/** Where the logo is served from */
+		logoSrc: string;
 		toast: (message: string) => void;
 		/** The page's unsaved-changes guard, which needs the form's state */
 		guard?: Snippet<[FormState<Values>, () => Promise<boolean>]>;
@@ -139,6 +146,16 @@
 				error={form.errorFor('phone')}
 			/>
 		</div>
+	</fieldset>
+	<fieldset class={fieldset}>
+		<legend class={legend}>Logo</legend>
+		<LogoField
+			{exists}
+			hasLogo={initial?.hasLogo === true}
+			src={logoSrc}
+			upload={uploadLogo}
+			{toast}
+		/>
 	</fieldset>
 	<fieldset class={fieldset}>
 		<legend class={legend}>Correo</legend>

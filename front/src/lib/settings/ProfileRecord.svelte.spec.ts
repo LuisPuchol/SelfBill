@@ -18,6 +18,8 @@ function props(overrides: Record<string, unknown> = {}) {
 		initial: null,
 		save: vi.fn().mockResolvedValue(undefined),
 		goBack: vi.fn(),
+		uploadLogo: vi.fn().mockResolvedValue(undefined),
+		logoSrc: '/api/user-profile/logo',
 		toast: vi.fn(),
 		...overrides
 	};
@@ -39,7 +41,9 @@ describe('ProfileRecord', () => {
 		await expect
 			.element(page.getByText('Déjalos vacíos con Gmail, Outlook, Yahoo o iCloud.'))
 			.toBeVisible();
-		const ids = Array.from(document.querySelectorAll('form input, input')).map((i) => i.id);
+		const ids = Array.from(document.querySelectorAll('form input, input:not([type=file])')).map(
+			(i) => i.id
+		);
 		expect(ids).toEqual([
 			'fullName',
 			'fiscalName',
@@ -51,6 +55,15 @@ describe('ProfileRecord', () => {
 			'smtpHost',
 			'smtpPort'
 		]);
+	});
+
+	it('has the Logo block between the other two', async () => {
+		await render(ProfileRecordHarness, props({ initial: stored }));
+		const names = Array.from(document.querySelectorAll('fieldset legend')).map(
+			(l) => l.textContent
+		);
+		expect(names).toEqual(['Datos fiscales', 'Logo', 'Correo']);
+		await expect.element(page.getByRole('button', { name: 'Cambiar logo…' })).toBeVisible();
 	});
 
 	it('caps the lengths as the API does', async () => {

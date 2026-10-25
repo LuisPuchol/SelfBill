@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,6 +59,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         Map<String, String> errors = Map.of(ex.getParameterName(), "must not be null");
         return handleExceptionInternal(ex, validationProblem(errors), headers, status, request);
+    }
+
+    // The only upload the API takes is the logo
+    @Override
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ErrorCode errorCode = ErrorCode.USER_PROFILE_LOGO_TOO_LARGE;
+        log.warn("[{}] {}", errorCode, ex.getMessage());
+        return handleExceptionInternal(ex, problem(errorCode.getHttpStatus(), errorCode, errorCode.format()), headers,
+                errorCode.getHttpStatus(), request);
     }
 
     @ExceptionHandler(Exception.class)

@@ -94,3 +94,40 @@ test("saves the owner's data and the home notice goes away", async ({ page, requ
 	await expect(page.locator('footer')).toContainText('1–6');
 	await expect(notice).toHaveCount(0);
 });
+
+test('uploads a logo and shows it', async ({ page, request }) => {
+	// The profile may already exist from another test.
+	if (!(await request.get('/api/user-profile')).ok()) {
+		const created = await request.post('/api/user-profile', {
+			data: {
+				fullName: 'María López',
+				fiscalName: 'Frutas López S.L.',
+				nif: 'B87654321',
+				address: 'Mercavalencia, nave 3',
+				email: 'facturas@ejemplo.es'
+			}
+		});
+		expect(created.ok()).toBe(true);
+	}
+	// 1x1 PNG
+	const png = Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+		'base64'
+	);
+
+	await page.goto('/settings/profile');
+	await expect(page.getByRole('heading', { name: 'Datos del titular' })).toBeVisible();
+	await page
+		.locator('input[type=file]')
+		.setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: png });
+
+	await expect(page.getByText('Logo guardado')).toBeVisible();
+	const preview = page.getByRole('img', { name: 'Logo' });
+	await expect(preview).toBeVisible();
+	await expect
+		.poll(() => preview.evaluate((img: HTMLImageElement) => img.naturalWidth))
+		.toBeGreaterThan(0);
+	const served = await request.get('/api/user-profile/logo');
+	expect(served.status()).toBe(200);
+	expect(served.headers()['content-type']).toBe('image/png');
+});

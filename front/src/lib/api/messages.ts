@@ -29,6 +29,7 @@ export const errorMessages: Record<ErrorCode, string> = {
 	USER_PROFILE_ALREADY_EXISTS: 'Tus datos de empresa ya están guardados.',
 	USER_PROFILE_LOGO_NOT_FOUND: 'Todavía no has subido ningún logotipo.',
 	USER_PROFILE_INVALID_LOGO_FORMAT: 'El logotipo tiene que ser una imagen JPG o PNG.',
+	USER_PROFILE_LOGO_TOO_LARGE: 'El logotipo no puede pasar de 2 MB.',
 	MAIL_NOT_CONFIGURED: 'El correo no está configurado. Rellena sus datos en Ajustes.',
 	EMAIL_SEND_FAILED:
 		'No se ha podido enviar el correo. Comprueba la conexión a internet y los datos del correo en Ajustes.',
