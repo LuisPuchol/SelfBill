@@ -36,6 +36,7 @@ import com.luispuchol.selfbill.selfbill_api.billing.document.PdfFile;
 import com.luispuchol.selfbill.selfbill_api.billing.document.PdfService;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.Client;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientRepository;
+import com.luispuchol.selfbill.selfbill_api.settings.profile.IssuerData;
 import com.luispuchol.selfbill.selfbill_api.settings.profile.UserProfileService;
 import com.luispuchol.selfbill.selfbill_api.shared.BusinessException;
 import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
@@ -176,6 +177,7 @@ public class InvoiceService {
         invoice.setDate(LocalDateTime.now(clock));
         invoice.setStatus(InvoiceStatus.ISSUED);
         freezeClientData(invoice);
+        freezeIssuerData(invoice);
         return invoiceMapper.toResponse(invoiceRepository.save(invoice));
     }
 
@@ -329,12 +331,22 @@ public class InvoiceService {
 
     private static void freezeClientData(Invoice invoice) {
         Client client = invoice.getClient();
+        invoice.setClientCode(client.getCode());
         invoice.setClientBusinessName(client.getBusinessName());
         invoice.setClientNif(client.getNif());
         invoice.setClientAddress(client.getAddress());
         invoice.setClientCity(client.getCity());
         invoice.setClientProvince(client.getProvince());
         invoice.setClientPostalCode(client.getPostalCode());
+    }
+
+    // requireIssuable has already checked that the profile exists
+    private void freezeIssuerData(Invoice invoice) {
+        IssuerData issuer = userProfileService.findIssuer()
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_PROFILE_NOT_FOUND));
+        invoice.setIssuerFiscalName(issuer.fiscalName());
+        invoice.setIssuerNif(issuer.nif());
+        invoice.setIssuerAddress(issuer.address());
     }
 
     // A complete invoice shows the issuer's and the client's NIF and address (RD 1619/2012, art. 6)

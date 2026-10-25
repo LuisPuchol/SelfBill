@@ -3,6 +3,7 @@ package com.luispuchol.selfbill.selfbill_api.settings.profile;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +78,11 @@ public class UserProfileService {
 
     public boolean hasProfile() {
         return userProfileRepository.count() > 0;
+    }
+
+    public Optional<IssuerData> findIssuer() {
+        return userProfileRepository.findFirstBy()
+                .map(profile -> new IssuerData(profile.getFiscalName(), profile.getNif(), profile.getAddress()));
     }
 
     public SmtpAccount getSmtpAccount() {

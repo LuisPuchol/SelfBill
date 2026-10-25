@@ -116,6 +116,18 @@ class DeliveryNoteQueriesTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Lines keep the order they were written in")
+    void linesKeepTheOrderTheyWereWritten() {
+        Integer second = articleService.createArticle(article(2, "Pimiento")).id();
+        Integer third = articleService.createArticle(article(3, "Cebolla")).id();
+        DeliveryNoteResponse created = deliver(101, clientId, OCT_1,
+                line(third, "01210401"), line(articleId, "01210402"), line(second, "01210403"));
+
+        assertThat(deliveryNoteService.getDeliveryNoteById(created.id()).lines())
+                .extracting(DeliveryNoteLineResponse::articleId).containsExactly(third, articleId, second);
+    }
+
+    @Test
     @DisplayName("A delivery note outside any invoice has no invoice state")
     void invoiceStateIsNullWithoutInvoice() {
         DeliveryNoteResponse free = createDeliveryNote(clientId, "1", "1");

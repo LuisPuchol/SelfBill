@@ -320,6 +320,32 @@ class InvoiceLifecycleTest extends DomainIntegrationTest {
         assertThat(reloaded.surchargePercentage()).isEqualByComparingTo("0.5");
     }
 
+    @Test
+    @DisplayName("Issuing freezes the issuer and the client code")
+    void issuingFreezesTheIssuerAndTheClientCode() {
+        InvoiceResponse invoice = issue(clientId, createDeliveryNote(clientId, "1", "1"));
+
+        userProfileService.updateUserProfile(profileRequest()
+                .fiscalName("Otro SL").nif("B99999999").address("Otra calle").build());
+        clientService.updateClient(clientId, clientRequest(99, DeliveryNoteFormat.VALUED, "Client 1 SL"));
+
+        assertThat(jdbc.queryForMap("SELECT issuer_fiscal_name, issuer_nif, issuer_address, client_code "
+                + "FROM invoices WHERE id = ?", invoice.id()))
+                .containsEntry("issuer_fiscal_name", "Luis SL")
+                .containsEntry("issuer_nif", "B00000009")
+                .containsEntry("issuer_address", "Mercavalencia, nave 3")
+                .containsEntry("client_code", 1);
+    }
+
+    @Test
+    @DisplayName("A draft has no copies of the issuer or the client code")
+    void aDraftHasNoCopies() {
+        InvoiceResponse draft = createInvoice(createDeliveryNote(clientId, "1", "1").id());
+
+        assertThat(jdbc.queryForMap("SELECT issuer_fiscal_name, issuer_nif, issuer_address, client_code "
+                + "FROM invoices WHERE id = ?", draft.id()).values()).containsOnlyNulls();
+    }
+
     private static List<Integer> sectionCodes(InvoiceResponse invoice) {
         return invoice.sections().stream().map(InvoiceSectionResponse::deliveryNoteCode).toList();
     }

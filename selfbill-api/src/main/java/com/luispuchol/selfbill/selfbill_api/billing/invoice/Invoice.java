@@ -75,6 +75,18 @@ public class Invoice extends SoftDeletableEntity {
     @Column(name = "client_postal_code", length = 10)
     private String clientPostalCode;
 
+    @Column(name = "client_code")
+    private Integer clientCode;
+
+    @Column(name = "issuer_fiscal_name", length = 255)
+    private String issuerFiscalName;
+
+    @Column(name = "issuer_nif", length = 20)
+    private String issuerNif;
+
+    @Column(name = "issuer_address", length = 500)
+    private String issuerAddress;
+
     @OneToMany(mappedBy = "invoice", fetch = FetchType.LAZY)
     @Builder.Default
     private List<DeliveryNote> deliveryNotes = new ArrayList<>();
