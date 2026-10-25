@@ -12,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -82,6 +83,28 @@ class DocumentPdfTest extends DomainIntegrationTest {
         ArgumentCaptor<EmailMessage> message = ArgumentCaptor.forClass(EmailMessage.class);
         verify(emailService).send(message.capture());
         assertThat(PdfText.text(message.getValue().attachment())).contains("Albarán 1", "Tomate");
+    }
+
+    @Test
+    @DisplayName("The uploaded logo reaches the PDF; without one there is none")
+    void uploadedLogoReachesThePdf() throws Exception {
+        DeliveryNoteResponse note = createDeliveryNote(clientId, "2", "1.5");
+        assertThat(PdfText.imageSizes(pdf("/api/delivery-notes/{id}/pdf", note.id()))).isEmpty();
+
+        userProfileService.uploadLogo(new MockMultipartFile("file", "logo.png", "image/png", PdfText.pngBytes(120, 40)));
+
+        assertThat(PdfText.imageSizes(pdf("/api/delivery-notes/{id}/pdf", note.id()))).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("A control character in a name prints as a space instead of failing the PDF")
+    void controlCharacterInANameStillRenders() throws Exception {
+        clientService.updateClient(clientId, clientRequest(1, DeliveryNoteFormat.VALUED, "Soft\u000Bbreak SL"));
+        DeliveryNoteResponse note = createDeliveryNote(clientId, "2", "1.5");
+        InvoiceResponse invoice = issue(clientId, note);
+
+        assertThat(PdfText.text(pdf("/api/delivery-notes/{id}/pdf", note.id()))).contains("Soft break SL");
+        assertThat(PdfText.text(pdf("/api/invoices/{id}/pdf", invoice.id()))).contains("Soft break SL");
     }
 
     private byte[] pdf(String path, Integer id) throws Exception {

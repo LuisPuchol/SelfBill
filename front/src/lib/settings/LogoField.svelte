@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { errorMessages } from '../api/messages';
 	import { showError, showMessage } from '../components/errors.svelte';
 
 	/** The API takes up to 2 MB; saying so here spares sending a file it will refuse. */
@@ -32,7 +33,7 @@
 		if (!file) return;
 		try {
 			if (file.size > MAX_BYTES) {
-				showMessage('El logotipo no puede pasar de 2 MB.');
+				showMessage(errorMessages.USER_PROFILE_LOGO_TOO_LARGE);
 				return;
 			}
 			try {

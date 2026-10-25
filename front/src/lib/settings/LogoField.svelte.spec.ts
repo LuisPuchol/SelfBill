@@ -57,6 +57,7 @@ describe('LogoField', () => {
 			expect(errorState.view).toMatchObject({ message: 'El logotipo no puede pasar de 2 MB.' })
 		);
 		expect(p.upload).not.toHaveBeenCalled();
+		expect(fileInput().value).toBe('');
 		expect(p.toast).not.toHaveBeenCalled();
 	});
 
@@ -75,6 +76,7 @@ describe('LogoField', () => {
 			.toBeVisible();
 		expect(p.toast).not.toHaveBeenCalled();
 		expect(document.querySelector('img')).toBeNull();
+		expect(fileInput().value).toBe('');
 	});
 
 	it('without a profile there is no button', async () => {

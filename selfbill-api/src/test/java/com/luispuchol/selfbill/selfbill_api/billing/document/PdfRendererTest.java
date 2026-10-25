@@ -3,30 +3,11 @@ package com.luispuchol.selfbill.selfbill_api.billing.document;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.contentstream.PDFStreamEngine;
-import org.apache.pdfbox.contentstream.operator.DrawObject;
-import org.apache.pdfbox.contentstream.operator.Operator;
-import org.apache.pdfbox.contentstream.operator.OperatorName;
-import org.apache.pdfbox.contentstream.operator.state.Concatenate;
-import org.apache.pdfbox.contentstream.operator.state.Restore;
-import org.apache.pdfbox.contentstream.operator.state.Save;
-import org.apache.pdfbox.contentstream.operator.state.SetGraphicsStateParameters;
-import org.apache.pdfbox.contentstream.operator.state.SetMatrix;
-import org.apache.pdfbox.cos.COSBase;
-import org.apache.pdfbox.cos.COSName;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.graphics.PDXObject;
-import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
-import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
-import org.apache.pdfbox.util.Matrix;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -220,9 +201,9 @@ class PdfRendererTest {
         byte[] withLogo = renderer.render(plainNote(ISSUER, PdfText.pngDataUri(120, 40)));
         byte[] withoutLogo = renderer.render(plainNote(ISSUER, null));
 
-        assertThat(imageSizes(withLogo)).hasSize(1);
+        assertThat(PdfText.imageSizes(withLogo)).hasSize(1);
         assertThat(PdfText.text(withLogo)).containsOnlyOnce("ADELINA DELGADO TORRES");
-        assertThat(imageSizes(withoutLogo)).isEmpty();
+        assertThat(PdfText.imageSizes(withoutLogo)).isEmpty();
         // Without a logo the fiscal name is printed large, above the issuer line
         assertThat(PdfText.text(withoutLogo).split("ADELINA DELGADO TORRES", -1)).hasSize(3);
     }
@@ -235,7 +216,7 @@ class PdfRendererTest {
             List<String> pages = PdfText.pages(pdf);
             assertThat(pages).hasSize(1);
             assertThat(pages.getFirst()).contains(CLIENT).contains("Código", "PIMIENTO VERDE KG", "Total 1.234,56 €");
-            float[] drawn = imageSizes(pdf).getFirst();
+            float[] drawn = PdfText.imageSizes(pdf).getFirst();
             assertThat(drawn[0]).isLessThanOrEqualTo(80.5f * POINTS_PER_MM);
             assertThat(drawn[1]).isLessThanOrEqualTo(30.5f * POINTS_PER_MM);
             float ratio = (float) size[0] / size[1];
@@ -249,46 +230,5 @@ class PdfRendererTest {
 
         assertThat(text).contains("Albarán 31397", "Cliente: 41 SON TERMENS GRAN CHEF SL", "Total 1.234,56 €");
         assertThat(text).doesNotContain("· NIF", "ADELINA");
-    }
-
-    /** The drawn width and height, in points, of each image on the first page. */
-    private static List<float[]> imageSizes(byte[] pdf) {
-        try (PDDocument document = Loader.loadPDF(pdf)) {
-            ImageSizes sizes = new ImageSizes();
-            sizes.processPage(document.getPage(0));
-            return sizes.sizes;
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    // PDFBox's PrintImageLocations example: the current matrix at each "Do" of an image is its drawn size
-    private static final class ImageSizes extends PDFStreamEngine {
-
-        private final List<float[]> sizes = new ArrayList<>();
-
-        ImageSizes() {
-            addOperator(new Concatenate(this));
-            addOperator(new DrawObject(this));
-            addOperator(new SetGraphicsStateParameters(this));
-            addOperator(new Save(this));
-            addOperator(new Restore(this));
-            addOperator(new SetMatrix(this));
-        }
-
-        @Override
-        protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
-            if (!OperatorName.DRAW_OBJECT.equals(operator.getName())) {
-                super.processOperator(operator, operands);
-                return;
-            }
-            PDXObject xobject = getResources().getXObject((COSName) operands.getFirst());
-            if (xobject instanceof PDImageXObject) {
-                Matrix ctm = getGraphicsState().getCurrentTransformationMatrix();
-                sizes.add(new float[] { ctm.getScalingFactorX(), ctm.getScalingFactorY() });
-            } else if (xobject instanceof PDFormXObject form) {
-                showForm(form);
-            }
-        }
     }
 }

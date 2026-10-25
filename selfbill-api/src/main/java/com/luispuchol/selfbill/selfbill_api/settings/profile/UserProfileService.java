@@ -2,7 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.settings.profile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -21,7 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional(readOnly = true)
 public class UserProfileService {
 
-    private static final List<String> ALLOWED_LOGO_TYPES = List.of("image/jpeg", "image/png");
+    private static final byte[] PNG_SIGNATURE = { (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+    private static final byte[] JPEG_SIGNATURE = { (byte) 0xFF, (byte) 0xD8, (byte) 0xFF };
 
     private final UserProfileRepository userProfileRepository;
     private final UserProfileMapper userProfileMapper;
@@ -54,18 +55,35 @@ public class UserProfileService {
 
     @Transactional
     public void uploadLogo(MultipartFile file) {
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_LOGO_TYPES.contains(contentType)) {
-            throw new BusinessException(ErrorCode.USER_PROFILE_INVALID_LOGO_FORMAT);
-        }
-        UserProfile profile = findProfile();
+        byte[] data;
         try {
-            profile.setLogoData(file.getBytes());
+            data = file.getBytes();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+        // The declared content type comes from the file's extension: only the bytes say what it is
+        String contentType = sniffImageType(data);
+        if (contentType == null) {
+            throw new BusinessException(ErrorCode.USER_PROFILE_INVALID_LOGO_FORMAT);
+        }
+        UserProfile profile = findProfile();
+        profile.setLogoData(data);
         profile.setLogoContentType(contentType);
         userProfileRepository.save(profile);
+    }
+
+    private static String sniffImageType(byte[] data) {
+        if (startsWith(data, PNG_SIGNATURE)) {
+            return "image/png";
+        }
+        if (startsWith(data, JPEG_SIGNATURE)) {
+            return "image/jpeg";
+        }
+        return null;
+    }
+
+    private static boolean startsWith(byte[] data, byte[] signature) {
+        return data.length >= signature.length && Arrays.equals(data, 0, signature.length, signature, 0, signature.length);
     }
 
     public UserProfileLogo getLogo() {

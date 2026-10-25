@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,6 +25,9 @@ import com.luispuchol.selfbill.selfbill_api.settings.profile.UserProfileLogo;
  * entities' line order (the database order comes from {@code @OrderBy} on the collections).
  */
 public final class PrintedDocuments {
+
+    private static final Pattern UNPRINTABLE = Pattern
+            .compile("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\uFFFE\\uFFFF]");
 
     private PrintedDocuments() {
     }
@@ -64,8 +68,8 @@ public final class PrintedDocuments {
                     .map(PrintedDocuments::line)
                     .toList();
         } else {
-            issuer = currentIssuer == null ? null : new PrintedDocument.Issuer(currentIssuer.fiscalName(),
-                    currentIssuer.nif(), currentIssuer.address());
+            issuer = currentIssuer == null ? null : new PrintedDocument.Issuer(printable(currentIssuer.fiscalName()),
+                    printable(currentIssuer.nif()), printable(currentIssuer.address()));
             client = clientLines(note.getClient());
             lines = note.getLines().stream().map(PrintedDocuments::line).toList();
         }
@@ -127,21 +131,22 @@ public final class PrintedDocuments {
     }
 
     private static PrintedDocument.Line line(InvoiceLine line) {
-        return new PrintedDocument.Line(String.valueOf(line.getArticleCode()), line.getArticleName(),
+        return new PrintedDocument.Line(String.valueOf(line.getArticleCode()), printable(line.getArticleName()),
                 traceability(line.getTraceabilityCode1(), line.getTraceabilityCode2(), line.getTraceabilityCode3()),
                 PrintFormat.number(line.getQuantity()), PrintFormat.number(line.getPrice()),
                 PrintFormat.number(line.getTotal()));
     }
 
     private static PrintedDocument.Line line(DeliveryNoteLine line) {
-        return new PrintedDocument.Line(String.valueOf(line.getArticle().getCode()), line.getArticle().getName(),
+        return new PrintedDocument.Line(String.valueOf(line.getArticle().getCode()),
+                printable(line.getArticle().getName()),
                 traceability(line.getTraceabilityCode1(), line.getTraceabilityCode2(), line.getTraceabilityCode3()),
                 PrintFormat.number(line.getQuantity()), PrintFormat.number(line.getPrice()),
                 PrintFormat.number(line.getTotal()));
     }
 
     private static String traceability(String... lots) {
-        return Stream.of(lots).filter(PrintedDocuments::hasText).collect(Collectors.joining(" "));
+        return printable(Stream.of(lots).filter(PrintedDocuments::hasText).collect(Collectors.joining(" ")));
     }
 
     /** An old invoice issued without a profile has no issuer copy. */
@@ -149,8 +154,8 @@ public final class PrintedDocuments {
         if (invoice.getIssuerFiscalName() == null) {
             return null;
         }
-        return new PrintedDocument.Issuer(invoice.getIssuerFiscalName(), invoice.getIssuerNif(),
-                invoice.getIssuerAddress());
+        return new PrintedDocument.Issuer(printable(invoice.getIssuerFiscalName()), printable(invoice.getIssuerNif()),
+                printable(invoice.getIssuerAddress()));
     }
 
     private static List<String> clientCopy(Invoice invoice) {
@@ -167,25 +172,30 @@ public final class PrintedDocuments {
     private static List<String> clientLines(Integer code, String name, String address, String postalCode,
             String city, String province, String nif) {
         List<String> lines = new ArrayList<>();
-        lines.add("Cliente: " + joined(code == null ? null : String.valueOf(code), name));
+        lines.add(printable("Cliente: " + joined(code == null ? null : String.valueOf(code), name)));
         if (hasText(address)) {
-            lines.add(address);
+            lines.add(printable(address));
         }
         String town = joined(postalCode, city);
         if (hasText(province)) {
             town = joined(town, "(" + province + ")");
         }
         if (!town.isEmpty()) {
-            lines.add(town);
+            lines.add(printable(town));
         }
         if (hasText(nif)) {
-            lines.add("CIF/NIF: " + nif);
+            lines.add(printable("CIF/NIF: " + nif));
         }
         return lines;
     }
 
     private static String joined(String... parts) {
         return Stream.of(parts).filter(PrintedDocuments::hasText).collect(Collectors.joining(" "));
+    }
+
+    /** What XML cannot carry (a soft line break pasted from Word, say) prints as a space instead of failing the PDF. */
+    private static String printable(String value) {
+        return value == null ? null : UNPRINTABLE.matcher(value).replaceAll(" ");
     }
 
     private static boolean hasText(String value) {

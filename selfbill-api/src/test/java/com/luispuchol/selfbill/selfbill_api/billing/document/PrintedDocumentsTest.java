@@ -140,6 +140,9 @@ class PrintedDocumentsTest {
                 .containsExactly("Cliente: 41 X");
         assertThat(PrintedDocuments.invoice(base.clientNif("B1").clientAddress("CALLE 1").build(), null).client())
                 .containsExactly("Cliente: 41 X", "CALLE 1", "CIF/NIF: B1");
+        assertThat(PrintedDocuments.invoice(
+                base.clientProvince("ILLES BALEARS").clientNif(null).clientAddress(null).build(), null).client())
+                .containsExactly("Cliente: 41 X", "(ILLES BALEARS)");
     }
 
     @Test
@@ -236,5 +239,45 @@ class PrintedDocumentsTest {
         assertThat(PrintedDocuments.invoice(invoice().build(), new UserProfileLogo(bytes, "image/png")).logo())
                 .isEqualTo("data:image/png;base64," + Base64.getEncoder().encodeToString(bytes));
         assertThat(PrintedDocuments.invoice(invoice().build(), null).logo()).isNull();
+    }
+
+    @Test
+    void controlCharactersPrintAsSpaces() {
+        // \u000B is Word's soft line break; XML cannot carry it
+        Invoice invoice = withCopies(invoice().lines(List.of(invoiceLine(31397, MAY_2, "SOFT\u000BBREAK", 316))));
+        invoice.setClientBusinessName("CLIENT\u000BNAME");
+        invoice.setIssuerFiscalName("ISSUER\u0000NAME");
+        DeliveryNote note = note().client(Client.builder().code(7).businessName("NOTE\u000BCLIENT").build())
+                .lines(List.of(noteLine("LOT\u001F1", null, null))).build();
+        note.getLines().get(0).getArticle().setName("ARTICLE\u000BNAME");
+
+        PrintedDocument printed = PrintedDocuments.invoice(invoice, null);
+        PrintedDocument printedNote = PrintedDocuments.deliveryNote(note, new IssuerData("A\u000CB", "N", "ADDR"), null);
+
+        assertThat(printed.client().get(0)).isEqualTo("Cliente: 41 CLIENT NAME");
+        assertThat(printed.issuer().fiscalName()).isEqualTo("ISSUER NAME");
+        assertThat(printed.sections().get(0).lines().get(0).concept()).isEqualTo("SOFT BREAK");
+        assertThat(printedNote.client().get(0)).isEqualTo("Cliente: 7 NOTE CLIENT");
+        assertThat(printedNote.issuer().fiscalName()).isEqualTo("A B");
+        assertThat(printedNote.sections().get(0).lines().get(0).concept()).isEqualTo("ARTICLE NAME");
+        assertThat(printedNote.sections().get(0).lines().get(0).traceability()).isEqualTo("LOT 1");
+    }
+
+    @Test
+    void valuedNoteInAnIssuedInvoiceTakesLinesFromTheInvoiceAndTotalsFromTheNote() {
+        Invoice invoice = withCopies(invoice().lines(List.of(
+                invoiceLine(31397, MAY_2, "FROZEN NAME", 316),
+                invoiceLine(31420, MAY_4, "ANOTHER NOTE", 318))));
+        DeliveryNote note = note().format(DeliveryNoteFormat.VALUED).total(bd("100.00")).invoice(invoice)
+                .lines(List.of(noteLine("02260424", null, null))).build();
+
+        PrintedDocument document = PrintedDocuments.deliveryNote(note, null, null);
+
+        assertThat(document.sections().get(0).lines()).extracting(PrintedDocument.Line::concept)
+                .containsExactly("FROZEN NAME");
+        assertThat(document.totals()).isEqualTo(
+                new PrintedDocument.Totals("100,00", "4,00", "4,00", "0,50", "0,50", "104,50 €"));
+        assertThat(document.nonFiscal()).isTrue();
+        assertThat(document.issuer().fiscalName()).isEqualTo("ADELINA DELGADO TORRES");
     }
 }
