@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<!--
+  The invoice, the plain and the valued delivery note (PrintedDocument). OpenHTMLtoPDF parses it as XML:
+  every tag closed, numeric entities only, and every datum through th:text or th:src, which escape it.
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+<meta charset="UTF-8" />
+<title th:text="${document.title}">Documento</title>
+<style>
+  @page {
+    size: A4;
+    margin: 68mm 12mm 12mm 12mm;
+    /* Anchored to the table: a shorter header leaves more paper above it, not a gap above the table */
+    @top-center {
+      content: element(header);
+      vertical-align: bottom;
+    }
+  }
+
+  body {
+    margin: 0;
+    font-family: Helvetica, sans-serif;
+    font-size: 9.5pt;
+    color: #000;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  /* Header, repeated in the top margin of every page */
+
+  #header {
+    position: running(header);
+  }
+
+  .header-layout {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .header-layout td {
+    vertical-align: top;
+    padding: 0;
+  }
+
+  .issuer {
+    width: 96mm;
+    padding-right: 4mm;
+  }
+
+  .logo {
+    max-width: 80mm;
+    max-height: 30mm;
+    margin-bottom: 2mm;
+  }
+
+  .issuer-name {
+    font-size: 15pt;
+    font-weight: bold;
+    margin-bottom: 2mm;
+  }
+
+  .issuer-line {
+    font-weight: bold;
+  }
+
+  .issuer div {
+    line-height: 1.35;
+  }
+
+  .issuer .issuer-address {
+    font-size: 9pt;
+  }
+
+  .box {
+    border: 0.35mm solid #000;
+    border-radius: 3mm;
+    padding: 2.5mm 3.5mm;
+    min-height: 26mm;
+    line-height: 1.35;
+  }
+
+  .box-title {
+    width: 100%;
+    margin-bottom: 1.2mm;
+  }
+
+  .box-title td {
+    padding: 0;
+  }
+
+  .title {
+    font-size: 12.5pt;
+    font-weight: bold;
+  }
+
+  .date {
+    text-align: right;
+    font-size: 10.5pt;
+  }
+
+  .client-name {
+    font-weight: bold;
+  }
+
+  .header-layout td.page-number {
+    text-align: right;
+    padding: 2mm 0 1.5mm 0;
+  }
+
+  .page-number::before {
+    content: "Página " counter(page) "/" counter(pages);
+  }
+
+  /*
+    Lines. The column titles are a table of their own at the foot of the header, with the same columns,
+    instead of the lines' thead repeated by -fs-table-paginate: OpenHTMLtoPDF leaves out that repeated
+    thead on a page that starts with a heading moved there by page-break-after: avoid.
+  */
+
+  .columns {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  /* The concept takes the rest, about 71 mm */
+  col.code {
+    width: 16mm;
+  }
+
+  col.lots {
+    width: 41mm;
+  }
+
+  col.quantity {
+    width: 19mm;
+  }
+
+  col.price {
+    width: 17mm;
+  }
+
+  col.amount {
+    width: 22mm;
+  }
+
+  .titles th {
+    font-weight: bold;
+    text-align: left;
+    padding: 1.6mm 1.5mm;
+    border-top: 0.35mm solid #000;
+    border-bottom: 0.35mm solid #000;
+    background-color: #e8e8e8;
+  }
+
+  /* Child selectors: the end row holds the totals table, which must not take these */
+
+  .lines > tbody > tr > td {
+    padding: 1.4mm 1.5mm;
+    border-bottom: 0.2mm solid #bbb;
+    vertical-align: top;
+  }
+
+  .lines > tbody > tr {
+    page-break-inside: avoid;
+  }
+
+  .lines > tbody > tr.heading {
+    page-break-after: avoid;
+  }
+
+  .lines > tbody > tr.heading > td {
+    font-weight: bold;
+    padding-top: 2.6mm;
+    border-bottom: 0.3mm solid #000;
+  }
+
+  .lines .concept {
+    font-weight: bold;
+  }
+
+  .columns .number {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* End of the document: a page never holds the totals alone */
+
+  .lines > tbody > tr.end {
+    page-break-before: avoid;
+  }
+
+  .lines > tbody > tr.end > td {
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .plain-total {
+    margin-top: 4mm;
+    text-align: right;
+    font-size: 12pt;
+    font-weight: bold;
+  }
+
+  .totals {
+    width: 100%;
+    margin-top: 5mm;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 0.35mm solid #000;
+    border-radius: 3mm;
+  }
+
+  .totals th,
+  .totals td {
+    text-align: right;
+    white-space: nowrap;
+    padding: 1.6mm 3.5mm;
+  }
+
+  .totals th {
+    font-weight: normal;
+    font-size: 8.5pt;
+    padding-bottom: 0.5mm;
+  }
+
+  .totals td {
+    font-size: 10.5pt;
+    padding-bottom: 2.2mm;
+  }
+
+  .totals .total {
+    font-weight: bold;
+    font-size: 12pt;
+  }
+
+  .legend {
+    margin-top: 4mm;
+    text-align: center;
+    font-size: 10.5pt;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <table class="header-layout" role="presentation">
+    <tr>
+      <td class="issuer">
+        <img th:if="${document.logo != null}" class="logo" th:src="${document.logo}" alt="" />
+        <th:block th:if="${document.issuer != null}">
+          <div th:if="${document.logo == null}" class="issuer-name" th:text="${document.issuer.fiscalName}">NOMBRE FISCAL</div>
+          <div class="issuer-line"><span th:text="${document.issuer.fiscalName}">NOMBRE FISCAL</span><th:block th:unless="${#strings.isEmpty(document.issuer.nif)}"> · NIF <span th:text="${document.issuer.nif}">NIF</span></th:block></div>
+          <div th:unless="${#strings.isEmpty(document.issuer.address)}" class="issuer-address"
+              th:text="${document.issuer.address}">Dirección</div>
+        </th:block>
+      </td>
+      <td>
+        <div class="box">
+          <table class="box-title" role="presentation">
+            <tr>
+              <td class="title" th:text="${document.title}">Factura 3852</td>
+              <td class="date" th:text="'Fecha ' + ${document.date}">Fecha 31/05/2026</td>
+            </tr>
+          </table>
+          <div th:each="line, item : ${document.client}" th:class="${item.first} ? 'client-name' : 'client-line'"
+              th:text="${line}">Cliente</div>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2" class="page-number"></td>
+    </tr>
+  </table>
+  <table class="columns titles">
+    <colgroup th:fragment="columns">
+      <col class="code" />
+      <col class="concept" />
+      <col class="lots" />
+      <col class="quantity" />
+      <col class="price" />
+      <col class="amount" />
+    </colgroup>
+    <tr>
+      <th>Código</th>
+      <th>Concepto</th>
+      <th>Trazabilidad</th>
+      <th class="number">Cantidad</th>
+      <th class="number">Precio</th>
+      <th class="number">Importe</th>
+    </tr>
+  </table>
+</div>
+
+<table class="columns lines">
+  <colgroup th:replace="~{:: columns}"></colgroup>
+  <tbody>
+    <th:block th:each="section : ${document.sections}">
+      <tr th:if="${section.heading != null}" class="heading">
+        <td colspan="6" th:text="${section.heading}">Albarán 31397 de 02/05/2026</td>
+      </tr>
+      <tr th:each="line : ${section.lines}">
+        <td class="code" th:text="${line.code}">316</td>
+        <td class="concept" th:text="${line.concept}">PIMIENTO VERDE KG</td>
+        <td class="lots" th:text="${line.traceability}">02260424</td>
+        <td class="number" th:text="${line.quantity}">5,30</td>
+        <td class="number" th:text="${line.price}">1,90</td>
+        <td class="number" th:text="${line.amount}">10,07</td>
+      </tr>
+    </th:block>
+    <!-- The end of the document, a row of the table so that it stays on the page of the last line -->
+    <tr class="end">
+      <td colspan="6">
+        <div th:if="${document.plainTotal != null}" class="plain-total"
+            th:text="'Total ' + ${document.plainTotal}">Total 1.234,56 €</div>
+        <table th:if="${document.totals != null}" th:with="totals = ${document.totals}" class="totals">
+          <tr>
+            <th>Base imponible</th>
+            <th>% IVA</th>
+            <th>Cuota IVA</th>
+            <th th:if="${totals.surchargePercentage != null}">% Recargo</th>
+            <th th:if="${totals.surchargeAmount != null}">Cuota recargo</th>
+            <th>Total</th>
+          </tr>
+          <tr>
+            <td th:text="${totals.base}">1.234,56</td>
+            <td th:text="${totals.vatPercentage}">4,00</td>
+            <td th:text="${totals.vatAmount}">49,38</td>
+            <td th:if="${totals.surchargePercentage != null}" th:text="${totals.surchargePercentage}">0,50</td>
+            <td th:if="${totals.surchargeAmount != null}" th:text="${totals.surchargeAmount}">6,17</td>
+            <td class="total" th:text="${totals.total}">1.290,11 €</td>
+          </tr>
+        </table>
+        <p th:if="${document.nonFiscal}" class="legend">Documento sin valor fiscal. No válido como factura.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+</body>
+</html>
