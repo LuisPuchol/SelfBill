@@ -67,6 +67,10 @@ public class InvoiceService {
         return invoiceMapper.toResponse(findInvoice(id));
     }
 
+    public List<ClientSummaryResponse> getClientSummary(LocalDate dateFrom, LocalDate dateTo) {
+        return invoiceRepository.summarizeByClient(dateFrom.atStartOfDay(), dateTo.plusDays(1).atStartOfDay());
+    }
+
     public List<PendingInvoiceResponse> getPendingInvoices(LocalDate dateTo) {
         List<DeliveryNote> pending = deliveryNoteRepository.findAll(
                 DeliveryNoteSpecification.withFilter(DeliveryNoteFilter.builder().invoiced(false).dateTo(dateTo).build()),

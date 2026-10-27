@@ -81,6 +81,15 @@ public class InvoiceController {
         return invoiceService.getPendingInvoices(dateTo);
     }
 
+    @Operation(summary = "Sum the issued invoices of each client in a period", description = """
+            One row per client with issued invoices dated between the two days, both inclusive. Drafts and deleted \n            invoices do not count; a deleted client still appears. Ordered by client code.""")
+    @GetMapping("/summary")
+    public List<ClientSummaryResponse> getClientSummary(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Schema(example = "2026-10-01") LocalDate dateFrom,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Schema(example = "2026-10-31") LocalDate dateTo) {
+        return invoiceService.getClientSummary(dateFrom, dateTo);
+    }
+
     @Operation(summary = "Get an invoice by id")
     @ApiErrors(INVOICE_NOT_FOUND)
     @GetMapping("/{id}")

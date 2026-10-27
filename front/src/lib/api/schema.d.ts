@@ -441,6 +441,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/invoices/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sum the issued invoices of each client in a period
+         * @description One row per client with issued invoices dated between the two days, both inclusive. Drafts and deleted
+         *                 invoices do not count; a deleted client still appears. Ordered by client code.
+         */
+        get: operations["getClientSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invoices/pending": {
         parameters: {
             query?: never;
@@ -1067,6 +1088,21 @@ export interface components {
         PagedModelInvoiceResponse: {
             content?: components["schemas"]["InvoiceResponse"][];
             page?: components["schemas"]["PageMetadata"];
+        };
+        /** @description What was invoiced to a client in a period: the sum of its issued invoices */
+        ClientSummaryResponse: {
+            /** Format: int32 */
+            clientId?: number;
+            /** Format: int32 */
+            clientCode?: number;
+            /** @description Trade name of the client */
+            clientName?: string;
+            /** Format: int32 */
+            invoiceCount?: number;
+            subtotal?: number;
+            vatAmount?: number;
+            surchargeAmount?: number;
+            total?: number;
         };
         PendingDeliveryNoteResponse: {
             /** Format: int32 */
@@ -3063,6 +3099,31 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getClientSummary: {
+        parameters: {
+            query: {
+                /** @example 2026-10-01 */
+                dateFrom: string;
+                /** @example 2026-10-31 */
+                dateTo: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientSummaryResponse"][];
                 };
             };
         };
