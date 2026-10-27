@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { on } from 'svelte/events';
-	import { createSubscriber, SvelteMap } from 'svelte/reactivity';
+	import { createSubscriber } from 'svelte/reactivity';
 	import type { components } from '../api/schema';
 	import ActionButton from '../components/ActionButton.svelte';
 	import DataTable from '../components/DataTable.svelte';
 	import DateField from '../components/DateField.svelte';
+	import { DetailLoader } from '../components/detail-loader.svelte';
 	import { showError, showMessage } from '../components/errors.svelte';
 	import { fillViewport } from '../components/fill-viewport';
 	import Form from '../components/Form.svelte';
@@ -93,91 +94,49 @@
 		void load(from, to);
 	});
 
-	// Answers cached by article and by article and lot (until the articles are loaded again), and
-	// only the latest request is shown.
-	const lotsCache = new SvelteMap<number, Lot[]>();
-	const deliveriesCache = new SvelteMap<string, Delivery[]>();
-	let lotsState = $state.raw<{ articleId: number; rows: Lot[] } | null>(null);
-	let deliveriesState = $state.raw<{ key: string; rows: Delivery[] } | null>(null);
-	/** Raised when the articles load again: an answer that started before is for another period. */
-	let generation = 0;
-	let lotsSeq = 0;
-	let deliveriesSeq = 0;
-
-	const lots = $derived(
-		lotsState && lotsState.articleId === markedArticle?.articleId ? lotsState.rows : NONE
+	// The lots by article and the notes by article and lot: cached until the articles load again.
+	const lotsLoader = new DetailLoader<number, Lot[]>(
+		(articleId) => loadLots(articleId, shownFrom, shownTo),
+		showError
 	);
+	const deliveriesLoader = new DetailLoader<string, Delivery[]>((key) => {
+		const cut = key.indexOf('|');
+		return loadDeliveries(Number(key.slice(0, cut)), key.slice(cut + 1), shownFrom, shownTo);
+	}, showError);
+
+	const lots = $derived(lotsLoader.get(markedArticle?.articleId) ?? NONE);
 	const markedLot = $derived(lots[selectedLot]);
 	const markedKey = $derived(
 		markedArticle && markedLot ? `${markedArticle.articleId}|${markedLot.code}` : undefined
 	);
-	const deliveries = $derived(
-		deliveriesState && deliveriesState.key === markedKey ? deliveriesState.rows : NONE
-	);
+	const deliveriesShown = $derived(deliveriesLoader.get(markedKey));
+	const deliveries = $derived(deliveriesShown ?? NONE);
 	/** The notes of the marked lot are on screen: what F9 prints. */
-	const ready = $derived(markedLot !== undefined && deliveriesState?.key === markedKey);
+	const ready = $derived(markedLot !== undefined && deliveriesShown !== undefined);
 	// Summed in hundredths, as floats drift
 	const total = $derived(
 		deliveries.reduce((acc, d) => acc + Math.round((d.quantity ?? 0) * 100), 0) / 100
 	);
 
+	// The mark goes to the first lot with the lots of another article
 	$effect(() => {
-		const article = markedArticle;
+		void markedArticle;
 		untrack(() => {
-			const seq = ++lotsSeq;
-			const gen = generation;
-			// The mark goes to the first lot with the lots of another article
 			selectedLot = 0;
-			if (article?.articleId === undefined) {
-				lotsState = null;
-				return;
-			}
-			const id = article.articleId;
-			const hit = lotsCache.get(id);
-			if (hit) {
-				lotsState = { articleId: id, rows: hit };
-				return;
-			}
-			loadLots(id, shownFrom, shownTo).then(
-				(rows) => {
-					if (gen === generation) lotsCache.set(id, rows);
-					if (seq === lotsSeq) lotsState = { articleId: id, rows };
-				},
-				(err: unknown) => {
-					if (seq === lotsSeq) showError(err);
-				}
-			);
 		});
 	});
 
+	// Both read `articles` too: after a load the same key is asked for again.
 	$effect(() => {
-		const article = markedArticle;
-		const lot = markedLot;
-		untrack(() => {
-			const seq = ++deliveriesSeq;
-			const gen = generation;
-			if (article?.articleId === undefined || lot?.code === undefined) {
-				deliveriesState = null;
-				return;
-			}
-			const id = article.articleId;
-			const code = lot.code;
-			const key = `${id}|${code}`;
-			const hit = deliveriesCache.get(key);
-			if (hit) {
-				deliveriesState = { key, rows: hit };
-				return;
-			}
-			loadDeliveries(id, code, shownFrom, shownTo).then(
-				(rows) => {
-					if (gen === generation) deliveriesCache.set(key, rows);
-					if (seq === deliveriesSeq) deliveriesState = { key, rows };
-				},
-				(err: unknown) => {
-					if (seq === deliveriesSeq) showError(err);
-				}
-			);
-		});
+		void articles;
+		const id = markedArticle?.articleId;
+		untrack(() => lotsLoader.select(id));
+	});
+
+	$effect(() => {
+		void articles;
+		const key = markedKey;
+		untrack(() => deliveriesLoader.select(key));
 	});
 
 	/** True once the articles for these dates are on screen. */
@@ -194,9 +153,11 @@
 			return false;
 		}
 		if (id !== loadId) return false;
-		generation++;
-		lotsCache.clear();
-		deliveriesCache.clear();
+		// The very same list is nothing new: what is cached or on its way still holds.
+		if (result !== articles) {
+			lotsLoader.clear();
+			deliveriesLoader.clear();
+		}
 		shownFrom = dateFrom;
 		shownTo = dateTo;
 		selectedArticle = 0;

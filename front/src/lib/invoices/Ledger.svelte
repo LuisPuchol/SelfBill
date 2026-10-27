@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { SvelteMap } from 'svelte/reactivity';
 	import type { components } from '../api/schema';
 	import ActionButton from '../components/ActionButton.svelte';
 	import DataTable from '../components/DataTable.svelte';
 	import DateField from '../components/DateField.svelte';
 	import DeleteDialog from '../components/DeleteDialog.svelte';
+	import { DetailLoader } from '../components/detail-loader.svelte';
 	import { showError, showMessage } from '../components/errors.svelte';
 	import { fillViewport } from '../components/fill-viewport';
 	import Form from '../components/Form.svelte';
@@ -19,9 +19,9 @@
 	import { useKeys } from '../keyboard/keymap.svelte';
 	import { DeleteFlow, type DeleteOptions } from '../records/delete-flow.svelte';
 	import { LEDGER_LIMIT, periodTotals } from './ledger';
+	import { sectionColumns } from './sections';
 
 	type Invoice = components['schemas']['InvoiceResponse'];
-	type Section = NonNullable<Invoice['sections']>[number];
 
 	let {
 		today,
@@ -83,11 +83,6 @@
 		{ label: 'Rec.', value: (i) => formatMoney(i.surchargeAmount ?? 0), align: 'right' },
 		{ label: 'Total', value: (i) => formatMoney(i.total ?? 0), align: 'right' }
 	];
-	const noteColumns: Column<Section>[] = [
-		{ label: 'Fecha', value: (s) => formatDate(s.deliveryNoteDate ?? '') },
-		{ label: 'Alb.', value: (s) => String(s.deliveryNoteCode ?? ''), align: 'right' },
-		{ label: 'Importe', value: (s) => formatMoney(s.subtotal ?? 0), align: 'right' }
-	];
 
 	const invoices = (n: number) => (n === 1 ? '1 factura' : `${n} facturas`);
 
@@ -108,35 +103,15 @@
 		});
 	});
 
-	// The panel: answers cached by invoice id, and only the latest request is shown.
-	const cache = new SvelteMap<number, Invoice>();
-	let detail = $state.raw<Invoice | null>(null);
-	let detailId = 0;
+	// The panel: invoices by id, cached until the list loads again.
+	const detailLoader = new DetailLoader<number, Invoice>((id) => loadInvoice(id), showError);
+	// Reads `rows` too: after a load the same invoice is asked for again.
 	$effect(() => {
+		void rows;
 		const id = marked?.id;
-		untrack(() => {
-			const seq = ++detailId;
-			if (id === undefined) {
-				detail = null;
-				return;
-			}
-			const hit = cache.get(id);
-			if (hit) {
-				detail = hit;
-				return;
-			}
-			loadInvoice(id).then(
-				(invoice) => {
-					cache.set(id, invoice);
-					if (seq === detailId) detail = invoice;
-				},
-				(err: unknown) => {
-					if (seq === detailId) showError(err);
-				}
-			);
-		});
+		untrack(() => detailLoader.select(id));
 	});
-	const sections = $derived(detail && detail.id === marked?.id ? (detail.sections ?? []) : []);
+	const sections = $derived(detailLoader.get(marked?.id)?.sections ?? []);
 
 	/** True once the list for these dates is on screen. */
 	async function load(
@@ -156,7 +131,7 @@
 			return false;
 		}
 		if (id !== loadId) return false;
-		cache.clear();
+		detailLoader.clear();
 		keepIndex = keep;
 		rows = result.invoices;
 		truncated = result.truncated;
@@ -300,7 +275,7 @@
 				</h2>
 				<p>{marked.clientName}</p>
 				<!-- No empty text: until the answer arrives there are no sections yet -->
-				<StaticTable columns={noteColumns} rows={sections} emptyText="" scroll />
+				<StaticTable columns={sectionColumns} rows={sections} emptyText="" scroll />
 			</section>
 		{/if}
 	</div>

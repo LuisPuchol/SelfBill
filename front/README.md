@@ -42,3 +42,4 @@ Especificación de la base: [../docs/superpowers/specs/2026-10-13-front-base-des
 - `CheckAction`: casilla con su tecla, construida desde un `KeyAction` como `ActionButton`; nunca toma el foco.
 - `DataTable` con `scroll` (caja con scroll propio y títulos fijos), `onOpen` opcional (sin Enter) y `active` (solo la tabla activa responde a las teclas; la inactiva conserva una marca gris); `StaticTable` para una tabla de solo lectura junto a una `DataTable`.
 - `printDocument` imprime cualquier PDF o HTML (un `Blob`) por el marco oculto.
+- `DetailLoader`: el detalle de la fila marcada, que se carga al moverla (caché por clave, solo la última petición se muestra o avisa del error, `clear()` al recargar la lista); la pantalla lo maneja con un `$effect` que llama a `select` y lee `get` en un `$derived`.
