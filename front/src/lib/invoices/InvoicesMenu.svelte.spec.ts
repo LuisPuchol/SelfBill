@@ -11,7 +11,7 @@ const bar = () => page.getByRole('contentinfo');
 describe('InvoicesMenu', () => {
 	beforeEach(() => goto.mockClear());
 
-	it('shows both tiles and the keys', async () => {
+	it('shows the three tiles and the keys', async () => {
 		await render(InvoicesMenuHarness);
 		await expect
 			.element(page.getByRole('link', { name: /Facturar/ }))
@@ -19,18 +19,23 @@ describe('InvoicesMenu', () => {
 		await expect
 			.element(page.getByRole('link', { name: /Libro de facturas/ }))
 			.toHaveAttribute('href', '/invoices/ledger');
-		await expect.element(bar()).toHaveTextContent('1–2');
+		await expect
+			.element(page.getByRole('link', { name: /Resumen por cliente/ }))
+			.toHaveAttribute('href', '/invoices/summary');
+		await expect.element(bar()).toHaveTextContent('1–3');
 		await expect.element(bar()).toHaveTextContent('Abrir');
 		await expect.element(bar()).toHaveTextContent('Volver');
 	});
 
-	it('opens Facturar with 1 and the ledger with 2', async () => {
+	it('opens Facturar with 1, the ledger with 2 and the summary with 3', async () => {
 		await render(InvoicesMenuHarness);
-		await expect.element(bar()).toHaveTextContent('1–2');
+		await expect.element(bar()).toHaveTextContent('1–3');
 		await userEvent.keyboard('1');
 		expect(goto).toHaveBeenLastCalledWith('/invoices/billing');
 		await userEvent.keyboard('2');
 		expect(goto).toHaveBeenLastCalledWith('/invoices/ledger');
+		await userEvent.keyboard('3');
+		expect(goto).toHaveBeenLastCalledWith('/invoices/summary');
 	});
 
 	it('goes back home with Esc', async () => {

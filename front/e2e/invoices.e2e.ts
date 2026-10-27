@@ -123,7 +123,7 @@ test('billing issues the pending notes up to a date', async ({ page, request }) 
 	await ready(page, '1–6');
 	await page.keyboard.press('2');
 	await expect(page).toHaveURL('/invoices');
-	await ready(page, '1–2');
+	await ready(page, '1–3');
 	await page.keyboard.press('1');
 	await expect(page).toHaveURL('/invoices/billing');
 	await expect(page.getByRole('heading', { name: 'Facturar' })).toBeVisible();
@@ -180,7 +180,7 @@ test('the ledger shows an issued invoice and deleting frees its notes', async ({
 	await ready(page, '1–6');
 	await page.keyboard.press('2');
 	await expect(page).toHaveURL('/invoices');
-	await ready(page, '1–2');
+	await ready(page, '1–3');
 	await page.keyboard.press('2');
 	await expect(page).toHaveURL('/invoices/ledger');
 	await ready(page, 'Borrar');
@@ -213,7 +213,7 @@ test('the ledger shows an issued invoice and deleting frees its notes', async ({
 	await page.keyboard.press('Escape');
 	await page.keyboard.press('Escape');
 	await expect(page).toHaveURL('/invoices');
-	await ready(page, '1–2');
+	await ready(page, '1–3');
 	await page.keyboard.press('1');
 	await expect(page.getByLabel('Facturar hasta')).toBeFocused();
 	await page.keyboard.type('310326');
