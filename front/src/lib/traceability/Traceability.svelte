@@ -107,7 +107,9 @@
 	const lots = $derived(lotsLoader.get(markedArticle?.articleId) ?? NONE);
 	const markedLot = $derived(lots[selectedLot]);
 	const markedKey = $derived(
-		markedArticle && markedLot ? `${markedArticle.articleId}|${markedLot.code}` : undefined
+		markedArticle?.articleId !== undefined && markedLot?.code !== undefined
+			? `${markedArticle.articleId}|${markedLot.code}`
+			: undefined
 	);
 	const deliveriesShown = $derived(deliveriesLoader.get(markedKey));
 	const deliveries = $derived(deliveriesShown ?? NONE);
@@ -153,11 +155,8 @@
 			return false;
 		}
 		if (id !== loadId) return false;
-		// The very same list is nothing new: what is cached or on its way still holds.
-		if (result !== articles) {
-			lotsLoader.clear();
-			deliveriesLoader.clear();
-		}
+		lotsLoader.clear();
+		deliveriesLoader.clear();
 		shownFrom = dateFrom;
 		shownTo = dateTo;
 		selectedArticle = 0;

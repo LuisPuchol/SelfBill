@@ -283,8 +283,10 @@ describe('Traceability', () => {
 	it('Enter moves to the lots even before they arrive', async () => {
 		const late = deferred<Lot[]>();
 		const p = props();
-		p.loadLots.mockReset();
-		p.loadLots.mockReturnValueOnce(late.promise);
+		// The first request is for the list the Enters reload: the second is the one that stays pending
+		p.loadLots.mockReturnValueOnce(new Promise(() => {})).mockReturnValueOnce(late.promise);
+		// Each load is a new list, as a fetch gives
+		p.loadArticles.mockImplementation(async () => [acelgas, espinaca]);
 		await render(TraceabilityHarness, p);
 		await expect.element(row(articlesTable(), 1)).toBeVisible();
 		// Desde and Hasta, then the articles take the cursor with their lots still pending
@@ -341,8 +343,12 @@ describe('Traceability', () => {
 	it('F9 reports a listing that does not print', async () => {
 		const p = props();
 		p.print.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'boom', {}));
+		// Each load is a new list, as a fetch gives
+		p.loadArticles.mockImplementation(async () => [acelgas, espinaca]);
 		await loaded(p);
-		await userEvent.keyboard('{Enter}{Enter}{F9}');
+		await userEvent.keyboard('{Enter}{Enter}');
+		await expect.element(row(notesTable(), 0)).toBeVisible();
+		await userEvent.keyboard('{F9}');
 		await expect.element(dialog().getByText('No se ha podido imprimir el listado.')).toBeVisible();
 	});
 

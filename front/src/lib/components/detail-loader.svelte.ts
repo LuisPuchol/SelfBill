@@ -1,5 +1,3 @@
-import { SvelteMap } from 'svelte/reactivity';
-
 /**
  * The detail of the marked row, loaded as the mark moves: answers cached by key, and only the
  * latest request shown or reported.
@@ -7,7 +5,9 @@ import { SvelteMap } from 'svelte/reactivity';
 export class DetailLoader<K extends string | number, T> {
 	#load: (key: K) => Promise<T>;
 	#onError: (err: unknown) => void;
-	#cache = new SvelteMap<K, T>();
+	// Only read inside `select`, which is no reactive reader: a plain Map, not a SvelteMap.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- never read reactively
+	#cache = new Map<K, T>();
 	#shown = $state.raw<{ key: K; value: T } | null>(null);
 	/** Counts requests: only the latest one is shown. */
 	#seq = 0;
@@ -19,7 +19,7 @@ export class DetailLoader<K extends string | number, T> {
 		this.#onError = onError;
 	}
 
-	/** Points at a key, or none: its cached detail at once, else asks for it. */
+	/** Points at a key, or none: its cached detail at once, else asks for it. Call it untracked. */
 	select(key: K | undefined): void {
 		const seq = ++this.#seq;
 		const generation = this.#generation;
@@ -49,11 +49,12 @@ export class DetailLoader<K extends string | number, T> {
 	}
 
 	/**
-	 * Forgets every answer: one to a request made before is neither cached nor shown. What is on
-	 * screen stays until the next `select` replaces it.
+	 * Forgets every answer: one to a request made before is neither cached nor shown; what was on
+	 * screen goes too.
 	 */
 	clear(): void {
 		this.#generation++;
 		this.#cache.clear();
+		this.#shown = null;
 	}
 }

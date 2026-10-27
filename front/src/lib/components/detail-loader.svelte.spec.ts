@@ -71,6 +71,14 @@ describe('DetailLoader', () => {
 		expect(load.mock.calls.filter(([k]) => k === 1)).toHaveLength(2);
 	});
 
+	it('forgets what it showed on clear', async () => {
+		const { loader, settle } = setup();
+		loader.select(1);
+		await settle(1, 'one');
+		loader.clear();
+		expect(loader.get(1)).toBeUndefined();
+	});
+
 	it('reports only the latest error', async () => {
 		const { loader, onError, fail } = setup();
 		loader.select(1);
