@@ -5,11 +5,25 @@
  * short for even that, the page scrolls instead.
  */
 export function fillViewport(node: HTMLElement, min = 160): { destroy(): void } {
+	return fill(node, min, false);
+}
+
+/**
+ * Like `fillViewport`, but the element takes that height exactly instead of capping it: its children
+ * can split it (a flex column whose rows shrink) rather than depend on their own content.
+ */
+export function fillViewportExact(node: HTMLElement, min = 160): { destroy(): void } {
+	return fill(node, min, true);
+}
+
+function fill(node: HTMLElement, min: number, exact: boolean): { destroy(): void } {
 	const fit = () => {
 		const main = node.closest('main');
 		const reserve = main ? parseFloat(getComputedStyle(main).paddingBottom) : 0;
 		const top = node.getBoundingClientRect().top + window.scrollY;
-		node.style.maxHeight = `${Math.max(min, window.innerHeight - top - reserve)}px`;
+		const height = `${Math.max(min, window.innerHeight - top - reserve)}px`;
+		node.style.maxHeight = height;
+		if (exact) node.style.height = height;
 	};
 	// Whatever grows or shrinks above it moves its top; the window changes what is left.
 	const observer = new ResizeObserver(fit);

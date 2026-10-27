@@ -8,7 +8,7 @@
 	import DateField from '../components/DateField.svelte';
 	import { DetailLoader } from '../components/detail-loader.svelte';
 	import { showError, showMessage } from '../components/errors.svelte';
-	import { fillViewport } from '../components/fill-viewport';
+	import { fillViewport, fillViewportExact } from '../components/fill-viewport';
 	import Form from '../components/Form.svelte';
 	import ScreenHeader from '../components/ScreenHeader.svelte';
 	import StaticTable from '../components/StaticTable.svelte';
@@ -246,8 +246,9 @@
 			No hay facturas entre el {formatDate(shownFrom)} y el {formatDate(shownTo)}.
 		</p>
 	{:else}
-		<!-- As tall as the window allows: each table scrolls inside its column -->
-		<div class="grid grid-cols-[minmax(0,6fr)_minmax(0,5fr)_minmax(0,3fr)] items-start gap-6">
+		<!-- As tall as the window allows: each table scrolls inside its box. The right side splits
+			its height between the invoices and the notes. -->
+		<div class="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start gap-6">
 			<!-- A click inside a column makes it the active one -->
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 			<div class="flex flex-col" use:fillViewport onclick={() => (column = 'clients')}>
@@ -266,34 +267,32 @@
 					)} · {formatMoney(clientsTotal)}
 				</p>
 			</div>
-			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-			<div
-				class="flex flex-col border-l border-line pl-6"
-				use:fillViewport
-				onclick={() => (column = 'invoices')}
-			>
-				<!-- No empty text: until the answer arrives there are no invoices yet -->
-				<DataTable
-					columns={invoiceColumns}
-					rows={invoices}
-					scroll
-					active={column === 'invoices'}
-					bind:selected={selectedInvoice}
-					emptyText=""
-				/>
-				{#if invoices.length > 0}
-					<p class="tabular mt-2 shrink-0 px-3 text-lg">
-						{plural(invoices.length, 'factura', 'facturas')} · {formatMoney(invoicesTotal)}
-					</p>
-				{/if}
-			</div>
-			<div class="flex flex-col border-l border-line pl-6" use:fillViewport>
-				<StaticTable columns={sectionColumns} rows={notes} emptyText="" scroll />
-				{#if notes.length > 0}
-					<p class="tabular mt-2 shrink-0 px-3 text-lg">
-						{plural(notes.length, 'albarán', 'albaranes')} · {formatMoney(notesTotal)}
-					</p>
-				{/if}
+			<div class="flex flex-col gap-4 border-l border-line pl-6" use:fillViewportExact>
+				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+				<div class="flex min-h-0 flex-1 basis-0 flex-col" onclick={() => (column = 'invoices')}>
+					<!-- No empty text: until the answer arrives there are no invoices yet -->
+					<DataTable
+						columns={invoiceColumns}
+						rows={invoices}
+						scroll
+						active={column === 'invoices'}
+						bind:selected={selectedInvoice}
+						emptyText=""
+					/>
+					{#if invoices.length > 0}
+						<p class="tabular mt-2 shrink-0 px-3 text-lg">
+							{plural(invoices.length, 'factura', 'facturas')} · {formatMoney(invoicesTotal)}
+						</p>
+					{/if}
+				</div>
+				<div class="flex min-h-0 flex-1 basis-0 flex-col border-t border-line pt-4">
+					<StaticTable columns={sectionColumns} rows={notes} emptyText="" scroll />
+					{#if notes.length > 0}
+						<p class="tabular mt-2 shrink-0 px-3 text-lg">
+							{plural(notes.length, 'albarán', 'albaranes')} · {formatMoney(notesTotal)}
+						</p>
+					{/if}
+				</div>
 			</div>
 		</div>
 	{/if}

@@ -99,7 +99,7 @@ async function loaded(p: ReturnType<typeof props>) {
 
 const selection = (field: HTMLInputElement) => [field.selectionStart, field.selectionEnd];
 
-// A desktop window, as the app's: three tables side by side do not fit the default phone width.
+// A desktop window, as the app's: the clients' seven columns do not fit the default phone width.
 beforeEach(() => page.viewport(1280, 800));
 
 afterEach(() => {
@@ -207,6 +207,9 @@ describe('ClientSummary', () => {
 		await userEvent.keyboard('{Escape}');
 		await userEvent.keyboard('01042026');
 		await expect.element(page.getByRole('table')).not.toBeInTheDocument();
+		await expect.element(button('Imprimir factura')).toHaveAttribute('aria-disabled', 'true');
+		await userEvent.keyboard('{F9}');
+		expect(p.fetchPdf).not.toHaveBeenCalled();
 		await userEvent.keyboard('{Enter}300426{Enter}');
 		await vi.waitFor(() =>
 			expect(p.loadSummary).toHaveBeenLastCalledWith('2026-04-01', '2026-04-30')
