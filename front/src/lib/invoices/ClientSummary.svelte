@@ -11,7 +11,6 @@
 	import { fillViewport, fillViewportExact } from '../components/fill-viewport';
 	import Form from '../components/Form.svelte';
 	import ScreenHeader from '../components/ScreenHeader.svelte';
-	import StaticTable from '../components/StaticTable.svelte';
 	import type { Column } from '../components/table';
 	import { defaultRange, formatDate } from '../format/date';
 	import { formatMoney } from '../format/money';
@@ -59,8 +58,9 @@
 	let shownTo = $state('');
 	let selectedClient = $state(0);
 	let selectedInvoice = $state(0);
+	let selectedNote = $state(0);
 	/** The column that answers the arrows */
-	let column = $state<'clients' | 'invoices'>('clients');
+	let column = $state<'clients' | 'invoices' | 'notes'>('clients');
 	/** Counts loads and edits of the dates: a list coming for an older one is dropped. */
 	let loadId = 0;
 	let busy = false;
@@ -191,9 +191,10 @@
 		}
 	}
 
-	/** Invoices to clients, clients to "Desde", and from the dates, out. */
+	/** Notes to invoices, invoices to clients, clients to "Desde", and from the dates, out. */
 	function back(): void {
 		if (nav?.hasFocus()) onExit();
+		else if (column === 'notes') column = 'invoices';
 		else if (column === 'invoices') column = 'clients';
 		else nav?.focus('from');
 	}
@@ -227,19 +228,31 @@
 		}
 	};
 
-	useKeys([printAction, toInvoicesAction, backAction]);
+	const toNotesAction: KeyAction = {
+		key: 'Enter',
+		label: 'Albaranes',
+		when: () => column === 'invoices' && notes.length > 0 && notTyping(),
+		run: () => {
+			column = 'notes';
+		}
+	};
+
+	useKeys([printAction, toInvoicesAction, toNotesAction, backAction]);
 </script>
 
 <ScreenHeader title="Resumen por cliente">
+	{#snippet middle()}
+		<Form bind:nav onLast={() => void enter()}>
+			<!-- No room kept under the fields for their error: the line is worth a table row -->
+			<div class="flex gap-4 [&_p]:min-h-0" oninput={datesEdited}>
+				<div class="w-44"><DateField label="Desde" name="from" required bind:value={from} /></div>
+				<div class="w-44"><DateField label="Hasta" name="to" required bind:value={to} /></div>
+			</div>
+		</Form>
+	{/snippet}
 	<ActionButton action={printAction} />
 	<ActionButton action={backAction} />
 </ScreenHeader>
-<Form bind:nav onLast={() => void enter()}>
-	<div class="flex gap-4" oninput={datesEdited}>
-		<div class="w-44"><DateField label="Desde" name="from" required bind:value={from} /></div>
-		<div class="w-44"><DateField label="Hasta" name="to" required bind:value={to} /></div>
-	</div>
-</Form>
 {#if clients !== null}
 	{#if clients.length === 0}
 		<p class="p-6 text-muted">
@@ -247,8 +260,11 @@
 		</p>
 	{:else}
 		<!-- As tall as the window allows: each table scrolls inside its box. The right side splits
-			its height between the invoices and the notes. -->
-		<div class="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start gap-6">
+			its height between the invoices and the notes. Tighter cells than elsewhere, so that three
+			tables fit side by side and a few rows each. -->
+		<div
+			class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-6 [&_td]:px-2 [&_td]:py-1 [&_th]:px-2 [&_th]:py-1"
+		>
 			<!-- A click inside a column makes it the active one -->
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 			<div class="flex flex-col" use:fillViewport onclick={() => (column = 'clients')}>
@@ -259,7 +275,7 @@
 					active={column === 'clients'}
 					bind:selected={selectedClient}
 				/>
-				<p class="tabular mt-2 shrink-0 px-3 text-lg">
+				<p class="tabular mt-2 shrink-0 px-2 text-lg">
 					{plural(clients.length, 'cliente', 'clientes')} · {plural(
 						clientsInvoices,
 						'factura',
@@ -280,15 +296,26 @@
 						emptyText=""
 					/>
 					{#if invoices.length > 0}
-						<p class="tabular mt-2 shrink-0 px-3 text-lg">
+						<p class="tabular mt-2 shrink-0 px-2 text-lg">
 							{plural(invoices.length, 'factura', 'facturas')} · {formatMoney(invoicesTotal)}
 						</p>
 					{/if}
 				</div>
-				<div class="flex min-h-0 flex-1 basis-0 flex-col border-t border-line pt-4">
-					<StaticTable columns={sectionColumns} rows={notes} emptyText="" scroll />
+				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+				<div
+					class="flex min-h-0 flex-1 basis-0 flex-col border-t border-line pt-4"
+					onclick={() => (column = 'notes')}
+				>
+					<DataTable
+						columns={sectionColumns}
+						rows={notes}
+						scroll
+						active={column === 'notes'}
+						bind:selected={selectedNote}
+						emptyText=""
+					/>
 					{#if notes.length > 0}
-						<p class="tabular mt-2 shrink-0 px-3 text-lg">
+						<p class="tabular mt-2 shrink-0 px-2 text-lg">
 							{plural(notes.length, 'albarán', 'albaranes')} · {formatMoney(notesTotal)}
 						</p>
 					{/if}

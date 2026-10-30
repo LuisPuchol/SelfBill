@@ -159,7 +159,6 @@ describe('ClientSummary', () => {
 	it('a late answer is not shown', async () => {
 		const late = deferred<Invoice[]>();
 		const p = props();
-		p.loadInvoices.mockReset();
 		p.loadInvoices.mockReturnValueOnce(late.promise).mockResolvedValueOnce(invoicesOf[2]);
 		await render(ClientSummaryHarness, p);
 		await expect.element(row(clientsTable(), 1)).toBeVisible();
@@ -180,6 +179,17 @@ describe('ClientSummary', () => {
 		// The clients do not answer the arrows while the invoices are active
 		await userEvent.keyboard('{ArrowDown}');
 		await expect.element(row(clientsTable(), 0)).toHaveAttribute('aria-selected', 'true');
+		// Enter in the invoices: the notes, whose marks answer the arrows
+		await userEvent.keyboard('{Enter}{ArrowDown}');
+		await expect.element(row(notesTable(), 1)).toHaveAttribute('aria-selected', 'true');
+		await expect.element(row(invoicesTable(), 1)).toHaveAttribute('aria-selected', 'true');
+		await userEvent.keyboard('{ArrowUp}');
+		await expect.element(row(notesTable(), 0)).toHaveAttribute('aria-selected', 'true');
+		// Enter does nothing in the notes
+		await userEvent.keyboard('{Enter}{ArrowDown}');
+		await expect.element(row(notesTable(), 1)).toHaveAttribute('aria-selected', 'true');
+		await userEvent.keyboard('{Escape}{ArrowUp}');
+		await expect.element(row(invoicesTable(), 0)).toHaveAttribute('aria-selected', 'true');
 		await userEvent.keyboard('{Escape}{ArrowDown}');
 		await expect.element(row(clientsTable(), 1)).toHaveAttribute('aria-selected', 'true');
 		await userEvent.keyboard('{Escape}');
@@ -188,6 +198,49 @@ describe('ClientSummary', () => {
 		expect(p.onExit).not.toHaveBeenCalled();
 		await userEvent.keyboard('{Escape}');
 		expect(p.onExit).toHaveBeenCalledOnce();
+	});
+
+	it('the mark goes back to the first note with another invoice', async () => {
+		const p = props();
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}{Enter}{Enter}{ArrowDown}');
+		await expect.element(row(notesTable(), 1)).toHaveAttribute('aria-selected', 'true');
+		await userEvent.keyboard('{Escape}{ArrowDown}');
+		await expect.element(row(invoicesTable(), 1)).toHaveAttribute('aria-selected', 'true');
+		await expect.element(row(notesTable(), 0)).toHaveTextContent('120');
+		await expect.element(row(notesTable(), 0)).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('clicking an invoice row activates the invoices', async () => {
+		const p = props();
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}');
+		await row(invoicesTable(), 1).click();
+		await userEvent.keyboard('{ArrowUp}');
+		await expect.element(row(invoicesTable(), 0)).toHaveAttribute('aria-selected', 'true');
+		await expect.element(row(clientsTable(), 0)).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('clicking a note row activates the notes', async () => {
+		const p = props();
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}');
+		await row(notesTable(), 1).click();
+		await expect.element(row(notesTable(), 1)).toHaveAttribute('aria-selected', 'true');
+		await userEvent.keyboard('{ArrowUp}');
+		await expect.element(row(notesTable(), 0)).toHaveAttribute('aria-selected', 'true');
+		await expect.element(row(invoicesTable(), 0)).toHaveAttribute('aria-selected', 'true');
+		await userEvent.keyboard('{Escape}{ArrowDown}');
+		await expect.element(row(invoicesTable(), 1)).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('the summary failing leaves the list empty and says so', async () => {
+		const p = props({
+			loadSummary: vi.fn().mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'boom', {}))
+		});
+		await render(ClientSummaryHarness, p);
+		await expect.element(dialog()).toBeVisible();
+		await expect.element(page.getByRole('table')).not.toBeInTheDocument();
 	});
 
 	it('new dates drop the old panels', async () => {
@@ -298,6 +351,13 @@ describe('ClientSummary', () => {
 		await loaded(p);
 		await userEvent.keyboard('{Enter}{Enter}{F9}');
 		await vi.waitFor(() => expect(p.fetchPdf).toHaveBeenCalledExactlyOnceWith(11));
+	});
+
+	it('F9 prints the marked invoice from the notes column', async () => {
+		const p = props();
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}{Enter}{ArrowDown}{Enter}{F9}');
+		await vi.waitFor(() => expect(p.fetchPdf).toHaveBeenCalledExactlyOnceWith(12));
 	});
 
 	it('F9 is disabled with no invoice marked', async () => {

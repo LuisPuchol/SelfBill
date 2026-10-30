@@ -53,24 +53,28 @@ async function invoiceableClient(request: APIRequestContext, code: number, name:
 	});
 }
 
-/** A note of one line, invoiced on its own; the invoice is as of today. */
+/** Notes of one line each, invoiced together; the invoice is as of today. */
 async function issueInvoice(
 	request: APIRequestContext,
 	clientId: number,
 	articleId: number,
-	quantity: number
+	quantity: number,
+	notes = 1
 ): Promise<{ id: number; number: string; total: number }> {
-	const note = await request.post('/api/delivery-notes', {
-		data: {
-			date: '2026-05-10T09:00:00',
-			clientId,
-			lines: [{ traceabilityCode1: '01010526', articleId, quantity, price: 2.5 }]
-		}
-	});
-	expect(note.ok()).toBe(true);
-	const noteId = ((await note.json()) as { id: number }).id;
+	const noteIds: number[] = [];
+	for (let n = 0; n < notes; n++) {
+		const note = await request.post('/api/delivery-notes', {
+			data: {
+				date: '2026-05-10T09:00:00',
+				clientId,
+				lines: [{ traceabilityCode1: '01010526', articleId, quantity, price: 2.5 }]
+			}
+		});
+		expect(note.ok()).toBe(true);
+		noteIds.push(((await note.json()) as { id: number }).id);
+	}
 	const issued = await request.post('/api/invoices/issue', {
-		data: { clientId, deliveryNoteIds: [noteId] }
+		data: { clientId, deliveryNoteIds: noteIds }
 	});
 	expect(issued.ok()).toBe(true);
 	return (await issued.json()) as { id: number; number: string; total: number };
@@ -157,4 +161,64 @@ test('the summary lists each client with its totals, invoices and notes, and F9 
 	await page.keyboard.press('F9');
 	await expect.poll(printed).toBe(1);
 	await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('the summary fits a 1280x800 window: four rows per panel, no scrolling sideways or of the page', async ({
+	page,
+	request
+}) => {
+	const client = await invoiceableClient(request, 9611, 'Mercado Resumen Grande e2e');
+	const article = await ensure(request, '/api/articles', { code: 9612, name: 'Caqui resumen e2e' });
+	// Five invoices of four-digit amounts: more than the four rows that fit
+	// (the first with two notes, to move the note mark)
+	for (let i = 0; i < 5; i++) {
+		await issueInvoice(request, client.id, article.id, 2000 + i, i === 0 ? 2 : 1);
+	}
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await page.goto('/invoices/summary');
+	await ready(page, 'Imprimir factura');
+
+	const tables = page.getByRole('table');
+	const row = tables.nth(0).getByRole('row').filter({ hasText: 'Mercado Resumen Grande e2e' });
+	await expect(row).toHaveCount(1);
+	await row.click();
+	const invoices = tables.nth(1).getByRole('row');
+	await expect(invoices).toHaveCount(6);
+
+	// Each table's scroll box shows all its columns, and the page does not scroll
+	for (const i of [0, 1, 2]) {
+		const box = tables.nth(i).locator('xpath=..');
+		const fit = await box.evaluate((el) => el.scrollWidth <= el.clientWidth);
+		expect(fit, `table ${i} scrolls sideways`).toBe(true);
+	}
+	const fits = await page.evaluate(
+		() => document.documentElement.scrollHeight <= window.innerHeight
+	);
+	expect(fits).toBe(true);
+
+	// The right-hand panels (a table's box and its footer; the notes' box only shrinks to its
+	// content) have room for their header and four rows
+	for (const i of [1, 2]) {
+		const table = tables.nth(i);
+		const panel = table.locator('xpath=../..');
+		const header = (await table.locator('thead tr').boundingBox())!.height;
+		const first = (await table.locator('tbody tr').first().boundingBox())!.height;
+		const height = (await panel.boundingBox())!.height;
+		expect(height, `table ${i}`).toBeGreaterThanOrEqual(header + 4 * first);
+	}
+
+	// Enter, Enter: the notes; the arrows move their mark, Esc goes back to the invoices, whose
+	// next invoice brings the mark back to its first note
+	const notes = tables.nth(2).getByRole('row');
+	await page.keyboard.press('Enter');
+	await page.keyboard.press('Enter');
+	await expect(notes).toHaveCount(3);
+	await page.keyboard.press('ArrowDown');
+	await expect(notes.nth(2)).toHaveAttribute('aria-selected', 'true');
+	await expect(invoices.nth(1)).toHaveAttribute('aria-selected', 'true');
+	await page.keyboard.press('Escape');
+	await page.keyboard.press('ArrowDown');
+	await expect(invoices.nth(2)).toHaveAttribute('aria-selected', 'true');
+	await expect(notes).toHaveCount(2);
+	await expect(notes.nth(1)).toHaveAttribute('aria-selected', 'true');
 });
