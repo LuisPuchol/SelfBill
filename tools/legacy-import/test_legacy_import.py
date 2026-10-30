@@ -111,7 +111,7 @@ class IdentityTest(unittest.TestCase):
         self.assertTrue(rules.same_party('A SCHOOL', 'Q1', 'A  SCHOOL', 'R1'))
 
     def test_spelling_of_the_name_without_nif(self):
-        self.assertTrue(rules.same_party('ANNAS', None, "ANNA'S", None))
+        self.assertTrue(rules.same_party('BOBS', None, "BOB'S", None))
 
     def test_a_reused_code(self):
         self.assertFalse(rules.same_party('A SHOP', 'B1', 'ANOTHER SHOP', 'B2'))

@@ -9,15 +9,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from statistics import median
 
 import legacy_rules as rules
 from sql2000 import Backup
 
 DATE_DOUBT_DAYS = 45
 TAX_VALID_FROM = datetime(2001, 1, 1)
-
-Snapshot = tuple  # (date, Backup)
 
 
 @dataclass(frozen=True)
@@ -115,12 +112,6 @@ class CodeHistory:
                 last_seen = identity.versions[-1][0]
                 if last_seen < self.last_index:
                     identity.replaced_on = self.snapshots[min(last_seen + 1, self.last_index)][0]
-
-    def live(self, code):
-        for identity in self.identities[code]:
-            if identity.replaced_on is None:
-                return identity
-        return None
 
     def version_at(self, code, index):
         """The version in the first backup taken once the document existed."""
@@ -598,12 +589,17 @@ def control_totals(out):
     next_note = db.execute('select max(code) + 1 from delivery_notes').fetchone()[0]
     pending = db.execute('select count(*) from delivery_notes where invoice_id is null').fetchone()[0]
     dates = db.execute("select date(min(date) / 1000, 'unixepoch', 'localtime'), date(max(date) / 1000, 'unixepoch', 'localtime') from delivery_notes").fetchone()
+    # The old reports rounded each figure from the unrounded sum, so the printed figures may not add up
+    lines_differ = db.execute(
+        'select count(*) from invoices i where abs((select sum(total) from invoice_lines l where l.invoice_id = i.id) - i.subtotal) > 0.001').fetchone()[0]
+    total_differs = db.execute(
+        'select count(*) from invoices where abs(subtotal + vat_amount + surcharge_amount - total) > 0.001').fetchone()[0]
     db.close()
-    return totals, counts, next_numbers, next_note, pending, dates
+    return totals, counts, next_numbers, next_note, pending, dates, lines_differ, total_differs
 
 
 def write_report(importer, out, folder, title):
-    totals, counts, next_numbers, next_note, pending, dates = control_totals(out)
+    totals, counts, next_numbers, next_note, pending, dates, lines_differ, total_differs = control_totals(out)
     stats = importer.stats
     issuer = importer._issuer()
     lines = [
@@ -627,6 +623,9 @@ def write_report(importer, out, folder, title):
         '## Totales de control', '',
         '| Serie | Año | Facturas | Base | IVA | Recargo | Total |', '|---|---|---:|---:|---:|---:|---:|',
         *[f"| {'S' if s == 'WITHOUT_VAT' else 'General'} | {y} | {n} | {b:.2f} | {v:.2f} | {r:.2f} | {t:.2f} |" for s, y, n, b, v, r, t in totals], '',
+        'Los importes son los que imprimía el programa antiguo, que redondeaba cada cifra desde la suma sin redondear. '
+        f'Por eso, igual que en el papel, en {lines_differ} facturas las líneas no suman exactamente la base y en '
+        f'{total_differs} la base más los impuestos difiere del total, por céntimos.', '',
         '## Limpieza aplicada', '',
         f'- Facturas fantasma descartadas (sin albaranes): {stats["phantom_invoices"]}',
         f'- Facturas con contador propio renumeradas: {stats["renumbered_invoices"]}',

@@ -455,6 +455,11 @@ los albaranes enteros, y en cada línea se ve su código.
 
 
 La pantalla de Trazabilidad responde a esa consulta con `/api/traceability/articles`, `/lots` y `/deliveries`: artículos vendidos en un periodo, sus lotes con cantidades y los albaranes de un lote. Cuentan los tres huecos; una línea con dos lotes suma su cantidad entera en los dos, porque no se sabe cuánto salió de cada uno.
+
+Las ocho cifras se exigen al escribir, no al consultar. Los lotes migrados del programa antiguo (§12) tienen
+otras longitudes y las búsquedas tienen que encontrarlos: aceptan cualquier código de cifras. Una línea migrada
+sin lote deja vacío el primer hueco y no cuenta como lote.
+
 ---
 
 ## 11. Glosario
@@ -473,3 +478,24 @@ El código está en inglés y el dominio en español.
 | Recargo de equivalencia | `surcharge` |
 | Datos del titular | `UserProfile` |
 | Configuración de impuestos | `TaxConfig` |
+
+---
+
+## 12. Datos migrados del programa antiguo
+
+Los documentos del programa anterior se importan con `tools/legacy-import`. Son documentos emitidos y
+entregados, así que mandan los §5 y §6: se conserva lo que recibió el cliente, aunque hoy no se generaría así.
+
+- **Una base por titular.** El negocio cambió de titular fiscal, y cada uno tiene su numeración de albaranes y de
+  facturas. Como el modelo es monousuario (§1) y un número emitido no se cambia (§5), cada titular es una base.
+- **Los importes son los impresos.** El programa antiguo redondeaba cada cifra desde la suma sin redondear, no
+  línea a línea como §4. Las cifras de una factura migrada pueden no cuadrar por céntimos, igual que en el papel.
+  Borrar una factura migrada y volver a emitirla la recalcula con las reglas actuales.
+- **Incumplen reglas que hoy se exigen al crear:** cantidades negativas (devolución de envases, abonos), líneas sin
+  lote o con lotes de otra longitud (§10), clientes sin NIF en la serie S (§5) y facturas con albaranes de varios
+  meses (§2). Se leen e imprimen con normalidad; un albarán migrado sin facturar habrá que corregirlo para poder
+  guardarlo.
+- **Un código de cliente tuvo varios dueños.** El programa antiguo los reutilizaba sin guardar copia. Cada dueño
+  anterior es una fila en borrado lógico (§7) con el mismo código, y sus documentos siguen apuntando a ella.
+
+Las reglas de la conversión están en [tools/legacy-import/README.md](tools/legacy-import/README.md).

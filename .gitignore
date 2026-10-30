@@ -63,5 +63,8 @@ build/
 *.db-wal
 *.db-shm
 
+### Python ###
+__pycache__/
+
 ### Claude Code ###
 /CLAUDE.md

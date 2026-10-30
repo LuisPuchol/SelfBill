@@ -28,6 +28,25 @@ una base vacía sin avisar, y parece que se han perdido los datos. Ponerla junto
 
 ## 3. Funcionalidad futura
 
+### Lo que el programa antiguo hacía y SelfBill todavía no
+Salió al migrar sus datos (`tools/legacy-import`, CONCEPTO §12). Los históricos se leen bien; lo que falta es
+poder hacerlo en documentos nuevos. Son decisiones de producto, no errores:
+
+- **Retención de IRPF.** El antiguo la aplicaba factura a factura (`Ret. IRPF 1 %`, `Total a Pagar`) y la mayoría de
+  las facturas del último periodo la llevan. SelfBill no la modela: las migradas guardan el total de factura y el
+  detalle queda en un CSV, así que su reimpresión no muestra la retención. Si el negocio sigue reteniendo, es
+  imprescindible antes de usarlo de verdad.
+- **Devolver envases y abonar.** Se hacía con una línea de cantidad negativa (son miles en el histórico). La API la
+  rechaza (`@Positive`), así que hoy no se puede devolver un envase.
+- **Líneas sin lote.** El envase no tiene lote, pero la API exige uno de 8 cifras en cada línea.
+- **Serie S sin datos fiscales.** Casi todos los clientes de la serie S no tienen NIF ni dirección, y emitir los
+  exige (CONCEPTO §5). Habría que completarlos o decidir que esa serie no los pide.
+- **Facturar al momento.** Los clientes con `fra` tenían una factura por albarán. Se migran como valorados (§3), que
+  se facturan agrupados a fin de mes.
+- **Empezar la numeración en otro número.** La serie continúa en el máximo + 1. Si el negocio siguió facturando después
+  de la última copia, ese número ya se usó y no hay forma de indicar otro.
+- **Compras y gastos.** Apuntes, proveedores y categorías del antiguo quedan en CSV: SelfBill no registra compras.
+
 ### Rectificativas, anulación y Verifactu
 No antes. Hasta entonces, corregir una factura consiste en borrarla, corregir el albarán y
 refacturar. Verifactu cierra esa vía: una factura registrada no se borra ni se renumera.
@@ -144,7 +163,7 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - Buscar directamente por lote, sin elegir artículo.
 - Abrir el albarán desde el listado de un lote.
 - Exportar el listado de trazabilidad (CSV).
-- Sin índice por fecha en `delivery_notes` (ni por artículo en las líneas): cada consulta de trazabilidad recorre todo el histórico; medir con una base grande y añadir una migración si hace falta.
+- Sin índice por fecha en `delivery_notes` (ni por artículo en las líneas). Medido con el histórico migrado (138.000 líneas, diez años): menos de 70 ms por consulta, no hace falta todavía.
 - Los albaranes de un lote se ordenan por fecha y hora antes que por número: uno creado más tarde con la fecha de otro día sale fuera de orden dentro de ese día.
 - Al editar una fecha o si falla la carga, la columna activa puede seguir siendo la de lotes: un Esc no hace nada visible.
 - La lista de lotes y la de albaranes repiten el mismo cargador con caché; `notTyping` está copiado en `DataTable`, `ListScreen` y Trazabilidad.
