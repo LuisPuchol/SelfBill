@@ -450,8 +450,7 @@ export interface paths {
         };
         /**
          * Sum the issued invoices of each client in a period
-         * @description One row per client with issued invoices dated between the two days, both inclusive. Drafts and deleted
-         *                 invoices do not count; a deleted client still appears. Ordered by client code.
+         * @description One row per client with issued invoices dated between the two days, both inclusive. Drafts and deleted invoices do not count; a deleted client still appears. Ordered by client code.
          */
         get: operations["getClientSummary"];
         put?: never;

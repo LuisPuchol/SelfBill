@@ -14,13 +14,11 @@ function setup() {
 	const loader = new DetailLoader<number, string>(load, onError);
 	const settle = async (key: number, value: string) => {
 		pending.get(key)!.resolve(value);
-		await Promise.resolve();
-		await Promise.resolve();
+		await new Promise((r) => setTimeout(r, 0));
 	};
 	const fail = async (key: number, err: unknown) => {
 		pending.get(key)!.reject(err);
-		await Promise.resolve();
-		await Promise.resolve();
+		await new Promise((r) => setTimeout(r, 0));
 	};
 	return { loader, load, onError, settle, fail };
 }

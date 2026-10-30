@@ -50,7 +50,7 @@ export class DetailLoader<K extends string | number, T> {
 
 	/**
 	 * Forgets every answer: one to a request made before is neither cached nor shown; what was on
-	 * screen goes too.
+	 * screen goes too. Nothing is selected afterwards: the caller must `select` again.
 	 */
 	clear(): void {
 		this.#generation++;

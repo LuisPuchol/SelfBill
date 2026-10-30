@@ -1,5 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 
+import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -70,15 +71,12 @@ class InvoiceSummaryTest extends DomainIntegrationTest {
     @DisplayName("Leaves out drafts, deleted invoices and other dates")
     void leavesOutDraftsDeletedAndOtherDates() throws Exception {
         createInvoiceFor(clientId, createDeliveryNote(clientId, "1", "1").id());
-        Integer deletedClient = createClient(2,
-                DeliveryNoteFormat.VALUED);
+        Integer deletedClient = createClient(2, DeliveryNoteFormat.VALUED);
         InvoiceResponse deleted = issuedOn(deletedClient, "1", "1", LocalDateTime.of(2026, 4, 10, 9, 0));
         invoiceService.deleteInvoice(deleted.id());
-        Integer before = createClient(3,
-                DeliveryNoteFormat.VALUED);
+        Integer before = createClient(3, DeliveryNoteFormat.VALUED);
         issuedOn(before, "1", "1", LocalDateTime.of(2026, 3, 31, 23, 59));
-        Integer after = createClient(4,
-                DeliveryNoteFormat.VALUED);
+        Integer after = createClient(4, DeliveryNoteFormat.VALUED);
         issuedOn(after, "1", "1", LocalDateTime.of(2026, 5, 1, 0, 0));
 
         summary().andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
@@ -100,10 +98,20 @@ class InvoiceSummaryTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Sums the surcharge")
+    void sumsSurcharge() throws Exception {
+        Integer surcharged = createClient(2, VatType.WITH_VAT, SurchargeType.WITH_SURCHARGE);
+        issuedOn(surcharged, "10", "1", LocalDateTime.of(2026, 4, 10, 9, 0));
+
+        summary()
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].surchargeAmount").value(greaterThan(0.0)));
+    }
+
+    @Test
     @DisplayName("A deleted client still shows")
     void deletedClientStillShows() throws Exception {
-        Integer gone = createClient(2,
-                DeliveryNoteFormat.VALUED);
+        Integer gone = createClient(2, DeliveryNoteFormat.VALUED);
         issuedOn(gone, "10", "1", LocalDateTime.of(2026, 4, 10, 9, 0));
         clientService.deleteClient(gone);
 
