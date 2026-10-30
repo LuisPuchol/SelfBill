@@ -28,24 +28,17 @@ una base vacía sin avisar, y parece que se han perdido los datos. Ponerla junto
 
 ## 3. Funcionalidad futura
 
-### Lo que el programa antiguo hacía y SelfBill todavía no
-Salió al migrar sus datos (`tools/legacy-import`, CONCEPTO §12). Los históricos se leen bien; lo que falta es
-poder hacerlo en documentos nuevos. Son decisiones de producto, no errores:
+### Migración del programa antiguo
+La importación está hecha (`tools/legacy-import`, CONCEPTO §12). Las funciones del antiguo que no se usan no se adaptan:
+no son carencias. Queda:
 
-- **Retención de IRPF.** El antiguo la aplicaba factura a factura (`Ret. IRPF 1 %`, `Total a Pagar`) y la mayoría de
-  las facturas del último periodo la llevan. SelfBill no la modela: las migradas guardan el total de factura y el
-  detalle queda en un CSV, así que su reimpresión no muestra la retención. Si el negocio sigue reteniendo, es
-  imprescindible antes de usarlo de verdad.
-- **Devolver envases y abonar.** Se hacía con una línea de cantidad negativa (son miles en el histórico). La API la
-  rechaza (`@Positive`), así que hoy no se puede devolver un envase.
-- **Líneas sin lote.** El envase no tiene lote, pero la API exige uno de 8 cifras en cada línea.
-- **Serie S sin datos fiscales.** Casi todos los clientes de la serie S no tienen NIF ni dirección, y emitir los
-  exige (CONCEPTO §5). Habría que completarlos o decidir que esa serie no los pide.
-- **Facturar al momento.** Los clientes con `fra` tenían una factura por albarán. Se migran como valorados (§3), que
-  se facturan agrupados a fin de mes.
-- **Empezar la numeración en otro número.** La serie continúa en el máximo + 1. Si el negocio siguió facturando después
-  de la última copia, ese número ya se usó y no hay forma de indicar otro.
-- **Compras y gastos.** Apuntes, proveedores y categorías del antiguo quedan en CSV: SelfBill no registra compras.
+- **Repetir la importación con las copias posteriores a 2013.** Las actuales acaban en abril de 2013, así que hasta
+  entonces los siguientes números de albarán y factura no son los reales.
+- **Decidir la retención de IRPF.** El antiguo la imprimía en casi todas las facturas de la serie general del último
+  titular (`Ret. IRPF 1 %`, `Total a Pagar`). SelfBill no la modela: las migradas guardan el total de factura, su
+  reimpresión no muestra la retención y el detalle queda en un CSV. Solo hace falta si se sigue reteniendo.
+- **Serie S sin dirección.** Sus clientes migrados ya llevan NIF fantasma, pero emitir exige además dirección, código
+  postal y población, que casi ninguno tiene.
 
 ### Rectificativas, anulación y Verifactu
 No antes. Hasta entonces, corregir una factura consiste en borrarla, corregir el albarán y

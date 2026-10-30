@@ -497,5 +497,7 @@ entregados, así que mandan los §5 y §6: se conserva lo que recibió el client
   guardarlo.
 - **Un código de cliente tuvo varios dueños.** El programa antiguo los reutilizaba sin guardar copia. Cada dueño
   anterior es una fila en borrado lógico (§7) con el mismo código, y sus documentos siguen apuntando a ella.
+- **NIF fantasma en la serie S.** Sus clientes nunca tuvieron NIF y emitir lo exige (§5), así que los vivos comparten
+  uno ficticio (`12345678Z`). Las facturas ya emitidas conservan su copia sin NIF (§6).
 
 Las reglas de la conversión están en [tools/legacy-import/README.md](tools/legacy-import/README.md).

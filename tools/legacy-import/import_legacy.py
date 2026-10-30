@@ -71,6 +71,7 @@ class Identity:
     code: int
     versions: list = field(default_factory=list)  # (snapshot index, version)
     row_id: int | None = None
+    nif: str | None = None
     used: bool = False
     replaced_on: datetime | None = None
 
@@ -161,9 +162,10 @@ def epoch_ms(value):
 
 class Importer:
 
-    def __init__(self, snapshots, logo):
+    def __init__(self, snapshots, logo, ghost_nif):
         self.snapshots = snapshots
         self.logo = logo
+        self.ghost_nif = ghost_nif
         self.backup = snapshots[-1][1]
         self.anomalies = []
         self.estimated = []
@@ -404,15 +406,19 @@ class Importer:
                     continue
                 version = identity.latest
                 deleted = epoch_ms(identity.replaced_on) if identity.replaced_on else None
+                # Only for who can still be invoiced: an issued invoice keeps the data it was printed with
+                identity.nif = version.nif if deleted else rules.catalog_nif(version.nif, version.taxed, self.ghost_nif)
+                if identity.nif != version.nif:
+                    self.stats['clients_with_ghost_nif'] += 1
                 identity.row_id = db.execute(
                     'insert into clients (code, business_name, name, nif, address, city, province, postal_code, phone, phone2,'
                     ' vat_type, surcharge_type, default_delivery_note_format, search_text, created_at, updated_at, deleted_at)'
                     ' values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                    (code, version.name, version.name, version.nif, version.address, version.city, version.province,
+                    (code, version.name, version.name, identity.nif, version.address, version.city, version.province,
                      version.postal_code, version.phone, version.phone2,
                      'WITH_VAT' if version.taxed else 'WITHOUT_VAT', _surcharge_type(version.taxed and version.surcharged),
                      'VALUED' if version.valued else 'PLAIN',
-                     rules.search_text(version.name, version.name, version.nif), now, now, deleted)).lastrowid
+                     rules.search_text(version.name, version.name, identity.nif), now, now, deleted)).lastrowid
                 self.stats['clients_live' if deleted is None else 'clients_replaced'] += 1
 
     def _write_invoices(self, db):
@@ -568,10 +574,10 @@ def write_annexes(importer, folder):
             if identity.row_id is None:
                 continue
             version = identity.latest
-            missing = [label for label, value in (('NIF', version.nif), ('dirección', version.address),
+            missing = [label for label, value in (('NIF', identity.nif), ('dirección', version.address),
                                                   ('código postal', version.postal_code), ('población', version.city)) if not value]
             rows.append({
-                'codigo': code, 'nombre': version.name, 'nif': version.nif, 'estado': 'borrado (código reutilizado)' if identity.replaced_on else 'vivo',
+                'codigo': code, 'nombre': version.name, 'nif': identity.nif, 'estado': 'borrado (código reutilizado)' if identity.replaced_on else 'vivo',
                 'iva': 'con IVA' if version.taxed else 'serie S', 'recargo': 'sí' if version.taxed and version.surcharged else 'no',
                 'formato albaran': 'valorado' if version.valued else 'simple', 'falta para emitir': ', '.join(missing)})
     write_csv(folder / 'clientes.csv', rows)
@@ -627,6 +633,7 @@ def write_report(importer, out, folder, title):
         f'Por eso, igual que en el papel, en {lines_differ} facturas las líneas no suman exactamente la base y en '
         f'{total_differs} la base más los impuestos difiere del total, por céntimos.', '',
         '## Limpieza aplicada', '',
+        f'- Clientes vivos de la serie S con NIF fantasma ({importer.ghost_nif}): {stats["clients_with_ghost_nif"]}',
         f'- Facturas fantasma descartadas (sin albaranes): {stats["phantom_invoices"]}',
         f'- Facturas con contador propio renumeradas: {stats["renumbered_invoices"]}',
         f'- Facturas cuyo cliente es una estimación (`clientes-estimados.csv`): {stats["estimated_invoices"]}',
@@ -653,6 +660,7 @@ def main():
     parser.add_argument('--annexes', required=True, help='Folder for the report and the CSV files')
     parser.add_argument('--title', required=True, help='Title of the report')
     parser.add_argument('--logo', help='JPEG printed on the old documents')
+    parser.add_argument('--ghost-nif', help='NIF for the live clients of the S series that have none')
     parser.add_argument('--snapshot', action='append', required=True, metavar='YYYY-MM-DD=PATH',
                         help='A backup of this titular with its date, oldest first; the last one is the data to import')
     args = parser.parse_args()
@@ -660,7 +668,7 @@ def main():
     out = Path(args.out)
     if out.exists():
         raise SystemExit(f'{out} already exists: this tool never overwrites a database')
-    importer = Importer([parse_snapshot(text) for text in args.snapshot], args.logo)
+    importer = Importer([parse_snapshot(text) for text in args.snapshot], args.logo, args.ghost_nif)
     importer.run(args.template, out)
     folder = Path(args.annexes)
     write_annexes(importer, folder)

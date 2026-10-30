@@ -22,7 +22,7 @@ de datos directamente del fichero y saca el esquema de la propia copia.
 
    ```powershell
    python import_legacy.py --template plantilla.db --out selfbill.db --annexes informe `
-       --title "Titular, años" --logo logo.jpg `
+       --title "Titular, años" --logo logo.jpg --ghost-nif 12345678Z `
        --snapshot 2007-02-08=copia1 --snapshot 2011-06-28=copia2
    ```
 
@@ -68,6 +68,8 @@ Tests: `python -m unittest test_legacy_import`, desde esta carpeta.
   crearlo. Si un código cambió de manos entre dos copias, el silencio más largo (60 días o más) marca el cambio
   y esos documentos se listan como estimados. Los clientes anteriores de un código quedan en borrado lógico,
   que libera el código sin perder el documento (CONCEPTO §7).
+- **NIF fantasma en la serie S.** Sus clientes nunca tuvieron NIF y emitir lo exige, así que los vivos comparten el de
+  `--ghost-nif`. Solo en su ficha: las facturas ya emitidas conservan la copia sin NIF con la que se imprimieron.
 - **Fechas intactas.** Solo se infiere la que falta, porque la columna la exige. Las que parecen mal tecleadas
   se conservan y se listan en `anomalias.csv`: es lo que salió impreso.
 - **Lotes.** Se quitan las teclas sueltas (`.`, `+`, `ç`) sin perder ninguna cifra y se suben a los primeros

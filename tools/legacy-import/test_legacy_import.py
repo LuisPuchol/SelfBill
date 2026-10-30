@@ -60,6 +60,18 @@ class TextTest(unittest.TestCase):
     def test_issuer_nif_drops_the_printed_label(self):
         self.assertEqual(rules.issuer_nif('NIF : 12345678 Z'), '12345678Z')
 
+    def test_a_client_of_the_s_series_without_nif_gets_the_ghost_one(self):
+        self.assertEqual(rules.catalog_nif(None, taxed=False, ghost_nif='12345678Z'), '12345678Z')
+
+    def test_a_real_nif_is_never_replaced(self):
+        self.assertEqual(rules.catalog_nif('B07000000', taxed=False, ghost_nif='12345678Z'), 'B07000000')
+
+    def test_a_client_with_vat_without_nif_stays_without(self):
+        self.assertIsNone(rules.catalog_nif(None, taxed=True, ghost_nif='12345678Z'))
+
+    def test_without_a_ghost_nif_nothing_changes(self):
+        self.assertIsNone(rules.catalog_nif(None, taxed=False, ghost_nif=None))
+
     def test_search_text_matches_the_api(self):
         self.assertEqual(rules.search_text('PEÑA', None, 'Calçots'), 'pena calcots')
 

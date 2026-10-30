@@ -70,6 +70,11 @@ def issuer_nif(raw):
     return clean_nif(re.sub(r'^\s*NIF\s*:', '', raw or '', flags=re.IGNORECASE))
 
 
+def catalog_nif(nif, taxed, ghost_nif):
+    """The S series never asked for a NIF, and issuing needs one: those clients share a ghost one."""
+    return nif or (None if taxed else ghost_nif)
+
+
 def split_location(postal_code, city, province):
     """The three old columns were typed in any order: 'PALMA' in the postal code, the code in the province."""
     values = [v for v in map(clean_text, (postal_code, city, province)) if v]
