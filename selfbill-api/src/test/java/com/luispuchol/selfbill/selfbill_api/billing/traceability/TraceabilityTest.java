@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -32,6 +33,9 @@ class TraceabilityTest extends DomainIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private int nextCode = 500;
 
@@ -144,7 +148,28 @@ class TraceabilityTest extends DomainIntegrationTest {
     }
 
     @Test
-    @DisplayName("Requires every parameter and a code of 8 digits")
+    @DisplayName("Traces the lots migrated from the old program, of other lengths, and leaves out the lines without one")
+    void lotsOfTheOldProgram() throws Exception {
+        DeliveryNoteResponse migrated = note(clientId, APRIL_10,
+                line(articleId, LOT_A, null, null, "5"),
+                line(articleId, LOT_B, null, null, "3"));
+        // The API no longer accepts these shapes: only an import writes them
+        jdbcTemplate.update("update delivery_notes_articles set traceability_code1 = '010301' where traceability_code1 = ?", LOT_A);
+        jdbcTemplate.update("update delivery_notes_articles set traceability_code1 = '' where traceability_code1 = ?", LOT_B);
+
+        lots(articleId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].code").value("010301"))
+                .andExpect(jsonPath("$[0].quantity").value(5));
+        deliveries(articleId, "010301")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].deliveryNoteId").value(migrated.id()));
+    }
+
+    @Test
+    @DisplayName("Requires every parameter and a code of digits")
     void requiresItsParameters() throws Exception {
         for (String missing : List.of("dateFrom", "dateTo")) {
             mockMvc.perform(without("/api/traceability/articles", missing, "dateFrom", "dateTo"))
@@ -162,7 +187,7 @@ class TraceabilityTest extends DomainIntegrationTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
         }
-        deliveries(articleId, "123").andExpect(status().isBadRequest())
+        deliveries(articleId, "L-24").andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
     }
 
