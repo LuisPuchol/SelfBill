@@ -35,7 +35,7 @@ public record DeliveryNoteFilter(
         @Schema(description = """
                 Only delivery notes with a line that carries this traceability code in any of its three slots. \
                 With articleId, both must be on the same line""", example = "01210426")
-        @Pattern(regexp = DeliveryNoteLineRequest.TRACEABILITY_CODE_PATTERN,
-                message = DeliveryNoteLineRequest.TRACEABILITY_CODE_MESSAGE)
+        @Pattern(regexp = DeliveryNoteLineRequest.TRACEABILITY_SEARCH_PATTERN,
+                message = DeliveryNoteLineRequest.TRACEABILITY_SEARCH_MESSAGE)
         String traceabilityCode) {
 }

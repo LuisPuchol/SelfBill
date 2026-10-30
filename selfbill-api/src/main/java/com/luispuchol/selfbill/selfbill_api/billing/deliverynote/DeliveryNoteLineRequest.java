@@ -39,4 +39,8 @@ public record DeliveryNoteLineRequest(
 
     public static final String TRACEABILITY_CODE_PATTERN = "\\d{8}";
     public static final String TRACEABILITY_CODE_MESSAGE = "Traceability code must be 8 digits";
+
+    // A search also has to find the lots migrated from the old program, of other lengths (CONCEPTO.md §10)
+    public static final String TRACEABILITY_SEARCH_PATTERN = "\\d+";
+    public static final String TRACEABILITY_SEARCH_MESSAGE = "Traceability code must be digits";
 }

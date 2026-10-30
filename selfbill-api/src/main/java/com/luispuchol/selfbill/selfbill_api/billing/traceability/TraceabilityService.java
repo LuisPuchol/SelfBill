@@ -6,12 +6,12 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNote;
 import com.luispuchol.selfbill.selfbill_api.billing.deliverynote.DeliveryNoteLine;
@@ -73,8 +73,9 @@ public class TraceabilityService {
                 .build();
     }
 
+    // A line migrated from the old program may have no lot: its first code, which cannot be null, is then empty
     private static List<String> codes(String code1, String code2, String code3) {
-        return Stream.of(code1, code2, code3).filter(Objects::nonNull).distinct().toList();
+        return Stream.of(code1, code2, code3).filter(StringUtils::hasText).distinct().toList();
     }
 
     private static LocalDateTime start(LocalDate date) {
