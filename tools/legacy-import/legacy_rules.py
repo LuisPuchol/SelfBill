@@ -2,15 +2,17 @@
 import re
 import struct
 import unicodedata
+from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 CENT = Decimal('0.01')
 
-# The old views hardcode these; every document of the program used them
+# The views hardcoded these until the program got its VAT table (iva) on 1-1-2023
 OLD_VAT_PERCENTAGE = Decimal('4')
 OLD_SURCHARGE_PERCENTAGE = Decimal('0.5')
 OLD_VAT_RATE = .04
 OLD_SURCHARGE_RATE = .005
+VAT_TABLE_SINCE = datetime(2023, 1, 1)
 
 # A client of type 3 is billed base only ("Base" in cb_cli_typ), which SelfBill calls the S series
 TYPE_WITHOUT_VAT = 3
@@ -43,11 +45,42 @@ def printed(value):
     return Decimal(format(value, '.15g')).quantize(CENT, ROUND_HALF_UP)
 
 
-def invoice_amounts(note_sums, taxed, surcharged, retention):
+def vat_row(vat_table, date):
+    """The row of the program's VAT table in force on the date (dsd and hst both inclusive), if any."""
+    return next((row for row in vat_table if date and row['dsd'] <= date <= row['hst']), None)
+
+
+def printed_rates(vat_table, date):
+    """(VAT rate, surcharge rate, VAT %, surcharge %) the invoice of that date was printed with.
+
+    Before 2023 the view multiplied by the literals .04 and .005. Since then it divides the real columns of the
+    table by 100, which stays a real: 4 % is 0.0399999991. None when the table has no row for the date: the old
+    program then printed no VAT and a total of zero.
+    """
+    if not vat_table or date is None or date < VAT_TABLE_SINCE:
+        return OLD_VAT_RATE, OLD_SURCHARGE_RATE, OLD_VAT_PERCENTAGE, OLD_SURCHARGE_PERCENTAGE
+    row = vat_row(vat_table, date)
+    if row is None:
+        return None
+    return (as_real(as_real(row['ti']) / 100), as_real(as_real(row['re']) / 100),
+            Decimal(str(row['ti'])).normalize(), Decimal(str(row['re'])).normalize())
+
+
+def percentages_at(vat_table, date):
+    """VAT and surcharge % in force on a date, as SelfBill freezes them in a delivery note."""
+    row = vat_row(vat_table, date) if date else None
+    if row is None and vat_table and date:
+        row = max((r for r in vat_table if r['dsd'] <= date), key=lambda r: r['dsd'], default=None)
+    if row is None:
+        return OLD_VAT_PERCENTAGE, OLD_SURCHARGE_PERCENTAGE
+    return Decimal(str(row['ti'])).normalize(), Decimal(str(row['re'])).normalize()
+
+
+def invoice_amounts(note_sums, taxed, surcharged, retention, vat_rate=OLD_VAT_RATE, surcharge_rate=OLD_SURCHARGE_RATE):
     """The figures the old invoice printed, computed like the fahi view and the fah reports did."""
     base = plain_sum(note_sums)
-    vat = base * OLD_VAT_RATE if taxed else 0.0
-    surcharge = base * OLD_SURCHARGE_RATE if taxed and surcharged else 0.0
+    vat = base * vat_rate if taxed else 0.0
+    surcharge = base * surcharge_rate if taxed and surcharged else 0.0
     return {
         'subtotal': printed(base),
         'vat_amount': printed(vat),

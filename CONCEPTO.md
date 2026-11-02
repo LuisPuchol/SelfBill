@@ -490,7 +490,14 @@ entregados, así que mandan los §5 y §6: se conserva lo que recibió el client
   facturas. Como el modelo es monousuario (§1) y un número emitido no se cambia (§5), cada titular es una base.
 - **Los importes son los impresos.** El programa antiguo redondeaba cada cifra desde la suma sin redondear, no
   línea a línea como §4. Las cifras de una factura migrada pueden no cuadrar por céntimos, igual que en el papel.
-  Borrar una factura migrada y volver a emitirla la recalcula con las reglas actuales.
+  El IVA de cada una es el de la fórmula que tenía el programa en su fecha, y la tabla de tipos del programa
+  pasa a `TaxConfig`. Borrar una factura migrada y volver a emitirla la recalcula con las reglas actuales.
+- **La retención de IRPF no se migra.** Se aplicó hasta 2017. Esas facturas guardan el total de factura, no el
+  total a pagar, y la retención queda en un CSV fuera de la base.
+- **Facturas con contador propio, en negativo.** El programa antiguo tuvo un tipo de factura con IVA y numeración
+  aparte. En la serie general llevan su número en negativo, para no ocupar los que la serie viva usará después.
+- **Albaranes sin fecha y sin factura, borrados.** El programa antiguo nunca pudo facturarlos. Con una fecha
+  inventada, Facturar los ofrecería hoy y acabarían en facturas nuevas.
 - **Incumplen reglas que hoy se exigen al crear:** cantidades negativas (devolución de envases, abonos), líneas sin
   lote o con lotes de otra longitud (§10), clientes sin NIF en la serie S (§5) y facturas con albaranes de varios
   meses (§2). Se leen e imprimen con normalidad; un albarán migrado sin facturar habrá que corregirlo para poder

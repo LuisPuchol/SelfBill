@@ -113,10 +113,13 @@ class Backup:
         columns = self.columns_by_object[object_id]
         return [_decode_record(page, offset, columns) for page, offset in self._records(object_id)]
 
+    def close(self):
+        """Nothing to release: the file was read whole. Same interface as sqlserver.RestoredBackup."""
+
     def definition(self, name):
-        """The source of a view or stored procedure, as the server keeps it in syscomments."""
+        """The source of a view, procedure or function, as the server keeps it in syscomments."""
         comments_id = next(i for i, o in self.objects.items() if o['name'] == 'syscomments')
-        object_id = next(i for i, o in self.objects.items() if o['name'] == name and o['xtype'] in ('V', 'P'))
+        object_id = next(i for i, o in self.objects.items() if o['name'] == name and o['xtype'] in ('V', 'P', 'FN'))
         columns = self.columns_by_object[comments_id]
         parts = {}
         for page, offset in self._records(comments_id):
@@ -136,6 +139,19 @@ class Backup:
             if row['id'] == object_id and row['indid'] in (0, 1):
                 return int.from_bytes(row['rowcnt'], 'little')  # binary(8) in this version
         return None
+
+
+def open_backup(path):
+    """SQL Server 2000 backups are read page by page; later ones need LocalDB to restore them."""
+    import sqlserver
+    try:
+        versions = {version for _, version, _ in sqlserver.backup_sets(path)}
+    except (OSError, RuntimeError):
+        return Backup(path)  # without LocalDB, only this reader is available
+    return Backup(path) if max(versions) < SQL2005_DATABASE_VERSION else sqlserver.RestoredBackup(path)
+
+
+SQL2005_DATABASE_VERSION = 611
 
 
 def _variable_columns(page, offset):

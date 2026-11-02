@@ -11,7 +11,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import legacy_rules as rules
-from sql2000 import Backup
+from sql2000 import open_backup
 
 DATE_DOUBT_DAYS = 45
 TAX_VALID_FROM = datetime(2001, 1, 1)
@@ -178,14 +178,26 @@ class Importer:
         self.notes = {row['ind']: row for row in self.backup.rows('alb')}
         self.invoices = {row['ind']: row for row in self.backup.rows('fah')}
         self.lines = defaultdict(list)
-        for row in sorted(self.backup.rows('det'), key=lambda r: r['ind']):
+        rows = sorted(self.backup.rows('det'), key=lambda r: r['ind'])
+        # det has no primary key, and a few distinct lines share an id: those get a new one after the last
+        seen = set()
+        next_id = max((r['ind'] for r in rows), default=0) + 1
+        for row in rows:
             if row['art'] == 0:  # the old printouts joined on the article, so these never showed
                 self.stats['lines_without_article'] += 1
                 self.anomaly('linea descartada', f"albarán id {row['alb']}", 'línea sin artículo (código 0), cantidad 0')
                 continue
+            if row['ind'] in seen:
+                self.stats['line_ids_repeated'] += 1
+                row = {**row, 'ind': next_id}
+                next_id += 1
+            seen.add(row['ind'])
             self.lines[row['alb']].append(row)
+        self.vat_table = [{'dsd': row['dsd'], 'hst': row['hst'], 'ti': row['ti'], 're': row['re']}
+                          for row in self.backup.rows('iva')] if 'iva' in self.backup.tables() else []
         self.note_first_seen = self._first_seen('alb')
         self.invoice_first_seen = self._first_seen('fah')
+        self._report_deleted_invoices()
         self.clients = CodeHistory(self.snapshots, 'cli', client_version)
         self.articles = CodeHistory(self.snapshots, 'art', article_version)
 
@@ -195,6 +207,25 @@ class Importer:
             for row in backup.rows(table):
                 first.setdefault(row['ind'], index)
         return first
+
+    def _report_deleted_invoices(self):
+        """Invoices an earlier backup has and the last one does not: the old program deleted them for good."""
+        reported = set()
+        for date, backup in self.snapshots[:-1]:
+            for row in backup.rows('fah'):
+                if row['ind'] in self.invoices or row['ind'] in reported or not row['typ']:
+                    continue
+                reported.add(row['ind'])
+                self.stats['invoices_deleted_later'] += 1
+                when = f"{row['fec']:%d/%m/%Y}" if row['fec'] else 'sin fecha'
+                self.anomaly('factura borrada después', self._invoice_label(row),
+                             f"de {when}, cliente {row['cli']}: está en la copia del {date:%d/%m/%Y} y ya no en la última")
+
+    def set_aside_undated_notes(self):
+        """A note without date and without invoice never entered an invoicing period, so the old program could not
+        invoice it. With a guessed date SelfBill would offer to invoice it today: it goes in deleted instead."""
+        self.set_aside = {ind for ind, note in self.notes.items() if note['fec'] is None and not note['fno']}
+        self.stats['notes_set_aside'] = len(self.set_aside)
 
     def discard_phantom_invoices(self):
         with_notes = {note['fno'] for note in self.notes.values() if note['fno']}
@@ -261,21 +292,21 @@ class Importer:
         return notes_of
 
     def number_invoices(self):
-        """Keeps every number. Only types with a counter SelfBill does not have go after the general series."""
+        """Keeps every number. A type with a counter SelfBill does not have goes to the general series in negative:
+        after the last one it would take the numbers the live series is about to use."""
         self.number = {}
-        general = [i['num'] for i in self.invoices.values() if i['typ'] == rules.TYPE_GENERAL]
-        next_general = max(general, default=0) + 1
         for ind, invoice in sorted(self.invoices.items(), key=lambda kv: self.invoice_date[kv[0]]):
             if invoice['typ'] == rules.TYPE_WITHOUT_VAT:
                 self.number[ind] = ('WITHOUT_VAT', invoice['num'])
             elif invoice['typ'] == rules.TYPE_GENERAL:
                 self.number[ind] = ('GENERAL', invoice['num'])
             else:
-                self.number[ind] = ('GENERAL', next_general)
+                self.number[ind] = ('GENERAL', -invoice['num'])
                 self.stats['renumbered_invoices'] += 1
                 self.anomaly('factura renumerada', f"tipo {invoice['typ']}, número {invoice['num']}",
-                             f"tenía contador propio, que SelfBill no tiene; ahora es la {next_general}")
-                next_general += 1
+                             f"tenía contador propio, que SelfBill no tiene; ahora es la {-invoice['num']}")
+        if len(set(self.number.values())) != len(self.number):
+            raise ValueError('two invoices would share a number')
 
     def place_identity_changes(self):
         client_dates = defaultdict(list)
@@ -347,13 +378,22 @@ class Importer:
             self.note_sum[ind] = rules.plain_sum(line['amount'] for line in lines)
 
         self.invoice_amounts = {}
+        self.invoice_percentages = {}
         for ind, notes in self._notes_by_invoice().items():
             invoice = self.invoices[ind]
+            rates = rules.printed_rates(self.vat_table, self.invoice_date[ind])
+            if rates is None:
+                self.anomaly('IVA sin tipo', self._invoice_label(invoice),
+                             'la tabla de IVA del programa no cubre su fecha; se usa el último tipo')
+                last = max(self.vat_table, key=lambda r: r['dsd'])
+                rates = rules.printed_rates(self.vat_table, last['dsd'])
+            vat_rate, surcharge_rate, vat_percentage, surcharge_percentage = rates
+            self.invoice_percentages[ind] = (vat_percentage, surcharge_percentage)
             self.invoice_amounts[ind] = rules.invoice_amounts(
                 [self.note_sum[n['ind']] for n in notes],
                 taxed=invoice['typ'] != rules.TYPE_WITHOUT_VAT,
                 surcharged=self.invoice_client[ind].surcharged,
-                retention=invoice.get('ret'))
+                retention=invoice.get('ret'), vat_rate=vat_rate, surcharge_rate=surcharge_rate)
 
     def _count_lots(self, line, lots):
         for raw in (line['tr1'], line['tr2'], line['tr3']):
@@ -429,6 +469,7 @@ class Importer:
             amounts = self.invoice_amounts[ind]
             taxed = invoice['typ'] != rules.TYPE_WITHOUT_VAT
             surcharged = taxed and client.surcharged
+            vat_percentage, surcharge_percentage = self.invoice_percentages[ind]
             when = epoch_ms(self.invoice_date[ind])
             db.execute(
                 'insert into invoices (id, series, code, date, status, client_id, client_code, client_business_name,'
@@ -438,35 +479,39 @@ class Importer:
                 (ind, series, number, when, 'ISSUED', self.clients.identity_of(client).row_id, client.code, client.name,
                  client.nif, client.address, client.city, client.province, client.postal_code,
                  fis['fiscal_name'], fis['nif'], fis['address'],
-                 moneyed(amounts['subtotal']), moneyed(rules.OLD_VAT_PERCENTAGE if taxed else Decimal(0)),
-                 moneyed(amounts['vat_amount']), moneyed(rules.OLD_SURCHARGE_PERCENTAGE if surcharged else Decimal(0)),
+                 moneyed(amounts['subtotal']), moneyed(vat_percentage if taxed else Decimal(0)),
+                 moneyed(amounts['vat_amount']), moneyed(surcharge_percentage if surcharged else Decimal(0)),
                  moneyed(amounts['surcharge_amount']), moneyed(amounts['total']), when, when))
 
     def _write_notes(self, db):
+        set_aside_on = epoch_ms(self.snapshots[-1][0])
         for ind, note in sorted(self.notes.items()):
             invoice = self.invoices.get(note['fno'])
             client = self.note_client[ind]
             taxed = invoice['typ'] != rules.TYPE_WITHOUT_VAT if invoice else client.taxed
             surcharged = taxed and (self.invoice_client[note['fno']] if invoice else client).surcharged
+            vat_percentage, surcharge_percentage = rules.percentages_at(self.vat_table, self.note_date[ind])
             when = epoch_ms(self.note_date[ind])
+            deleted = set_aside_on if ind in self.set_aside else None
             # Every old note printed plain ("Total Importe"), and that is the document the client received
             db.execute(
                 'insert into delivery_notes (id, code, date, total, format, vat_percentage, surcharge_percentage,'
-                ' vat_type, surcharge_type, client_id, invoice_id, created_at, updated_at) values (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                ' vat_type, surcharge_type, client_id, invoice_id, created_at, updated_at, deleted_at)'
+                ' values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 (ind, note['ano'], when, moneyed(rules.printed(self.note_sum[ind])), 'PLAIN',
-                 moneyed(rules.OLD_VAT_PERCENTAGE if taxed else Decimal(0)),
-                 moneyed(rules.OLD_SURCHARGE_PERCENTAGE if surcharged else Decimal(0)),
+                 moneyed(vat_percentage if taxed else Decimal(0)),
+                 moneyed(surcharge_percentage if surcharged else Decimal(0)),
                  'WITH_VAT' if taxed else 'WITHOUT_VAT', _surcharge_type(surcharged),
-                 self.clients.identity_of(client).row_id, note['fno'] if invoice else None, when, when))
+                 self.clients.identity_of(client).row_id, note['fno'] if invoice else None, when, when, deleted))
             for line in self.note_lines[ind]:
                 article_id = self.articles.identity_of(line['article']).row_id
                 code1, code2, code3 = line['lots']
                 db.execute(
                     'insert into delivery_notes_articles (id, article_id, delivery_note_id, traceability_code1,'
-                    ' traceability_code2, traceability_code3, quantity, price, total, created_at, updated_at)'
-                    ' values (?,?,?,?,?,?,?,?,?,?,?)',
+                    ' traceability_code2, traceability_code3, quantity, price, total, created_at, updated_at, deleted_at)'
+                    ' values (?,?,?,?,?,?,?,?,?,?,?,?)',
                     (line['id'], article_id, ind, code1, code2, code3, moneyed(line['quantity']), moneyed(line['price']),
-                     moneyed(line['total']), when, when))
+                     moneyed(line['total']), when, when, deleted))
                 if invoice:
                     db.execute(
                         'insert into invoice_lines (invoice_id, delivery_note_id, article_id, delivery_note_code,'
@@ -492,12 +537,16 @@ class Importer:
             ' values (?,?,?,?,?,?,?,?)',
             (issuer['fiscal_name'], issuer['fiscal_name'], issuer['nif'], issuer['address'], logo,
              'image/jpeg' if logo else None, now, now))
-        db.execute(
-            'insert into tax_config (vat_percentage, surcharge_percentage, valid_from, created_at, updated_at) values (?,?,?,?,?)',
-            (moneyed(rules.OLD_VAT_PERCENTAGE), moneyed(rules.OLD_SURCHARGE_PERCENTAGE), epoch_ms(TAX_VALID_FROM), now, now))
+        # The program's own VAT table when it has one; before it, the rates its views hardcoded
+        periods = {row['dsd']: rules.percentages_at(self.vat_table, row['dsd']) for row in self.vat_table}
+        for valid_from, (vat, surcharge) in sorted(periods.items() or [(TAX_VALID_FROM, rules.percentages_at([], None))]):
+            db.execute(
+                'insert into tax_config (vat_percentage, surcharge_percentage, valid_from, created_at, updated_at) values (?,?,?,?,?)',
+                (moneyed(vat), moneyed(surcharge), epoch_ms(valid_from), now, now))
 
     def run(self, template, out):
         self.load()
+        self.set_aside_undated_notes()
         self.discard_phantom_invoices()
         self.resolve_dates()
         self.number_invoices()
@@ -538,6 +587,12 @@ def write_annexes(importer, folder):
     categories = {row['ind']: rules.clean_text(row['nom']) for row in backup.rows('gst')}
 
     write_csv(folder / 'anomalias.csv', importer.anomalies, ['tipo', 'documento', 'detalle'])
+    write_csv(folder / 'albaranes-apartados.csv', ({
+        'albaran': importer.notes[ind]['ano'], 'id': ind, 'cliente': importer.notes[ind]['cli'],
+        'nombre': importer.note_client[ind].name, 'lineas': len(importer.note_lines[ind]),
+        'importe': rules.printed(importer.note_sum[ind])}
+        for ind in sorted(importer.set_aside, key=lambda i: importer.notes[i]['ano'])),
+        ['albaran', 'id', 'cliente', 'nombre', 'lineas', 'importe'])
     write_csv(folder / 'clientes-estimados.csv', importer.estimated, ['documento', 'fecha', 'codigo', 'cliente asignado', 'nif'])
     write_csv(folder / 'compras-y-gastos.csv', ({
         'fecha': row['fec'], 'proveedor': suppliers.get(row['prv'], row['prv']), 'categoria': categories.get(row['gst'], row['gst']),
@@ -592,8 +647,9 @@ def control_totals(out):
     counts = {table: db.execute(f'select count(*) from {table}').fetchone()[0] for table in (
         'clients', 'articles', 'delivery_notes', 'delivery_notes_articles', 'invoices', 'invoice_lines')}
     next_numbers = db.execute('select series, max(code) + 1 from invoices group by series').fetchall()
+    tax = db.execute("select date(valid_from / 1000, 'unixepoch', 'localtime'), vat_percentage, surcharge_percentage from tax_config order by valid_from").fetchall()
     next_note = db.execute('select max(code) + 1 from delivery_notes').fetchone()[0]
-    pending = db.execute('select count(*) from delivery_notes where invoice_id is null').fetchone()[0]
+    pending = db.execute('select count(*) from delivery_notes where invoice_id is null and deleted_at is null').fetchone()[0]
     dates = db.execute("select date(min(date) / 1000, 'unixepoch', 'localtime'), date(max(date) / 1000, 'unixepoch', 'localtime') from delivery_notes").fetchone()
     # The old reports rounded each figure from the unrounded sum, so the printed figures may not add up
     lines_differ = db.execute(
@@ -601,11 +657,11 @@ def control_totals(out):
     total_differs = db.execute(
         'select count(*) from invoices where abs(subtotal + vat_amount + surcharge_amount - total) > 0.001').fetchone()[0]
     db.close()
-    return totals, counts, next_numbers, next_note, pending, dates, lines_differ, total_differs
+    return totals, counts, next_numbers, next_note, pending, dates, lines_differ, total_differs, tax
 
 
 def write_report(importer, out, folder, title):
-    totals, counts, next_numbers, next_note, pending, dates, lines_differ, total_differs = control_totals(out)
+    totals, counts, next_numbers, next_note, pending, dates, lines_differ, total_differs, tax = control_totals(out)
     stats = importer.stats
     issuer = importer._issuer()
     lines = [
@@ -626,6 +682,7 @@ def write_report(importer, out, folder, title):
         f'| Albaranes sin facturar | {pending} |', '',
         f'Fechas de albarán: {dates[0]} a {dates[1]} (incluye fechas mal tecleadas, ver `anomalias.csv`).', '',
         'Siguientes números: ' + ', '.join(f"{'S-' if s == 'WITHOUT_VAT' else ''}{n}" for s, n in next_numbers) + f'; albarán {next_note}.', '',
+        'IVA en Ajustes, desde cada fecha: ' + '; '.join(f'{d}: {v} % y recargo {r} %' for d, v, r in tax) + '.', '',
         '## Totales de control', '',
         '| Serie | Año | Facturas | Base | IVA | Recargo | Total |', '|---|---|---:|---:|---:|---:|---:|',
         *[f"| {'S' if s == 'WITHOUT_VAT' else 'General'} | {y} | {n} | {b:.2f} | {v:.2f} | {r:.2f} | {t:.2f} |" for s, y, n, b, v, r, t in totals], '',
@@ -635,7 +692,9 @@ def write_report(importer, out, folder, title):
         '## Limpieza aplicada', '',
         f'- Clientes vivos de la serie S con NIF fantasma ({importer.ghost_nif}): {stats["clients_with_ghost_nif"]}',
         f'- Facturas fantasma descartadas (sin albaranes): {stats["phantom_invoices"]}',
-        f'- Facturas con contador propio renumeradas: {stats["renumbered_invoices"]}',
+        f'- Facturas con contador propio, en negativo en la serie general: {stats["renumbered_invoices"]}',
+        f'- Facturas que el programa borró después de alguna copia anterior: {stats["invoices_deleted_later"]}',
+        f'- Albaranes sin fecha ni factura, apartados como borrados (`albaranes-apartados.csv`): {stats["notes_set_aside"]}',
         f'- Facturas cuyo cliente es una estimación (`clientes-estimados.csv`): {stats["estimated_invoices"]}',
         f'- Fechas de albarán inferidas: {stats["note_dates_inferred"]}; de factura: {stats["invoice_dates_inferred"]}',
         f'- Fechas que parecen mal tecleadas y se conservan: {stats["odd_note_dates"]} de albarán, {stats["odd_invoice_dates"]} de factura',
@@ -650,7 +709,7 @@ def write_report(importer, out, folder, title):
 
 def parse_snapshot(text):
     date, _, path = text.partition('=')
-    return datetime.strptime(date, '%Y-%m-%d'), Backup(path)
+    return datetime.strptime(date, '%Y-%m-%d'), open_backup(path)
 
 
 def main():
@@ -668,11 +727,18 @@ def main():
     out = Path(args.out)
     if out.exists():
         raise SystemExit(f'{out} already exists: this tool never overwrites a database')
-    importer = Importer([parse_snapshot(text) for text in args.snapshot], args.logo, args.ghost_nif)
-    importer.run(args.template, out)
-    folder = Path(args.annexes)
-    write_annexes(importer, folder)
-    write_report(importer, out, folder, args.title)
+    snapshots = []
+    try:
+        for text in args.snapshot:
+            snapshots.append(parse_snapshot(text))
+        importer = Importer(snapshots, args.logo, args.ghost_nif)
+        importer.run(args.template, out)
+        folder = Path(args.annexes)
+        write_annexes(importer, folder)
+        write_report(importer, out, folder, args.title)
+    finally:
+        for _, backup in snapshots:
+            backup.close()
     print(f'{out}: ' + ', '.join(f'{k}={v}' for k, v in sorted(importer.stats.items())))
 
 

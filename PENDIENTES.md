@@ -32,13 +32,12 @@ una base vacía sin avisar, y parece que se han perdido los datos. Ponerla junto
 La importación está hecha (`tools/legacy-import`, CONCEPTO §12). Las funciones del antiguo que no se usan no se adaptan:
 no son carencias. Queda:
 
-- **Repetir la importación con las copias posteriores a 2013.** Las actuales acaban en abril de 2013, así que hasta
-  entonces los siguientes números de albarán y factura no son los reales.
-- **Decidir la retención de IRPF.** El antiguo la imprimía en casi todas las facturas de la serie general del último
-  titular (`Ret. IRPF 1 %`, `Total a Pagar`). SelfBill no la modela: las migradas guardan el total de factura, su
-  reimpresión no muestra la retención y el detalle queda en un CSV. Solo hace falta si se sigue reteniendo.
+- **Puesta en marcha.** El programa antiguo sigue en uso. El día del cambio: una copia nueva desde él, repetir la
+  importación con ella y, desde ese momento, solo SelfBill. Lo que se haga después en el antiguo no llega.
 - **Serie S sin dirección.** Sus clientes migrados ya llevan NIF fantasma, pero emitir exige además dirección, código
-  postal y población, que casi ninguno tiene.
+  postal y población, que casi ninguno tiene. El cliente de ventas sueltas de la serie S bloquea así su cierre mensual.
+- **Facturas con contador propio.** Un tipo de factura antiguo tenía numeración aparte (CONCEPTO §12) y hoy sale en
+  negativo. Si ese tipo se sigue usando, haría falta una serie propia.
 
 ### Rectificativas, anulación y Verifactu
 No antes. Hasta entonces, corregir una factura consiste en borrarla, corregir el albarán y

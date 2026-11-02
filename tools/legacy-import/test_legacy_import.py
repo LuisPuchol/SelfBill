@@ -6,6 +6,7 @@ from decimal import Decimal
 
 import legacy_rules as rules
 import sql2000
+import sqlserver
 
 
 class AmountsTest(unittest.TestCase):
@@ -41,6 +42,33 @@ class AmountsTest(unittest.TestCase):
         self.assertEqual(amounts['surcharge_amount'], Decimal('1.00'))
         self.assertEqual(amounts['total'], Decimal('209.00'))
         self.assertEqual(amounts['retention_amount'], Decimal('2.00'))
+
+    def test_before_the_vat_table_the_literals_print(self):
+        table = [{'dsd': datetime(2000, 1, 1), 'hst': datetime(2022, 12, 31), 'ti': 4.0, 're': 0.5}]
+        self.assertEqual(rules.printed_rates(table, datetime(2015, 3, 31)), (.04, .005, Decimal('4'), Decimal('0.5')))
+
+    def test_since_the_vat_table_its_rate_is_a_real(self):
+        table = [{'dsd': datetime(2025, 1, 1), 'hst': datetime(2025, 12, 31), 'ti': 4.0, 're': 0.0}]
+        vat, surcharge, vat_percentage, surcharge_percentage = rules.printed_rates(table, datetime(2025, 12, 31))
+        # Value given by SQL Server for CAST(4.0 AS real) / 100
+        self.assertEqual(vat, 0.039999999105930328)
+        self.assertEqual((surcharge, vat_percentage, surcharge_percentage), (0.0, Decimal('4'), Decimal('0')))
+
+    def test_the_real_rate_can_print_a_cent_less_than_the_literal(self):
+        literal = rules.invoice_amounts([100.125], True, False, 0)
+        real = rules.invoice_amounts([100.125], True, False, 0, vat_rate=rules.as_real(rules.as_real(4.0) / 100))
+        self.assertEqual((literal['vat_amount'], real['vat_amount']), (Decimal('4.01'), Decimal('4.00')))
+
+    def test_no_row_for_the_date_prints_no_rates(self):
+        table = [{'dsd': datetime(2025, 1, 1), 'hst': datetime(2025, 12, 31), 'ti': 4.0, 're': 0.0}]
+        self.assertIsNone(rules.printed_rates(table, datetime(2027, 1, 31)))
+
+    def test_a_note_takes_the_percentages_in_force_on_its_date(self):
+        table = [{'dsd': datetime(2000, 1, 1), 'hst': datetime(2022, 12, 31), 'ti': 4.0, 're': 0.5},
+                 {'dsd': datetime(2024, 10, 1), 'hst': datetime(2024, 12, 31), 'ti': 2.0, 're': 0.0}]
+        self.assertEqual(rules.percentages_at(table, datetime(2024, 11, 5)), (Decimal('2'), Decimal('0')))
+        self.assertEqual(rules.percentages_at(table, datetime(2030, 1, 1)), (Decimal('2'), Decimal('0')))
+        self.assertEqual(rules.percentages_at([], datetime(2030, 1, 1)), (Decimal('4'), Decimal('0.5')))
 
     def test_a_missing_retention_is_none(self):
         self.assertEqual(rules.invoice_amounts([200.0], True, False, None)['retention_amount'], Decimal('0.00'))
@@ -178,6 +206,30 @@ class DecodeTest(unittest.TestCase):
                   + struct.pack('<H', fixed_end) + struct.pack('<ii', 7, 0)
                   + header_after_fixed + struct.pack('<H', variable_start + len(name)) + name)
         self.assertEqual(sql2000._decode_record(record, 0, columns), {'id': 7, 'gone': None, 'name': 'abc'})
+
+
+class RestoredValuesTest(unittest.TestCase):
+    """Values as LocalDB exports them must equal what the page reader decodes from the same bytes."""
+
+    def test_a_real_comes_back_as_the_same_real(self):
+        # Text given by SQL Server for CONVERT(varchar(40), CAST(3.3 AS real), 3)
+        self.assertEqual(sqlserver._imported('3.2999999523162842e+000', 'real'), struct.unpack('<f', struct.pack('<f', 3.3))[0])
+
+    def test_money_keeps_its_four_decimals(self):
+        self.assertEqual(sqlserver._imported('1.2500', 'money'), sql2000.decode_value({'xtype': 60}, struct.pack('<q', 12500)))
+
+    def test_a_date(self):
+        self.assertEqual(sqlserver._imported('2026-10-28T00:00:00', 'datetime'), datetime(2026, 10, 28))
+
+    def test_null_and_text_pass_through(self):
+        self.assertIsNone(sqlserver._imported(None, 'real'))
+        self.assertEqual(sqlserver._imported('PATATAS   ', 'char'), 'PATATAS   ')
+
+    def test_floats_money_and_dates_are_exported_as_text_with_all_their_digits(self):
+        self.assertEqual(sqlserver._exported('ctd', 'real'), 'CONVERT(varchar(40), [ctd], 3) AS [ctd]')
+        self.assertEqual(sqlserver._exported('prv', 'money'), 'CONVERT(varchar(40), [prv], 2) AS [prv]')
+        self.assertEqual(sqlserver._exported('fec', 'datetime'), 'CONVERT(varchar(23), [fec], 126) AS [fec]')
+        self.assertEqual(sqlserver._exported('ind', 'int'), '[ind]')
 
 
 if __name__ == '__main__':
