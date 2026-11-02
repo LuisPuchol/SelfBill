@@ -79,8 +79,9 @@ Tests: `python -m unittest test_legacy_import`, desde esta carpeta.
   que libera el código sin perder el documento (CONCEPTO §7).
 - **Números con contador propio, en negativo.** Ponerlos tras el último de la serie general ocuparía los
   números que la serie viva va a usar a continuación.
-- **NIF fantasma en la serie S.** Sus clientes nunca tuvieron NIF y emitir lo exige, así que los vivos comparten el de
-  `--ghost-nif`. Solo en su ficha: las facturas ya emitidas conservan la copia sin NIF con la que se imprimieron.
+- **NIF fantasma en la serie S.** Sus clientes nunca tuvieron NIF, y los vivos comparten el de `--ghost-nif`. Es decisión
+  del usuario: emitir en la serie S no lo exige (CONCEPTO §5). Solo en su ficha: las facturas ya emitidas
+  conservan la copia sin NIF con la que se imprimieron.
 - **Fechas intactas.** Solo se infiere la que falta, porque la columna la exige. Las que parecen mal tecleadas
   se conservan y se listan en `anomalias.csv`: es lo que salió impreso.
 - **Albaranes sin fecha y sin factura, apartados.** El programa antiguo nunca los pudo facturar, porque no

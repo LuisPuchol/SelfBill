@@ -34,8 +34,6 @@ no son carencias. Queda:
 
 - **Puesta en marcha.** El programa antiguo sigue en uso. El día del cambio: una copia nueva desde él, repetir la
   importación con ella y, desde ese momento, solo SelfBill. Lo que se haga después en el antiguo no llega.
-- **Serie S sin dirección.** Sus clientes migrados ya llevan NIF fantasma, pero emitir exige además dirección, código
-  postal y población, que casi ninguno tiene. El cliente de ventas sueltas de la serie S bloquea así su cierre mensual.
 - **Facturas con contador propio.** Un tipo de factura antiguo, con IVA, tenía numeración aparte (CONCEPTO §12) y hoy
   sale en negativo. No es la serie S. Si ese tipo se sigue usando, haría falta una serie propia.
 

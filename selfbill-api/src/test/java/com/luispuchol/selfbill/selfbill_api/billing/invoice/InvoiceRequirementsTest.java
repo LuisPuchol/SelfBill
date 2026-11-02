@@ -36,6 +36,25 @@ class InvoiceRequirementsTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("An invoice of the S series is issued without the client's fiscal data")
+    void sSeriesIssuesWithoutClientFiscalData() {
+        Integer client = clientService.createClient(ClientRequest.builder()
+                .code(2)
+                .businessName("Varios")
+                .name("Varios")
+                .vatType(VatType.WITHOUT_VAT)
+                .surchargeType(SurchargeType.WITHOUT_SURCHARGE)
+                .defaultDeliveryNoteFormat(DeliveryNoteFormat.PLAIN)
+                .build()).id();
+        InvoiceResponse draft = createInvoiceFor(client, createDeliveryNote(client, "1", "1").id());
+
+        InvoiceResponse issued = invoiceService.issueInvoice(draft.id());
+
+        assertThat(issued.status()).isEqualTo(InvoiceStatus.ISSUED);
+        assertThat(issued.number()).isEqualTo("S-1");
+    }
+
+    @Test
     @DisplayName("An invoice cannot be issued without the user profile, which holds the issuer's fiscal data")
     void issuingRequiresUserProfile() {
         InvoiceResponse draft = createInvoice(createDeliveryNote(clientId, "1", "1").id());

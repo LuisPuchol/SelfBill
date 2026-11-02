@@ -1134,7 +1134,7 @@ export interface components {
             total?: number;
             /** @description The client was deleted, so the invoice cannot be issued */
             clientDeleted?: boolean;
-            /** @description Fiscal data of the client that issuing requires and is empty: `nif`, `address`, `postalCode`, `city` */
+            /** @description Fiscal data of the client that issuing requires and is empty: `nif`, `address`, `postalCode`, `city`. Always empty in the S series, which does not require them */
             missingFiscalData?: string[];
             /** @description Oldest first */
             deliveryNotes?: components["schemas"]["PendingDeliveryNoteResponse"][];

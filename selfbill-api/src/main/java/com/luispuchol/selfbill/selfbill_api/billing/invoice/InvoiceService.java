@@ -344,7 +344,8 @@ public class InvoiceService {
         invoice.setIssuerAddress(issuer.address());
     }
 
-    // A complete invoice shows the issuer's and the client's NIF and address (RD 1619/2012, art. 6)
+    // A complete invoice shows the issuer's and the client's NIF and address (RD 1619/2012, art. 6);
+    // the S series is exempt (CONCEPTO.md §5)
     private void requireIssuable(Client client) {
         if (client.getDeletedAt() != null) {
             throw new BusinessException(ErrorCode.CLIENT_NOT_FOUND, client.getId());
@@ -361,6 +362,9 @@ public class InvoiceService {
 
     static List<String> missingFiscalData(Client client) {
         List<String> missing = new ArrayList<>();
+        if (InvoiceSeries.forVatType(client.getVatType()) == InvoiceSeries.WITHOUT_VAT) {
+            return missing;
+        }
         if (!StringUtils.hasText(client.getNif())) {
             missing.add("nif");
         }
