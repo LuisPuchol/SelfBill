@@ -38,6 +38,8 @@ no son carencias. Queda:
   postal y población, que casi ninguno tiene. El cliente de ventas sueltas de la serie S bloquea así su cierre mensual.
 - **Facturas con contador propio.** Un tipo de factura antiguo tenía numeración aparte (CONCEPTO §12) y hoy sale en
   negativo. Si ese tipo se sigue usando, haría falta una serie propia.
+- **Retención de IRPF.** SelfBill no la tiene, y el programa antiguo aún la aplica a alguna factura, sobre todo de la
+  serie S. Si se sigue haciendo, habría que añadirla; las migradas no la muestran al reimprimirse (CONCEPTO §12).
 
 ### Rectificativas, anulación y Verifactu
 No antes. Hasta entonces, corregir una factura consiste en borrarla, corregir el albarán y

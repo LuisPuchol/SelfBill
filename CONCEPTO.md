@@ -492,8 +492,9 @@ entregados, así que mandan los §5 y §6: se conserva lo que recibió el client
   línea a línea como §4. Las cifras de una factura migrada pueden no cuadrar por céntimos, igual que en el papel.
   El IVA de cada una es el de la fórmula que tenía el programa en su fecha, y la tabla de tipos del programa
   pasa a `TaxConfig`. Borrar una factura migrada y volver a emitirla la recalcula con las reglas actuales.
-- **La retención de IRPF no se migra.** Se aplicó hasta 2017. Esas facturas guardan el total de factura, no el
-  total a pagar, y la retención queda en un CSV fuera de la base.
+- **La retención de IRPF no se migra.** Hasta 2017 la llevaban casi todas las facturas con IVA; después solo
+  algunas, sobre todo de la serie S. Esas facturas guardan el total de factura, no el total a pagar, y la retención
+  queda en un CSV fuera de la base.
 - **Facturas con contador propio, en negativo.** El programa antiguo tuvo un tipo de factura con IVA y numeración
   aparte. En la serie general llevan su número en negativo, para no ocupar los que la serie viva usará después.
 - **Albaranes sin fecha y sin factura, borrados.** El programa antiguo nunca pudo facturarlos. Con una fecha
