@@ -87,14 +87,26 @@ class DeliveryNoteControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/delivery-notes - Debe rechazar un código de trazabilidad que no tenga 8 cifras")
+    @DisplayName("GET /api/delivery-notes - Debe rechazar un código de trazabilidad que no sea de cifras")
     void getAllDeliveryNotes_WithMalformedTraceabilityCode_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(get("/api/delivery-notes").param("traceabilityCode", "L-24"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/delivery-notes").param("traceabilityCode", "5241012"))
-                .andExpect(status().isBadRequest());
 
         verify(deliveryNoteService, never()).getAllDeliveryNotes(any(), any());
+    }
+
+    @Test
+    @DisplayName("GET /api/delivery-notes - Debe buscar los lotes migrados, que no tienen 8 cifras")
+    void getAllDeliveryNotes_WithLotOfTheOldProgram_ShouldSearch() throws Exception {
+        when(deliveryNoteService.getAllDeliveryNotes(any(DeliveryNoteFilter.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        mockMvc.perform(get("/api/delivery-notes").param("traceabilityCode", "010301"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<DeliveryNoteFilter> filter = ArgumentCaptor.forClass(DeliveryNoteFilter.class);
+        verify(deliveryNoteService).getAllDeliveryNotes(filter.capture(), any(Pageable.class));
+        assertThat(filter.getValue().traceabilityCode()).isEqualTo("010301");
     }
 
     @Test

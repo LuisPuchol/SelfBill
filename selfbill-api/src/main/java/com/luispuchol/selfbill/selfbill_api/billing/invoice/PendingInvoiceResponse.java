@@ -31,7 +31,7 @@ public record PendingInvoiceResponse(
         boolean clientDeleted,
 
         @Schema(description = "Fiscal data of the client that issuing requires and is empty: "
-                + "`nif`, `address`, `postalCode`, `city`")
+                + "`nif`, `address`, `postalCode`, `city`. Always empty in the S series, which does not require them")
         List<String> missingFiscalData,
 
         @Schema(description = "Oldest first")

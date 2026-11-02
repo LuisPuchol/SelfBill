@@ -28,6 +28,15 @@ una base vacía sin avisar, y parece que se han perdido los datos. Ponerla junto
 
 ## 3. Funcionalidad futura
 
+### Migración del programa antiguo
+La importación está hecha (`tools/legacy-import`, CONCEPTO §12). Las funciones del antiguo que no se usan no se adaptan:
+no son carencias. Queda:
+
+- **Puesta en marcha.** El programa antiguo sigue en uso. El día del cambio: una copia nueva desde él, repetir la
+  importación con ella y, desde ese momento, solo SelfBill. Lo que se haga después en el antiguo no llega.
+- **Facturas con contador propio.** Un tipo de factura antiguo, con IVA, tenía numeración aparte (CONCEPTO §12) y hoy
+  sale en negativo. No es la serie S. Si ese tipo se sigue usando, haría falta una serie propia.
+
 ### Rectificativas, anulación y Verifactu
 No antes. Hasta entonces, corregir una factura consiste en borrarla, corregir el albarán y
 refacturar. Verifactu cierra esa vía: una factura registrada no se borra ni se renumera.
@@ -144,7 +153,7 @@ cuerpo, adjunto y causa del error), que requieren un servidor SMTP falso.
 - Buscar directamente por lote, sin elegir artículo.
 - Abrir el albarán desde el listado de un lote.
 - Exportar el listado de trazabilidad (CSV).
-- Sin índice por fecha en `delivery_notes` (ni por artículo en las líneas): cada consulta de trazabilidad recorre todo el histórico; medir con una base grande y añadir una migración si hace falta.
+- Sin índice por fecha en `delivery_notes` (ni por artículo en las líneas). Medido con el histórico migrado (138.000 líneas, diez años): menos de 70 ms por consulta, no hace falta todavía.
 - Los albaranes de un lote se ordenan por fecha y hora antes que por número: uno creado más tarde con la fecha de otro día sale fuera de orden dentro de ese día.
 - Al editar una fecha o si falla la carga, la columna activa puede seguir siendo la de lotes: un Esc no hace nada visible.
 - La lista de lotes y la de albaranes repiten el mismo cargador con caché; `notTyping` está copiado en `DataTable`, `ListScreen` y Trazabilidad.

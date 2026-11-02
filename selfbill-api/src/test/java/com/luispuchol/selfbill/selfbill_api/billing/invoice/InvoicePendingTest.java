@@ -159,6 +159,25 @@ class InvoicePendingTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Reports no missing fiscal data for a client of the S series")
+    void sSeriesClientMissesNothing() {
+        Integer withoutVat = clientService.createClient(ClientRequest.builder()
+                .code(2)
+                .businessName("Varios")
+                .name("Varios")
+                .vatType(VatType.WITHOUT_VAT)
+                .surchargeType(SurchargeType.WITHOUT_SURCHARGE)
+                .defaultDeliveryNoteFormat(DeliveryNoteFormat.PLAIN)
+                .build()).id();
+        noteOn(withoutVat, LocalDateTime.of(2026, 10, 1, 8, 0));
+
+        List<PendingInvoiceResponse> rows = invoiceService.getPendingInvoices(END_OF_OCTOBER);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).missingFiscalData()).isEmpty();
+    }
+
+    @Test
     @DisplayName("A missing limit date is a 400, not a 500")
     void missingDateToIs400() throws Exception {
         mockMvc.perform(get("/api/invoices/pending"))

@@ -164,6 +164,10 @@ romper la unicidad, y ninguna de las dos cosas es aceptable en un documento ya e
 - Emitir exige los datos que una factura completa tiene que mostrar (art. 6 del RD
   1619/2012): un cliente vivo con NIF, dirección, código postal y población, y el
   `UserProfile` del titular. Mientras tanto la factura sigue en borrador.
+- La serie S no exige los datos del cliente: basta con que esté vivo. Es decisión del
+  usuario: sus clientes son en buena parte ventas sueltas (un cliente "varios") que no
+  tienen NIF ni dirección, y la serie queda fuera de Verifactu (§9.2). Lo que el cliente
+  tenga se copia igual en la factura (§6).
 - Una factura emitida no se edita.
 - Un albarán es editable mientras su factura esté en `DRAFT`. Se bloquea cuando pasa a
   `ISSUED`.
@@ -455,6 +459,11 @@ los albaranes enteros, y en cada línea se ve su código.
 
 
 La pantalla de Trazabilidad responde a esa consulta con `/api/traceability/articles`, `/lots` y `/deliveries`: artículos vendidos en un periodo, sus lotes con cantidades y los albaranes de un lote. Cuentan los tres huecos; una línea con dos lotes suma su cantidad entera en los dos, porque no se sabe cuánto salió de cada uno.
+
+Las ocho cifras se exigen al escribir, no al consultar. Los lotes migrados del programa antiguo (§12) tienen
+otras longitudes y las búsquedas tienen que encontrarlos: aceptan cualquier código de cifras. Una línea migrada
+sin lote deja vacío el primer hueco y no cuenta como lote.
+
 ---
 
 ## 11. Glosario
@@ -473,3 +482,35 @@ El código está en inglés y el dominio en español.
 | Recargo de equivalencia | `surcharge` |
 | Datos del titular | `UserProfile` |
 | Configuración de impuestos | `TaxConfig` |
+
+---
+
+## 12. Datos migrados del programa antiguo
+
+Los documentos del programa anterior se importan con `tools/legacy-import`. Son documentos emitidos y
+entregados, así que mandan los §5 y §6: se conserva lo que recibió el cliente, aunque hoy no se generaría así.
+
+- **Una base por titular.** El negocio cambió de titular fiscal, y cada uno tiene su numeración de albaranes y de
+  facturas. Como el modelo es monousuario (§1) y un número emitido no se cambia (§5), cada titular es una base.
+- **Los importes son los impresos.** El programa antiguo redondeaba cada cifra desde la suma sin redondear, no
+  línea a línea como §4. Las cifras de una factura migrada pueden no cuadrar por céntimos, igual que en el papel.
+  El IVA de cada una es el de la fórmula que tenía el programa en su fecha, y la tabla de tipos del programa
+  pasa a `TaxConfig`. Borrar una factura migrada y volver a emitirla la recalcula con las reglas actuales.
+- **La retención de IRPF no se migra.** Hasta 2017 la llevaban casi todas las facturas con IVA; después solo
+  algunas, sobre todo de la serie S. Esas facturas guardan el total de factura, no el total a pagar, y la retención
+  queda en un CSV fuera de la base.
+- **Facturas con contador propio, en negativo.** El programa antiguo tuvo un tipo de factura con IVA y numeración
+  aparte. En la serie general llevan su número en negativo, para no ocupar los que la serie viva usará después.
+- **Albaranes sin fecha y sin factura, borrados.** El programa antiguo nunca pudo facturarlos. Con una fecha
+  inventada, Facturar los ofrecería hoy y acabarían en facturas nuevas.
+- **Incumplen reglas que hoy se exigen al crear:** cantidades negativas (devolución de envases, abonos), líneas sin
+  lote o con lotes de otra longitud (§10), clientes sin NIF en la serie S (§5) y facturas con albaranes de varios
+  meses (§2). Se leen e imprimen con normalidad; un albarán migrado sin facturar habrá que corregirlo para poder
+  guardarlo.
+- **Un código de cliente tuvo varios dueños.** El programa antiguo los reutilizaba sin guardar copia. Cada dueño
+  anterior es una fila en borrado lógico (§7) con el mismo código, y sus documentos siguen apuntando a ella.
+- **NIF fantasma en la serie S.** Sus clientes nunca tuvieron NIF, y los vivos comparten uno ficticio (`12345678Z`)
+  por decisión del usuario, anterior a que la serie S dejara de exigir los datos del cliente (§5). Las facturas ya
+  emitidas conservan su copia sin NIF (§6).
+
+Las reglas de la conversión están en [tools/legacy-import/README.md](tools/legacy-import/README.md).

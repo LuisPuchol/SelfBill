@@ -56,8 +56,8 @@ public class TraceabilityController {
     @GetMapping("/deliveries")
     public List<TraceabilityDeliveryResponse> getDeliveries(
             @RequestParam @Positive Integer articleId,
-            @RequestParam @Pattern(regexp = DeliveryNoteLineRequest.TRACEABILITY_CODE_PATTERN,
-                    message = DeliveryNoteLineRequest.TRACEABILITY_CODE_MESSAGE) @Schema(example = "01210426") String code,
+            @RequestParam @Pattern(regexp = DeliveryNoteLineRequest.TRACEABILITY_SEARCH_PATTERN,
+                    message = DeliveryNoteLineRequest.TRACEABILITY_SEARCH_MESSAGE) @Schema(example = "01210426") String code,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Schema(example = "2026-10-01") LocalDate dateFrom,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @Schema(example = "2026-10-31") LocalDate dateTo) {
         return traceabilityService.getDeliveries(articleId, code, dateFrom, dateTo);
