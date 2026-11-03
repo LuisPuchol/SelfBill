@@ -9,11 +9,18 @@ export const articleDeletion: DeleteOptions = {
 		await request(api.DELETE('/api/articles/{id}', { params: { path: { id: articleId } } }));
 	},
 	pendingForDelete: async (articleId) => {
-		const notes = await request(
-			api.GET('/api/delivery-notes', {
-				params: { query: { articleId, invoiced: false, size: 1 } }
-			})
-		);
-		return articlePendingMessage(notes.page?.totalElements ?? 0);
+		const [notes, drafts] = await Promise.all([
+			request(
+				api.GET('/api/delivery-notes', {
+					params: { query: { articleId, invoiced: false, size: 1 } }
+				})
+			),
+			request(
+				api.GET('/api/delivery-notes', {
+					params: { query: { articleId, invoiceStatus: 'DRAFT', size: 1 } }
+				})
+			)
+		]);
+		return articlePendingMessage(notes.page?.totalElements ?? 0, drafts.page?.totalElements ?? 0);
 	}
 };

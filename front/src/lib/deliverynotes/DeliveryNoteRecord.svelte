@@ -139,13 +139,6 @@
 		form.values.clientCode === null ? null : lookups.cachedClient(form.values.clientCode)
 	);
 	const sameClient = $derived(form.values.clientCode === form.saved.clientCode);
-	/**
-	 * The saved note's client, which the page fetched by id: its regime is the note's, as the API
-	 * keeps an editable note's in step with its client. Null when it was deleted since.
-	 */
-	const savedClient = $derived(
-		form.saved.clientCode === null ? null : lookups.cachedClient(form.saved.clientCode)
-	);
 	/** Something typed in Cliente: a deleted client's name no longer applies. */
 	let clientTyped = $state(false);
 	/** A client deleted since leaves its code empty: its name as the note has it. */
@@ -155,6 +148,12 @@
 	const format = $derived(saved && sameClient ? saved.format : client?.defaultDeliveryNoteFormat);
 
 	const period = $derived(periodOn(form.values.date, periods));
+	/** The regime the saved note's rates were frozen under, which its response carries: known too once its client was deleted. */
+	const savedRegime = $derived<Regime | null>(
+		saved?.vatType && saved.surchargeType
+			? { vatType: saved.vatType, surchargeType: saved.surchargeType }
+			: null
+	);
 	const savedRates = $derived(
 		saved && { vat: saved.vatPercentage ?? 0, surcharge: saved.surchargePercentage ?? 0 }
 	);
@@ -170,7 +169,7 @@
 			: noteRates(
 					regimeOf(client),
 					period,
-					savedRates && { regime: savedClient && regimeOf(savedClient), rates: savedRates }
+					savedRates && { regime: savedRegime, rates: savedRates }
 				)
 	);
 	const rates = $derived(asSaved ? savedRates! : (preview?.rates ?? null));

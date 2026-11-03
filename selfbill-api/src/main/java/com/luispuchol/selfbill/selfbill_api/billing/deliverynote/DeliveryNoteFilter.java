@@ -2,6 +2,8 @@ package com.luispuchol.selfbill.selfbill_api.billing.deliverynote;
 
 import java.time.LocalDate;
 
+import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceStatus;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Pattern;
 import lombok.Builder;
@@ -28,6 +30,9 @@ public record DeliveryNoteFilter(
 
         @Schema(description = "true: only delivery notes in an invoice. false: only pending ones")
         Boolean invoiced,
+
+        @Schema(description = "Only delivery notes in an invoice with this status")
+        InvoiceStatus invoiceStatus,
 
         @Schema(description = "Only delivery notes with a line of this article")
         Integer articleId,

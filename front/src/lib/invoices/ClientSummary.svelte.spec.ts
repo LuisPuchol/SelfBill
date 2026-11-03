@@ -17,7 +17,8 @@ const indus: ClientTotals = {
 	subtotal: 300,
 	vatAmount: 12,
 	surchargeAmount: 0,
-	total: 312
+	total: 312,
+	clientDeleted: false
 };
 const ferrer: ClientTotals = {
 	clientId: 2,
@@ -27,7 +28,8 @@ const ferrer: ClientTotals = {
 	subtotal: 100,
 	vatAmount: 4,
 	surchargeAmount: 0,
-	total: 104
+	total: 104,
+	clientDeleted: false
 };
 const invoice = (id: number, number: string, total: number, clientCode = 5): Invoice => ({
 	id,
@@ -126,6 +128,14 @@ describe('ClientSummary', () => {
 		await expect.element(row(invoicesTable(), 1)).toHaveTextContent('3720');
 		expect(p.loadInvoice).toHaveBeenCalledWith(11);
 		await expect.element(row(notesTable(), 0)).toHaveTextContent('10,07');
+	});
+
+	it('marks a deleted client in its row', async () => {
+		const garcia: ClientTotals = { ...ferrer, clientName: 'García', clientDeleted: true };
+		await loaded(props({ loadSummary: vi.fn().mockResolvedValue([indus, garcia]) }));
+		await expect.element(row(clientsTable(), 0)).toHaveTextContent('INDUS TIPICOS');
+		await expect.element(row(clientsTable(), 0)).not.toHaveTextContent('(borrado)');
+		await expect.element(row(clientsTable(), 1)).toHaveTextContent('García (borrado)');
 	});
 
 	it('Enter, Enter loads and goes to the clients', async () => {

@@ -6,6 +6,8 @@ import java.util.List;
 
 import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceStatus;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.DeliveryNoteFormat;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.SurchargeType;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.VatType;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -37,6 +39,12 @@ public record DeliveryNoteResponse(
 
         @Schema(description = "Surcharge rate applied, already resolved with the client's regime: 0 when it has none")
         BigDecimal surchargePercentage,
+
+        @Schema(description = "VAT regime the rates were frozen under: the client's when the note was last saved")
+        VatType vatType,
+
+        @Schema(description = "Surcharge regime the rates were frozen under: the client's when the note was last saved")
+        SurchargeType surchargeType,
 
         Integer clientId,
 

@@ -107,6 +107,8 @@ const saved: Note = {
 	format: 'VALUED',
 	vatPercentage: 4,
 	surchargePercentage: 0.5,
+	vatType: 'WITH_VAT',
+	surchargeType: 'WITH_SURCHARGE',
 	lines: [
 		{
 			articleId: 120,
@@ -300,14 +302,23 @@ describe('DeliveryNoteRecord, client and articles deleted since', () => {
 		await expect.element(cell(0, 'Código')).toHaveAccessibleDescription('Este dato es obligatorio');
 		expect(p.update).not.toHaveBeenCalled();
 
-		// Another client: the name goes, and with the note's regime unknown both rates are reapplied.
+		// Another client: the name goes, and the surcharge, whose regime changes, is reapplied.
 		await expect.element(cliente()).toHaveFocus();
 		await userEvent.keyboard('4');
 		await expect.element(page.getByText('Frutería García')).not.toBeInTheDocument();
 		await userEvent.keyboard('{Enter}');
 		await expect.element(page.getByText('Bar Pepe')).toBeVisible();
-		await expect.element(totals().getByText('IVA (4 %)')).toBeVisible();
+		await expect.element(totals().getByText('IVA (10 %)')).toBeVisible();
 		await expect.element(totals().getByText('Recargo (0 %)')).toBeVisible();
+	});
+
+	it("a deleted client's note keeps its frozen rates for another client of the same regime", async () => {
+		await render(DeliveryNoteHarness, props(orphan(frozen())));
+		await expect.element(cliente()).toHaveFocus();
+		await userEvent.keyboard('5{Enter}');
+		await expect.element(page.getByText('Frutas Ana')).toBeVisible();
+		await expect.element(totals().getByText('IVA (10 %)')).toBeVisible();
+		await expect.element(totals().getByText('Recargo (1,4 %)')).toBeVisible();
 	});
 
 	it('an issued note shows their names, and Enter walks through without asking for any', async () => {

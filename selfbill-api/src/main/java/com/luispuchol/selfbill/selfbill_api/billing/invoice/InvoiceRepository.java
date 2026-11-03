@@ -30,12 +30,13 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer>, JpaS
     @Query("""
             SELECT new com.luispuchol.selfbill.selfbill_api.billing.invoice.ClientSummaryResponse(
                 c.id, c.code, c.name, CAST(COUNT(i) AS integer),
-                SUM(i.subtotal), SUM(i.vatAmount), SUM(i.surchargeAmount), SUM(i.total))
+                SUM(i.subtotal), SUM(i.vatAmount), SUM(i.surchargeAmount), SUM(i.total),
+                CASE WHEN c.deletedAt IS NULL THEN false ELSE true END)
             FROM Invoice i JOIN i.client c
             WHERE i.status = com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceStatus.ISSUED
               AND i.date >= :from AND i.date < :to
-            GROUP BY c.id, c.code, c.name
-            ORDER BY c.code
+            GROUP BY c.id, c.code, c.name, CASE WHEN c.deletedAt IS NULL THEN false ELSE true END
+            ORDER BY c.code, CASE WHEN c.deletedAt IS NULL THEN false ELSE true END
             """)
     List<ClientSummaryResponse> summarizeByClient(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

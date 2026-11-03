@@ -138,6 +138,37 @@ class DeliveryNoteQueriesTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Delivery notes can be filtered by the status of their invoice")
+    void filtersByInvoiceStatus() {
+        DeliveryNoteResponse pending = createDeliveryNote(clientId, "1", "1");
+        DeliveryNoteResponse inDraft = createDeliveryNote(clientId, "1", "1");
+        DeliveryNoteResponse inIssued = createDeliveryNote(clientId, "1", "1");
+        createInvoice(inDraft.id());
+        invoiceService.issueInvoice(createInvoice(inIssued.id()).id());
+
+        assertThat(codes(DeliveryNoteFilter.builder().invoiceStatus(InvoiceStatus.DRAFT).build()))
+                .containsExactly(inDraft.code());
+        assertThat(codes(DeliveryNoteFilter.builder().invoiceStatus(InvoiceStatus.ISSUED).build()))
+                .containsExactly(inIssued.code());
+        assertThat(codes(DeliveryNoteFilter.builder().build())).hasSize(3).contains(pending.code());
+    }
+
+    @Test
+    @DisplayName("The response carries the regime the note's rates were frozen under, whatever its client became")
+    void responseCarriesTheFrozenRegime() {
+        DeliveryNoteResponse note = createDeliveryNote(clientId, "1", "1");
+        invoiceService.issueInvoice(createInvoice(note.id()).id());
+        // An invoiced note is not touched by its client's changes
+        clientService.updateClient(clientId, clientRequest(1, DeliveryNoteFormat.VALUED, "Client 1 SL",
+                VatType.WITHOUT_VAT, SurchargeType.WITHOUT_SURCHARGE));
+        clientService.deleteClient(clientId);
+
+        DeliveryNoteResponse found = deliveryNoteService.getDeliveryNoteById(note.id());
+        assertThat(found.vatType()).isEqualTo(VatType.WITH_VAT);
+        assertThat(found.surchargeType()).isEqualTo(SurchargeType.WITHOUT_SURCHARGE);
+    }
+
+    @Test
     @DisplayName("A delivery note in a draft invoice shows DRAFT and no number")
     void invoiceStateIsDraftWithoutNumber() {
         DeliveryNoteResponse note = createDeliveryNote(clientId, "1", "1");

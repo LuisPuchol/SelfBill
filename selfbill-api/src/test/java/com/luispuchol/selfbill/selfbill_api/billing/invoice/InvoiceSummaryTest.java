@@ -83,6 +83,23 @@ class InvoiceSummaryTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("A deleted client is marked, after the live one with the same code")
+    void deletedClientIsMarked() throws Exception {
+        Integer gone = createClient(2, DeliveryNoteFormat.VALUED);
+        issuedOn(gone, "1", "1", LocalDateTime.of(2026, 4, 10, 9, 0));
+        clientService.deleteClient(gone);
+        Integer live = createClient(2, DeliveryNoteFormat.VALUED);
+        issuedOn(live, "1", "1", LocalDateTime.of(2026, 4, 11, 9, 0));
+
+        summary()
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].clientId").value(live))
+                .andExpect(jsonPath("$[0].clientDeleted").value(false))
+                .andExpect(jsonPath("$[1].clientId").value(gone))
+                .andExpect(jsonPath("$[1].clientDeleted").value(true));
+    }
+
+    @Test
     @DisplayName("Counts both series")
     void bothSeries() throws Exception {
         Integer withoutVat = createClient(2, VatType.WITHOUT_VAT, SurchargeType.WITHOUT_SURCHARGE);

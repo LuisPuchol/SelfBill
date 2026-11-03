@@ -3,6 +3,8 @@ package com.luispuchol.selfbill.selfbill_api.billing.traceability;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,9 +52,14 @@ public class TraceabilityService {
 
     public List<TraceabilityDeliveryResponse> getDeliveries(Integer articleId, String code, LocalDate dateFrom,
             LocalDate dateTo) {
-        // The lines come ordered by date and code: one row per note, in that order
+        // By day, then number: the time of day does not reorder the numbers of a day. Sorted here because
+        // a day cast in the query is not reliable on SQLite. One row per note, in that order
+        List<DeliveryNoteLine> lines = new ArrayList<>(
+                repository.findLinesOfLot(articleId, code, start(dateFrom), end(dateTo)));
+        lines.sort(Comparator.<DeliveryNoteLine, LocalDate>comparing(l -> l.getDeliveryNote().getDate().toLocalDate())
+                .thenComparing(l -> l.getDeliveryNote().getCode()));
         Map<DeliveryNote, BigDecimal> quantities = new LinkedHashMap<>();
-        for (DeliveryNoteLine line : repository.findLinesOfLot(articleId, code, start(dateFrom), end(dateTo))) {
+        for (DeliveryNoteLine line : lines) {
             quantities.merge(line.getDeliveryNote(), line.getQuantity(), BigDecimal::add);
         }
         return quantities.entrySet().stream()

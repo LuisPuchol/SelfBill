@@ -950,6 +950,16 @@ export interface components {
             vatPercentage?: number;
             /** @description Surcharge rate applied, already resolved with the client's regime: 0 when it has none */
             surchargePercentage?: number;
+            /**
+             * @description VAT regime the rates were frozen under: the client's when the note was last saved
+             * @enum {string}
+             */
+            vatType?: "WITH_VAT" | "WITHOUT_VAT";
+            /**
+             * @description Surcharge regime the rates were frozen under: the client's when the note was last saved
+             * @enum {string}
+             */
+            surchargeType?: "WITH_SURCHARGE" | "WITHOUT_SURCHARGE";
             /** Format: int32 */
             clientId?: number;
             /** @description Trade name of the client */
@@ -1136,6 +1146,8 @@ export interface components {
             vatAmount?: number;
             surchargeAmount?: number;
             total?: number;
+            /** @description The client was deleted since: its row stays, as its invoices do */
+            clientDeleted?: boolean;
         };
         PendingDeliveryNoteResponse: {
             /** Format: int32 */
@@ -2604,6 +2616,8 @@ export interface operations {
                 q?: string;
                 /** @description true: only delivery notes in an invoice. false: only pending ones */
                 invoiced?: boolean;
+                /** @description Only delivery notes in an invoice with this status */
+                invoiceStatus?: "DRAFT" | "ISSUED";
                 /** @description Only delivery notes with a line of this article */
                 articleId?: number;
                 /**

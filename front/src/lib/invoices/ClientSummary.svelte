@@ -71,7 +71,10 @@
 		formatMoney(pick(c) ?? 0);
 	const clientColumns: Column<ClientTotals>[] = [
 		{ label: 'Cód.', value: (c) => String(c.clientCode ?? ''), align: 'right' },
-		{ label: 'Cliente', value: (c) => c.clientName ?? '' },
+		{
+			label: 'Cliente',
+			value: (c) => (c.clientName ?? '') + (c.clientDeleted ? ' (borrado)' : '')
+		},
 		{ label: 'Fact.', value: (c) => String(c.invoiceCount ?? 0), align: 'right' },
 		{ label: 'Base', value: money((c) => c.subtotal), align: 'right' },
 		{ label: 'IVA', value: money((c) => c.vatAmount), align: 'right' },
