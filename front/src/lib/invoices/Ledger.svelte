@@ -18,14 +18,16 @@
 	import type { KeyAction } from '../keyboard/keys';
 	import { useKeys } from '../keyboard/keymap.svelte';
 	import { DeleteFlow, type DeleteOptions } from '../records/delete-flow.svelte';
-	import { LEDGER_LIMIT, periodTotals } from './ledger';
+	import { LEDGER_LIMIT } from './ledger';
 	import { sectionColumns } from './sections';
 
 	type Invoice = components['schemas']['InvoiceResponse'];
+	type Totals = components['schemas']['InvoiceTotalsResponse'];
 
 	let {
 		today,
 		loadInvoices,
+		loadTotals,
 		loadInvoice,
 		fetchPdf,
 		print,
@@ -41,6 +43,8 @@
 			from: string,
 			to: string
 		) => Promise<{ invoices: Invoice[]; truncated: boolean }>;
+		/** Count and sums of all the issued invoices between two dates, also past the list's limit */
+		loadTotals: (from: string, to: string) => Promise<Totals>;
 		/** One invoice with its sections */
 		loadInvoice: (id: number) => Promise<Invoice>;
 		fetchPdf: (id: number) => Promise<Blob>;
@@ -61,6 +65,8 @@
 	/** The list for `shownFrom`–`shownTo`: null while the dates are being edited. */
 	let rows = $state.raw<Invoice[] | null>(null);
 	let truncated = $state(false);
+	/** The totals for `shownFrom`–`shownTo`, over the whole period. */
+	let totals = $state.raw<Totals | null>(null);
 	let shownFrom = $state('');
 	let shownTo = $state('');
 	let selected = $state(0);
@@ -71,7 +77,6 @@
 	let busy = false;
 
 	const marked = $derived(rows?.[selected]);
-	const totals = $derived(periodTotals(rows ?? []));
 
 	const columns: Column<Invoice>[] = [
 		{ label: 'Fecha', value: (i) => formatDate(i.date ?? '') },
@@ -121,12 +126,17 @@
 	): Promise<boolean> {
 		const id = ++loadId;
 		let result: { invoices: Invoice[]; truncated: boolean };
+		let periodTotals: Totals;
 		try {
-			result = await loadInvoices(dateFrom, dateTo);
+			[result, periodTotals] = await Promise.all([
+				loadInvoices(dateFrom, dateTo),
+				loadTotals(dateFrom, dateTo)
+			]);
 		} catch (err) {
 			if (id !== loadId) return false;
 			// The list on screen may be out of date by now.
 			rows = null;
+			totals = null;
 			showError(err);
 			return false;
 		}
@@ -135,6 +145,7 @@
 		keepIndex = keep;
 		rows = result.invoices;
 		truncated = result.truncated;
+		totals = periodTotals;
 		shownFrom = dateFrom;
 		shownTo = dateTo;
 		return true;
@@ -155,6 +166,7 @@
 	function datesEdited(): void {
 		loadId++;
 		rows = null;
+		totals = null;
 	}
 
 	const flow = new DeleteFlow({
@@ -260,11 +272,13 @@
 				bind:selected
 				emptyText="No hay facturas entre el {formatDate(shownFrom)} y el {formatDate(shownTo)}."
 			/>
-			{#if rows.length > 0}
+			{#if rows.length > 0 && totals !== null}
 				<p class="tabular mt-2 shrink-0 px-3 text-lg">
-					{invoices(totals.count)} · Base {formatMoney(totals.subtotal)} · IVA {formatMoney(
-						totals.vatAmount
-					)} · Recargo {formatMoney(totals.surchargeAmount)} · Total {formatMoney(totals.total)}
+					{invoices(totals.count ?? 0)} · Base {formatMoney(totals.subtotal ?? 0)} · IVA {formatMoney(
+						totals.vatAmount ?? 0
+					)} · Recargo {formatMoney(totals.surchargeAmount ?? 0)} · Total {formatMoney(
+						totals.total ?? 0
+					)}
 				</p>
 			{/if}
 		</div>

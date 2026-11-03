@@ -227,3 +227,36 @@ test('the ledger shows an issued invoice and deleting frees its notes', async ({
 function formatEuros(amount: number): string {
 	return `${amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 }
+
+test('the ledger footer is the sum of the period', async ({ page, request }) => {
+	const client = await invoiceableClient(request, 9472, 'Frutas Totales e2e');
+	const article = await ensure(request, '/api/articles', { code: 9473, name: 'Kiwi totales e2e' });
+	for (const price of [1.11, 2.22]) {
+		const note = await createNote(request, client.id, '2026-06-10T09:00:00', {
+			articleId: article.id,
+			quantity: 3,
+			price
+		});
+		const issued = await request.post('/api/invoices/issue', {
+			data: { clientId: client.id, deliveryNoteIds: [note.id] }
+		});
+		expect(issued.ok()).toBe(true);
+	}
+
+	await page.goto('/invoices/ledger');
+	await ready(page, 'Borrar');
+	const rows = page.getByRole('table').first().getByRole('row');
+	await expect(rows.filter({ hasText: 'Frutas Totales e2e' })).toHaveCount(2);
+
+	// Spanish money to cents: "1.234,50 €" → 123450
+	const cents = (text: string) =>
+		Math.round(Number(text.replace(/[^\d,-]/g, '').replace(',', '.')) * 100);
+	const cellTexts = await rows.evaluateAll((trs) =>
+		trs.slice(1).map((tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent ?? ''))
+	);
+	const sum = (column: number) => cellTexts.reduce((acc, row) => acc + cents(row[column]), 0);
+	const euros = (c: number) => formatEuros(c / 100);
+	await expect(page.getByText(/^\d+ facturas? · Base /)).toHaveText(
+		`${cellTexts.length} facturas · Base ${euros(sum(4))} · IVA ${euros(sum(5))} · Recargo ${euros(sum(6))} · Total ${euros(sum(7))}`
+	);
+});

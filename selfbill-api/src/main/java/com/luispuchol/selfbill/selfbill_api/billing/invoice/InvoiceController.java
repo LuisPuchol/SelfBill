@@ -71,6 +71,13 @@ public class InvoiceController {
         return invoiceService.getAllInvoices(filter, pageable);
     }
 
+    @Operation(summary = "Sum the invoices of a filter", description = """
+            Count and sums of the non-deleted invoices the same filters as the list match: all of them, not a \n            page. Zeros when none match.""")
+    @GetMapping("/totals")
+    public InvoiceTotalsResponse getTotals(@ParameterObject InvoiceFilter filter) {
+        return invoiceService.getTotals(filter);
+    }
+
     @Operation(summary = "Get the invoices that are pending to issue", description = """
             Groups the delivery notes that are in no invoice, up to the given day inclusive, into one row per \
             client, calendar month and VAT and surcharge rates: each row is an invoice that can be created and \

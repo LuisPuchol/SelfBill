@@ -441,6 +441,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/invoices/totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sum the invoices of a filter
+         * @description Count and sums of the non-deleted invoices the same filters as the list match: all of them, not a
+         *                 page. Zeros when none match.
+         */
+        get: operations["getTotals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invoices/summary": {
         parameters: {
             query?: never;
@@ -1091,6 +1112,15 @@ export interface components {
         PagedModelInvoiceResponse: {
             content?: components["schemas"]["InvoiceResponse"][];
             page?: components["schemas"]["PageMetadata"];
+        };
+        /** @description The sum of all the invoices a filter matches, however many a list would page */
+        InvoiceTotalsResponse: {
+            /** Format: int32 */
+            count?: number;
+            subtotal?: number;
+            vatAmount?: number;
+            surchargeAmount?: number;
+            total?: number;
         };
         /** @description What was invoiced to a client in a period: the sum of its issued invoices */
         ClientSummaryResponse: {
@@ -3111,6 +3141,46 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getTotals: {
+        parameters: {
+            query?: {
+                series?: "GENERAL" | "WITHOUT_VAT";
+                /** @description Lowest number within the series, inclusive */
+                codeFrom?: number;
+                /** @description Highest number within the series, inclusive */
+                codeTo?: number;
+                clientId?: number;
+                /** @description Only the invoice that contains this delivery note */
+                deliveryNoteId?: number;
+                status?: "DRAFT" | "ISSUED";
+                /**
+                 * @description Earliest issue date, inclusive. Drafts have no date
+                 * @example 2026-10-01
+                 */
+                dateFrom?: string;
+                /**
+                 * @description Latest issue date, inclusive. Drafts have no date
+                 * @example 2026-10-31
+                 */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceTotalsResponse"];
                 };
             };
         };

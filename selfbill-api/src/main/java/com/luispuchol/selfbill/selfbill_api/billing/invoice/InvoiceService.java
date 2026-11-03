@@ -63,6 +63,21 @@ public class InvoiceService {
                 .map(invoiceMapper::toSummary);
     }
 
+    // Summed here, in BigDecimal: SQLite sums its numerics as floats
+    public InvoiceTotalsResponse getTotals(InvoiceFilter filter) {
+        List<InvoiceAmounts> amounts = invoiceRepository.findBy(InvoiceSpecification.withFilter(filter),
+                query -> query.as(InvoiceAmounts.class).all());
+        return new InvoiceTotalsResponse(amounts.size(),
+                sum(amounts, InvoiceAmounts::getSubtotal),
+                sum(amounts, InvoiceAmounts::getVatAmount),
+                sum(amounts, InvoiceAmounts::getSurchargeAmount),
+                sum(amounts, InvoiceAmounts::getTotal));
+    }
+
+    private static BigDecimal sum(List<InvoiceAmounts> amounts, Function<InvoiceAmounts, BigDecimal> amount) {
+        return amounts.stream().map(amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     public InvoiceResponse getInvoiceById(Integer id) {
         return invoiceMapper.toResponse(findInvoice(id));
     }

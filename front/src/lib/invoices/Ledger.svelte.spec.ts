@@ -9,6 +9,15 @@ import { errorState } from '#lib/components/errors.svelte.js';
 import { invoiceDeletion } from '#lib/invoices/deletion.js';
 
 type Invoice = components['schemas']['InvoiceResponse'];
+type Totals = components['schemas']['InvoiceTotalsResponse'];
+
+const bothTotals: Totals = {
+	count: 2,
+	subtotal: 832.23,
+	vatAmount: 29.29,
+	surchargeAmount: 0,
+	total: 861.52
+};
 
 const first: Invoice = {
 	id: 1,
@@ -50,6 +59,9 @@ function props(overrides: Record<string, unknown> = {}) {
 		loadInvoices: vi
 			.fn<(from: string, to: string) => Promise<{ invoices: Invoice[]; truncated: boolean }>>()
 			.mockResolvedValue({ invoices: [first, second], truncated: false }),
+		loadTotals: vi
+			.fn<(from: string, to: string) => Promise<Totals>>()
+			.mockResolvedValue(bothTotals),
 		loadInvoice: vi
 			.fn<(id: number) => Promise<Invoice>>()
 			.mockImplementation(async (id) =>
@@ -269,6 +281,46 @@ describe('Ledger', () => {
 		await expect
 			.element(page.getByText('Solo se muestran las 2000 primeras: acorta las fechas'))
 			.toBeVisible();
+	});
+
+	it("totals line shows the API's totals", async () => {
+		const p = props({
+			loadInvoices: vi.fn().mockResolvedValue({ invoices: [first, second], truncated: true }),
+			loadTotals: vi.fn().mockResolvedValue({
+				count: 2500,
+				subtotal: 10000.5,
+				vatAmount: 400.02,
+				surchargeAmount: 12.5,
+				total: 10413.02
+			})
+		});
+		await loaded(p);
+		await expect
+			.element(page.getByText(/^2500 facturas · /))
+			.toHaveTextContent(
+				'2500 facturas · Base 10.000,50 € · IVA 400,02 € · Recargo 12,50 € · Total 10.413,02 €'
+			);
+		await expect
+			.element(page.getByText('Solo se muestran las 2000 primeras: acorta las fechas'))
+			.toBeVisible();
+		expect(p.loadTotals).toHaveBeenCalledExactlyOnceWith('2026-09-23', '2026-10-23');
+	});
+
+	it('totals of an older load are dropped', async () => {
+		const old = deferred<Totals>();
+		const p = props();
+		p.loadTotals.mockReset();
+		p.loadTotals
+			.mockReturnValueOnce(old.promise)
+			.mockResolvedValueOnce({ ...bothTotals, count: 7, subtotal: 700 });
+		await render(LedgerHarness, p);
+		await expect.element(fromField()).toHaveFocus();
+		await userEvent.keyboard('01102026{Enter}311026{Enter}');
+		await expect.element(page.getByText(/^7 facturas · /)).toBeVisible();
+		old.resolve({ ...bothTotals, count: 99, subtotal: 9900 });
+		await new Promise((r) => setTimeout(r, 50));
+		await expect.element(page.getByText(/^7 facturas · /)).toBeVisible();
+		await expect.element(page.getByText(/^99 facturas/)).not.toBeInTheDocument();
 	});
 
 	it('empty period: text, and the keys greyed', async () => {
