@@ -88,4 +88,27 @@ class ClientQueriesTest extends DomainIntegrationTest {
                 .containsExactly(30, 31);
         assertThat(clientService.getClientsByNif("B69999999")).isEmpty();
     }
+
+    @Test
+    void deletedFilterListsOnlyDeleted() {
+        clientService.deleteClient(hotelId);
+        create(13, "Hotel Luna", "Luna SA", "A44444444");
+
+        List<ClientResponse> deleted = clientService.getAllClients(ClientFilter.builder().deleted(true).build(),
+                PageRequest.of(0, 20)).getContent();
+        assertThat(deleted).extracting(ClientResponse::id).containsExactly(hotelId);
+        assertThat(deleted.get(0).deletedAt()).isNotNull();
+        assertThat(codes(ClientFilter.builder().deleted(true).q("hotel").build())).containsExactly(12);
+        assertThat(codes(ClientFilter.builder().deleted(true).q("luna").build())).isEmpty();
+        assertThat(codes(ClientFilter.builder().deleted(true).codeFrom(12).codeTo(12).build())).containsExactly(12);
+        assertThat(codes(ClientFilter.builder().deleted(true).codeFrom(13).build())).isEmpty();
+    }
+
+    @Test
+    void liveListIsUnchanged() {
+        clientService.deleteClient(hotelId);
+
+        assertThat(codes(ClientFilter.builder().build())).containsExactlyInAnyOrder(1, 10, 11);
+        assertThat(codes(ClientFilter.builder().deleted(false).build())).containsExactlyInAnyOrder(1, 10, 11);
+    }
 }

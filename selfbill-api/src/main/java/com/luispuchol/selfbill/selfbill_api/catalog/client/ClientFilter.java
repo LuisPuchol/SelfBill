@@ -18,5 +18,8 @@ public record ClientFilter(
         Integer codeFrom,
 
         @Schema(description = "Highest code, inclusive")
-        Integer codeTo) {
+        Integer codeTo,
+
+        @Schema(description = "true lists only the deleted ones; absent or false, only the live ones")
+        Boolean deleted) {
 }

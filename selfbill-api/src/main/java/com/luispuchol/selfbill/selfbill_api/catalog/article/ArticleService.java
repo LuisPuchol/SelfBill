@@ -65,6 +65,17 @@ public class ArticleService {
         articleRepository.delete(findArticle(id));
     }
 
+    @Transactional
+    public ArticleResponse restoreArticle(Integer id) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, id));
+        if (article.getDeletedAt() != null) {
+            requireUnusedCode(article.getCode());
+            article.restore();
+        }
+        return articleMapper.toResponse(articleRepository.save(article));
+    }
+
     private Article findArticle(Integer id) {
         return articleRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ARTICLE_NOT_FOUND, id));

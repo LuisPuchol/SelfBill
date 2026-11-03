@@ -17,7 +17,7 @@ public final class ClientSpecification {
                 .and(businessNameLike(filter.businessName()))
                 .and(codeFrom(filter.codeFrom()))
                 .and(codeTo(filter.codeTo()))
-                .and(notDeleted());
+                .and(deletion(filter.deleted()));
     }
 
     private static Specification<Client> matches(String q) {
@@ -45,7 +45,9 @@ public final class ClientSpecification {
                 : cb.lessThanOrEqualTo(root.get(Client_.code), to);
     }
 
-    private static Specification<Client> notDeleted() {
-        return (root, query, cb) -> cb.isNull(root.get(SoftDeletableEntity_.deletedAt));
+    private static Specification<Client> deletion(Boolean deleted) {
+        return (root, query, cb) -> Boolean.TRUE.equals(deleted)
+                ? cb.isNotNull(root.get(SoftDeletableEntity_.deletedAt))
+                : cb.isNull(root.get(SoftDeletableEntity_.deletedAt));
     }
 }

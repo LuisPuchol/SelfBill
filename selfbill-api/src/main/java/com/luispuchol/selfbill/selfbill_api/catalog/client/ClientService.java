@@ -81,6 +81,17 @@ public class ClientService {
         clientRepository.delete(findClient(id));
     }
 
+    @Transactional
+    public ClientResponse restoreClient(Integer id) {
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
+        if (client.getDeletedAt() != null) {
+            requireUnusedCode(client.getCode());
+            client.restore();
+        }
+        return clientMapper.toResponse(clientRepository.save(client));
+    }
+
     private Client findClient(Integer id) {
         return clientRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));

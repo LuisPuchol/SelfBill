@@ -15,7 +15,7 @@ public final class ArticleSpecification {
                 .and(nameLike(filter.name()))
                 .and(codeFrom(filter.codeFrom()))
                 .and(codeTo(filter.codeTo()))
-                .and(notDeleted());
+                .and(deletion(filter.deleted()));
     }
 
     private static Specification<Article> nameLike(String name) {
@@ -33,7 +33,9 @@ public final class ArticleSpecification {
                 : cb.lessThanOrEqualTo(root.get(Article_.code), to);
     }
 
-    private static Specification<Article> notDeleted() {
-        return (root, query, cb) -> cb.isNull(root.get(SoftDeletableEntity_.deletedAt));
+    private static Specification<Article> deletion(Boolean deleted) {
+        return (root, query, cb) -> Boolean.TRUE.equals(deleted)
+                ? cb.isNotNull(root.get(SoftDeletableEntity_.deletedAt))
+                : cb.isNull(root.get(SoftDeletableEntity_.deletedAt));
     }
 }

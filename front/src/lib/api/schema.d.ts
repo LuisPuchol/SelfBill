@@ -314,12 +314,33 @@ export interface paths {
         };
         /**
          * Get all clients
-         * @description Returns paginated and filtered list of non-deleted clients
+         * @description Returns paginated and filtered list of clients: the live ones, or the deleted ones with deleted=true
          */
         get: operations["getAllClients"];
         put?: never;
         /** Create a client */
         post: operations["createClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clients/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a client
+         * @description Undoes the logical deletion, with the same id and code. Restoring a live client changes nothing.
+         *     Refused when a live client has its code now.
+         */
+        post: operations["restoreClient"];
         delete?: never;
         options?: never;
         head?: never;
@@ -335,12 +356,33 @@ export interface paths {
         };
         /**
          * Get all articles
-         * @description Returns paginated and filtered list of non-deleted articles
+         * @description Returns paginated and filtered list of articles: the live ones, or the deleted ones with deleted=true
          */
         get: operations["getAllArticles"];
         put?: never;
         /** Create an article */
         post: operations["createArticle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an article
+         * @description Undoes the logical deletion, with the same id and code. Restoring a live article changes nothing.
+         *     Refused when a live article has its code now.
+         */
+        post: operations["restoreArticle"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1055,6 +1097,8 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: date-time */
+            deletedAt?: string;
         };
         ArticleRequest: {
             /**
@@ -1076,6 +1120,8 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: date-time */
+            deletedAt?: string;
         };
         /** @description A lot of an article and the quantity delivered of it in the period */
         TraceabilityLotResponse: {
@@ -2808,6 +2854,8 @@ export interface operations {
                 codeFrom?: number;
                 /** @description Highest code, inclusive */
                 codeTo?: number;
+                /** @description true lists only the deleted ones; absent or false, only the live ones */
+                deleted?: boolean;
                 /** @description Zero-based page index (0..N) */
                 page?: number;
                 /** @description The size of the page to be returned */
@@ -2883,6 +2931,67 @@ export interface operations {
             };
         };
     };
+    restoreClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"];
+                };
+            };
+            /**
+             * @description Bad Request
+             *
+             *     - `VALIDATION_ERROR`: Validation error
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Not Found
+             *
+             *     - `CLIENT_NOT_FOUND`: Client not found: {0}
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Conflict
+             *
+             *     - `CLIENT_DUPLICATE_CODE`: Already exists a client with code: {0}
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     getAllArticles: {
         parameters: {
             query?: {
@@ -2892,6 +3001,8 @@ export interface operations {
                 codeFrom?: number;
                 /** @description Highest code, inclusive */
                 codeTo?: number;
+                /** @description true lists only the deleted ones; absent or false, only the live ones */
+                deleted?: boolean;
                 /** @description Zero-based page index (0..N) */
                 page?: number;
                 /** @description The size of the page to be returned */
@@ -2956,6 +3067,67 @@ export interface operations {
              *
              *     - `ARTICLE_DUPLICATE_CODE`: Already exists an article with code: {0}
              *     - `DATA_CONFLICT`: Conflicting change made at the same time
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    restoreArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleResponse"];
+                };
+            };
+            /**
+             * @description Bad Request
+             *
+             *     - `VALIDATION_ERROR`: Validation error
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Not Found
+             *
+             *     - `ARTICLE_NOT_FOUND`: Article not found: {0}
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Conflict
+             *
+             *     - `ARTICLE_DUPLICATE_CODE`: Already exists an article with code: {0}
              */
             409: {
                 headers: {

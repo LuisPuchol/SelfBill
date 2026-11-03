@@ -39,7 +39,7 @@ public class ClientController {
 
     private final ClientService clientService;
 
-    @Operation(summary = "Get all clients", description = "Returns paginated and filtered list of non-deleted clients")
+    @Operation(summary = "Get all clients", description = "Returns paginated and filtered list of clients: the live ones, or the deleted ones with deleted=true")
     @GetMapping
     public Page<ClientResponse> getAllClients(@ParameterObject ClientFilter filter,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
@@ -108,5 +108,14 @@ public class ClientController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteClient(@PathVariable @Positive Integer id) {
         clientService.deleteClient(id);
+    }
+
+    @Operation(summary = "Restore a client", description = """
+            Undoes the logical deletion, with the same id and code. Restoring a live client changes nothing.
+            Refused when a live client has its code now.""")
+    @ApiErrors({ CLIENT_NOT_FOUND, CLIENT_DUPLICATE_CODE })
+    @PostMapping("/{id}/restore")
+    public ClientResponse restoreClient(@PathVariable @Positive Integer id) {
+        return clientService.restoreClient(id);
     }
 }
