@@ -33,6 +33,8 @@ export const errorMessages: Record<ErrorCode, string> = {
 	MAIL_NOT_CONFIGURED: 'El correo no está configurado. Rellena sus datos en Ajustes.',
 	EMAIL_SEND_FAILED:
 		'No se ha podido enviar el correo. Comprueba la conexión a internet y los datos del correo en Ajustes.',
+	DATA_CONFLICT:
+		'No se ha guardado: otra operación ha usado el mismo código o número a la vez. Vuelve a intentarlo.',
 	VALIDATION_ERROR: 'Hay datos que revisar.',
 	INTERNAL_ERROR: 'Ha ocurrido un error inesperado. La operación no se ha completado.'
 };

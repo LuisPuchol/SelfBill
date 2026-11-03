@@ -63,4 +63,29 @@ class ClientQueriesTest extends DomainIntegrationTest {
                 .defaultDeliveryNoteFormat(DeliveryNoteFormat.PLAIN).build());
         assertThat(codes(ClientFilter.builder().q("mar").build())).containsExactly(12);
     }
+
+    @Test
+    void byNameListsEveryMatch() {
+        Integer first = create(20, "Dup Name", "Dup A SL", "B50000001");
+        create(21, "dup NAME", "Dup B SL", "B50000002");
+        Integer deleted = create(22, "DUP name", "Dup C SL", "B50000003");
+        clientService.deleteClient(deleted);
+
+        assertThat(clientService.getClientsByName("DUP NAME")).extracting(ClientResponse::code)
+                .containsExactly(20, 21);
+        assertThat(clientService.getClientsByName("DUP NAME").get(0).id()).isEqualTo(first);
+        assertThat(clientService.getClientsByName("Nobody")).isEmpty();
+    }
+
+    @Test
+    void byNifListsEveryMatch() {
+        create(31, "Nif B", "Nif B SL", "B60000000");
+        create(30, "Nif A", "Nif A SL", "B60000000");
+        Integer deleted = create(32, "Nif C", "Nif C SL", "B60000000");
+        clientService.deleteClient(deleted);
+
+        assertThat(clientService.getClientsByNif("B60000000")).extracting(ClientResponse::code)
+                .containsExactly(30, 31);
+        assertThat(clientService.getClientsByNif("B69999999")).isEmpty();
+    }
 }

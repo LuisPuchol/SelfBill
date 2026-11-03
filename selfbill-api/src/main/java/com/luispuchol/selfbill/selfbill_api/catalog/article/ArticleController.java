@@ -2,6 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.catalog.article;
 
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.ARTICLE_DUPLICATE_CODE;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.ARTICLE_NOT_FOUND;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DATA_CONFLICT;
 
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -71,7 +72,7 @@ public class ArticleController {
     }
 
     @Operation(summary = "Create an article")
-    @ApiErrors(ARTICLE_DUPLICATE_CODE)
+    @ApiErrors({ ARTICLE_DUPLICATE_CODE, DATA_CONFLICT })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ArticleResponse createArticle(@RequestBody @Valid ArticleRequest request) {
@@ -79,7 +80,7 @@ public class ArticleController {
     }
 
     @Operation(summary = "Update an article", description = "Issued invoices keep the code and name they were issued with")
-    @ApiErrors({ ARTICLE_NOT_FOUND, ARTICLE_DUPLICATE_CODE })
+    @ApiErrors({ ARTICLE_NOT_FOUND, ARTICLE_DUPLICATE_CODE, DATA_CONFLICT })
     @PutMapping("/{id}")
     public ArticleResponse updateArticle(@PathVariable @Positive Integer id,
             @RequestBody @Valid ArticleRequest request) {

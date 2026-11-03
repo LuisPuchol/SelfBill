@@ -1,5 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.catalog.client;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,9 +13,9 @@ public interface ClientRepository extends JpaRepository<Client, Integer>, JpaSpe
 
     Optional<Client> findByCodeAndDeletedAtIsNull(Integer code);
 
-    Optional<Client> findByNameIgnoreCaseAndDeletedAtIsNull(String name);
+    List<Client> findByNameIgnoreCaseAndDeletedAtIsNullOrderByCode(String name);
 
-    Optional<Client> findByNifAndDeletedAtIsNull(String nif);
+    List<Client> findByNifAndDeletedAtIsNullOrderByCode(String nif);
 
     @Query("SELECT COALESCE(MAX(c.code), 0) + 1 FROM Client c WHERE c.deletedAt IS NULL")
     int findNextCode();

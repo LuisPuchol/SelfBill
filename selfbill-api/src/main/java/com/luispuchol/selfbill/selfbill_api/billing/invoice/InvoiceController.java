@@ -3,6 +3,7 @@ package com.luispuchol.selfbill.selfbill_api.billing.invoice;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_FISCAL_DATA_MISSING;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_NOT_FOUND;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DATA_CONFLICT;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DELIVERY_NOTE_NOT_FOUND;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.EMAIL_SEND_FAILED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.INVOICE_ALREADY_ISSUED;
@@ -123,7 +124,7 @@ public class InvoiceController {
             is created and the delivery notes stay free.""")
     @ApiErrors({ CLIENT_NOT_FOUND, DELIVERY_NOTE_NOT_FOUND, INVOICE_MIXED_CLIENTS,
             INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED, INVOICE_MIXED_MONTHS, INVOICE_MIXED_TAX_RATES,
-            CLIENT_FISCAL_DATA_MISSING, USER_PROFILE_NOT_FOUND })
+            CLIENT_FISCAL_DATA_MISSING, USER_PROFILE_NOT_FOUND, DATA_CONFLICT })
     @PostMapping("/issue")
     @ResponseStatus(HttpStatus.CREATED)
     public InvoiceResponse createAndIssue(@RequestBody @Valid InvoiceRequest request) {
@@ -147,7 +148,7 @@ public class InvoiceController {
             date, and freezes its content and the client's fiscal data. Its delivery notes can no longer be edited. \
             Requires a live client with NIF, address, postal code and city, and the user profile.""")
     @ApiErrors({ INVOICE_NOT_FOUND, INVOICE_ALREADY_ISSUED, CLIENT_NOT_FOUND, CLIENT_FISCAL_DATA_MISSING,
-            USER_PROFILE_NOT_FOUND, INVOICE_MIXED_MONTHS, INVOICE_MIXED_TAX_RATES })
+            USER_PROFILE_NOT_FOUND, INVOICE_MIXED_MONTHS, INVOICE_MIXED_TAX_RATES, DATA_CONFLICT })
     @PostMapping("/{id}/issue")
     public InvoiceResponse issueInvoice(@PathVariable @Positive Integer id) {
         return invoiceService.issueInvoice(id);

@@ -12,6 +12,7 @@ import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceFilter;
 import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceResponse;
 import com.luispuchol.selfbill.selfbill_api.catalog.article.ArticleFilter;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientFilter;
+import com.luispuchol.selfbill.selfbill_api.catalog.client.ClientResponse;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.DeliveryNoteFormat;
 import com.luispuchol.selfbill.selfbill_api.shared.ErrorCode;
 import com.luispuchol.selfbill.selfbill_api.support.DomainIntegrationTest;
@@ -96,8 +97,8 @@ class CatalogDeletionTest extends DomainIntegrationTest {
         Integer liveArticle = articleService.createArticle(article(1, "Tomate")).id();
 
         assertThat(clientService.getClientByCode(1).id()).isEqualTo(liveClient);
-        assertThat(clientService.getClientByName("Client 1").id()).isEqualTo(liveClient);
-        assertThat(clientService.getClientByNif("B00000001").id()).isEqualTo(liveClient);
+        assertThat(clientService.getClientsByName("Client 1")).extracting(ClientResponse::id).containsExactly(liveClient);
+        assertThat(clientService.getClientsByNif("B00000001")).extracting(ClientResponse::id).containsExactly(liveClient);
         assertThat(articleService.getArticleByCode(1).id()).isEqualTo(liveArticle);
         assertThat(articleService.getArticleByName("Tomate").id()).isEqualTo(liveArticle);
     }

@@ -41,6 +41,7 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST),
     EMAIL_SEND_FAILED("Failed to send email to: {0}", HttpStatus.INTERNAL_SERVER_ERROR),
 
+    DATA_CONFLICT("Conflicting change made at the same time", HttpStatus.CONFLICT),
     VALIDATION_ERROR("Validation error", HttpStatus.BAD_REQUEST),
     INTERNAL_ERROR("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 

@@ -545,8 +545,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a client by NIF */
-        get: operations["getClientByNif"];
+        /**
+         * List the clients with a NIF
+         * @description NIFs are not unique: every live match, ordered by code, and an empty list when there is none.
+         */
+        get: operations["getClientsByNif"];
         put?: never;
         post?: never;
         delete?: never;
@@ -563,10 +566,11 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get a client by name
-         * @description Exact match on `name`, ignoring case
+         * List the clients with a name
+         * @description Exact match on `name`, ignoring case. Names are not unique: every live match, ordered by code,
+         *                 and an empty list when there is none.
          */
-        get: operations["getClientByName"];
+        get: operations["getClientsByName"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1171,7 +1175,7 @@ export interface components {
             /** @example /api/clients/7 */
             instance?: string;
             /** @enum {string} */
-            errorCode?: "CLIENT_NOT_FOUND" | "CLIENT_DUPLICATE_CODE" | "CLIENT_EMAIL_NOT_CONFIGURED" | "CLIENT_FISCAL_DATA_MISSING" | "ARTICLE_NOT_FOUND" | "ARTICLE_DUPLICATE_CODE" | "DELIVERY_NOTE_NOT_FOUND" | "DELIVERY_NOTE_DUPLICATE_CODE" | "DELIVERY_NOTE_ALREADY_INVOICED" | "INVOICE_NOT_FOUND" | "INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED" | "INVOICE_MIXED_CLIENTS" | "INVOICE_MIXED_TAX_RATES" | "INVOICE_MIXED_MONTHS" | "INVOICE_ALREADY_ISSUED" | "INVOICE_NOT_ISSUED" | "TAX_CONFIG_NOT_FOUND" | "TAX_CONFIG_ALREADY_EXISTS" | "USER_PROFILE_NOT_FOUND" | "USER_PROFILE_ALREADY_EXISTS" | "USER_PROFILE_LOGO_NOT_FOUND" | "USER_PROFILE_INVALID_LOGO_FORMAT" | "USER_PROFILE_LOGO_TOO_LARGE" | "MAIL_NOT_CONFIGURED" | "EMAIL_SEND_FAILED" | "VALIDATION_ERROR" | "INTERNAL_ERROR";
+            errorCode?: "CLIENT_NOT_FOUND" | "CLIENT_DUPLICATE_CODE" | "CLIENT_EMAIL_NOT_CONFIGURED" | "CLIENT_FISCAL_DATA_MISSING" | "ARTICLE_NOT_FOUND" | "ARTICLE_DUPLICATE_CODE" | "DELIVERY_NOTE_NOT_FOUND" | "DELIVERY_NOTE_DUPLICATE_CODE" | "DELIVERY_NOTE_ALREADY_INVOICED" | "INVOICE_NOT_FOUND" | "INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED" | "INVOICE_MIXED_CLIENTS" | "INVOICE_MIXED_TAX_RATES" | "INVOICE_MIXED_MONTHS" | "INVOICE_ALREADY_ISSUED" | "INVOICE_NOT_ISSUED" | "TAX_CONFIG_NOT_FOUND" | "TAX_CONFIG_ALREADY_EXISTS" | "USER_PROFILE_NOT_FOUND" | "USER_PROFILE_ALREADY_EXISTS" | "USER_PROFILE_LOGO_NOT_FOUND" | "USER_PROFILE_INVALID_LOGO_FORMAT" | "USER_PROFILE_LOGO_TOO_LARGE" | "MAIL_NOT_CONFIGURED" | "EMAIL_SEND_FAILED" | "DATA_CONFLICT" | "VALIDATION_ERROR" | "INTERNAL_ERROR";
             errors?: {
                 [key: string]: string;
             };
@@ -1440,6 +1444,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `TAX_CONFIG_ALREADY_EXISTS`: A tax configuration from {0} already exists
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -1724,6 +1729,7 @@ export interface operations {
              *     - `INVOICE_MIXED_CLIENTS`: All delivery notes must belong to the same client
              *     - `INVOICE_MIXED_MONTHS`: All delivery notes of an invoice must be from the same month
              *     - `DELIVERY_NOTE_DUPLICATE_CODE`: Already exists a delivery note with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -1896,6 +1902,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `CLIENT_DUPLICATE_CODE`: Already exists a client with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2055,6 +2062,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `ARTICLE_DUPLICATE_CODE`: Already exists an article with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2379,6 +2387,7 @@ export interface operations {
              *     - `INVOICE_ALREADY_ISSUED`: Invoice {0} is already issued and cannot be modified
              *     - `INVOICE_MIXED_MONTHS`: All delivery notes of an invoice must be from the same month
              *     - `INVOICE_MIXED_TAX_RATES`: All delivery notes of an invoice must have the same VAT and surcharge rates
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2528,6 +2537,7 @@ export interface operations {
              *     - `INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED`: Delivery note {0} already has an associated invoice
              *     - `INVOICE_MIXED_MONTHS`: All delivery notes of an invoice must be from the same month
              *     - `INVOICE_MIXED_TAX_RATES`: All delivery notes of an invoice must have the same VAT and surcharge rates
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2662,6 +2672,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `DELIVERY_NOTE_DUPLICATE_CODE`: Already exists a delivery note with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2816,6 +2827,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `CLIENT_DUPLICATE_CODE`: Already exists a client with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2899,6 +2911,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `ARTICLE_DUPLICATE_CODE`: Already exists an article with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -3274,7 +3287,7 @@ export interface operations {
             };
         };
     };
-    getClientByNif: {
+    getClientsByNif: {
         parameters: {
             query?: never;
             header?: never;
@@ -3291,7 +3304,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientResponse"];
+                    "application/json": components["schemas"]["ClientResponse"][];
                 };
             };
             /**
@@ -3307,22 +3320,9 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /**
-             * @description Not Found
-             *
-             *     - `CLIENT_NOT_FOUND`: Client not found: {0}
-             */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
         };
     };
-    getClientByName: {
+    getClientsByName: {
         parameters: {
             query?: never;
             header?: never;
@@ -3339,7 +3339,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientResponse"];
+                    "application/json": components["schemas"]["ClientResponse"][];
                 };
             };
             /**
@@ -3348,19 +3348,6 @@ export interface operations {
              *     - `VALIDATION_ERROR`: Validation error
              */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /**
-             * @description Not Found
-             *
-             *     - `CLIENT_NOT_FOUND`: Client not found: {0}
-             */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };
