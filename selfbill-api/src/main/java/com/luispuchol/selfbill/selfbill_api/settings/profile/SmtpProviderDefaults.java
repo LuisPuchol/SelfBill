@@ -2,6 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.settings.profile;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 final class SmtpProviderDefaults {
 
@@ -30,6 +31,10 @@ final class SmtpProviderDefaults {
     static Integer defaultPort(String email) {
         SmtpEndpoint endpoint = KNOWN_PROVIDERS.get(domainOf(email));
         return endpoint != null ? endpoint.port() : null;
+    }
+
+    static boolean sameProvider(String email, String otherEmail) {
+        return Objects.equals(domainOf(email), domainOf(otherEmail));
     }
 
     private static String domainOf(String email) {

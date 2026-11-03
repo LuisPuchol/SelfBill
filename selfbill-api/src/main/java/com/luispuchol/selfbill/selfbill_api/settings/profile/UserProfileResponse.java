@@ -20,6 +20,11 @@ public record UserProfileResponse(
         @Schema(description = "Whether a mail password is stored; the password itself is never returned")
         boolean hasMailPassword,
 
+        @Schema(description = """
+                Whether the stored mail password cannot be read with this machine's key (it was saved on \
+                another machine); the user must type it again""")
+        boolean mailPasswordUnreadable,
+
         @Schema(description = "Whether a logo has been uploaded")
         boolean hasLogo,
 

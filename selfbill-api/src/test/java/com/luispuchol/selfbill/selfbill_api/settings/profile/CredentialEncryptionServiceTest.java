@@ -21,4 +21,16 @@ class CredentialEncryptionServiceTest {
         assertThat(new CredentialEncryptionService(new CredentialProperties(keyFile)).decrypt(encrypted))
                 .isEqualTo("secret");
     }
+
+    @Test
+    void canDecryptTellsWhetherThisKeyReadsTheValue() {
+        CredentialEncryptionService mine = new CredentialEncryptionService(new CredentialProperties(dir.resolve("a.key")));
+        CredentialEncryptionService other = new CredentialEncryptionService(new CredentialProperties(dir.resolve("b.key")));
+        String encrypted = mine.encrypt("secret");
+
+        assertThat(mine.canDecrypt(encrypted)).isTrue();
+        assertThat(other.canDecrypt(encrypted)).isFalse();
+        assertThat(mine.canDecrypt("not base64 at all!")).isFalse();
+        assertThat(mine.canDecrypt("AAAA")).isFalse();
+    }
 }

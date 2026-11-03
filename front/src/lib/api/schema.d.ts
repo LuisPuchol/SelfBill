@@ -722,6 +722,8 @@ export interface components {
             smtpPort?: number;
             /** @description Whether a mail password is stored; the password itself is never returned */
             hasMailPassword?: boolean;
+            /** @description Whether the stored mail password cannot be read with this machine's key (it was saved on another machine); the user must type it again */
+            mailPasswordUnreadable?: boolean;
             /** @description Whether a logo has been uploaded */
             hasLogo?: boolean;
             /** Format: date-time */

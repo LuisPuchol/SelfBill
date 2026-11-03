@@ -51,6 +51,8 @@
 	const exists = initial !== null;
 	// svelte-ignore state_referenced_locally
 	const hasMailPassword = initial?.hasMailPassword === true;
+	// svelte-ignore state_referenced_locally
+	const passwordUnreadable = initial?.mailPasswordUnreadable === true;
 	// The password never comes back from the API: the field always opens empty.
 	// svelte-ignore state_referenced_locally
 	const form = new FormState<Values>({
@@ -176,7 +178,11 @@
 				type="password"
 				autocomplete="new-password"
 				maxlength={255}
-				hint={hasMailPassword ? 'Guardada. Déjalo vacío para conservarla.' : undefined}
+				hint={passwordUnreadable
+					? 'No se puede leer la contraseña guardada (se guardó en otro equipo). Escríbela de nuevo.'
+					: hasMailPassword
+						? 'Guardada. Déjalo vacío para conservarla.'
+						: undefined}
 				bind:value={form.values.mailPassword}
 				error={form.errorFor('mailPassword')}
 			/>
