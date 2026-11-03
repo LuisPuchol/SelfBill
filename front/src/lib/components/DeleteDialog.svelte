@@ -1,8 +1,22 @@
 <script lang="ts">
-	import type { DeleteFlow } from '../records/delete-flow.svelte';
 	import Dialog from './Dialog.svelte';
 
-	let { flow }: { flow: DeleteFlow } = $props();
+	let {
+		flow,
+		act = 'Borrar',
+		keep = 'No borrar'
+	}: {
+		/** A `DeleteFlow`, or a `RestoreFlow` with its own words */
+		flow: {
+			readonly dialog: { title: string; name: string; body?: string | null } | null;
+			confirm(): Promise<void>;
+			cancel(): void;
+		};
+		/** F8's word: going ahead */
+		act?: string;
+		/** Enter's word: leaving the record as it is */
+		keep?: string;
+	} = $props();
 </script>
 
 <Dialog
@@ -14,9 +28,9 @@
 	}
 	title={flow.dialog?.title ?? ''}
 	actions={[
-		{ key: 'Enter', label: 'No borrar', run: () => flow.cancel() },
-		{ key: 'Escape', label: 'No borrar', hidden: true, run: () => flow.cancel() },
-		{ key: 'F8', label: 'Borrar', run: () => flow.confirm() }
+		{ key: 'Enter', label: keep, run: () => flow.cancel() },
+		{ key: 'Escape', label: keep, hidden: true, run: () => flow.cancel() },
+		{ key: 'F8', label: act, run: () => flow.confirm() }
 	]}
 >
 	{#if flow.dialog?.name}

@@ -35,6 +35,25 @@ function deletion() {
 	};
 }
 
+/** What a list of deleted ones passes to restore its rows, with its own title and words. */
+function deletedList() {
+	return {
+		title: 'Clientes borrados',
+		entity: { one: 'cliente borrado', many: 'clientes borrados' },
+		onToggleDeleted: vi.fn<(search: string) => void>(),
+		restoration: {
+			options: {
+				entity: { one: 'cliente', Label: 'Cliente' },
+				restore: vi.fn<(id: number) => Promise<void>>().mockResolvedValue(undefined)
+			},
+			describe: (r: Row) => r.name,
+			code: (r: Row) => r.code,
+			toast: vi.fn<(message: string) => void>(),
+			reload: vi.fn<() => void>()
+		}
+	};
+}
+
 const searchBox = () => page.getByLabelText('Buscar (código o nombre)');
 const bar = () => page.getByRole('contentinfo');
 const dialog = () => page.getByRole('dialog');
@@ -566,6 +585,171 @@ describe('ListScreen', () => {
 			await expect.element(button('Borrar')).toBeEnabled();
 			await userEvent.keyboard('{F8}');
 			await expect.element(dialog()).toHaveTextContent('¿Borrar el cliente 2?');
+		});
+	});
+
+	describe('deleted ones', () => {
+		it('F6 switches to the deleted ones with what is typed', async () => {
+			const s = spies();
+			const onToggleDeleted = vi.fn();
+			await render(ListHarness, { ...s, deletion: deletion(), onToggleDeleted });
+			await expect.element(bar()).toHaveTextContent('F6 Ver borrados');
+			// Before the pause: the deleted ones get the text, and the search waiting for it is dropped.
+			await userEvent.keyboard('gar{F6}');
+			expect(onToggleDeleted).toHaveBeenCalledExactlyOnceWith('gar');
+			await wait(400);
+			expect(callsAfter(s.onSearch, onToggleDeleted)).toBe(0);
+			await button('Ver borrados').click();
+			expect(onToggleDeleted).toHaveBeenCalledTimes(2);
+		});
+
+		it('Esc from the live ones still clears the search, then exits', async () => {
+			const s = spies();
+			const onToggleDeleted = vi.fn();
+			await render(ListHarness, { ...s, onToggleDeleted });
+			await userEvent.keyboard('gar{Escape}');
+			await expect.element(searchBox()).toHaveValue('');
+			await userEvent.keyboard('{Escape}');
+			expect(s.onExit).toHaveBeenCalledOnce();
+			expect(onToggleDeleted).not.toHaveBeenCalled();
+		});
+
+		it('without onToggleDeleted there is no F6', async () => {
+			await render(ListHarness, { ...spies(), deletion: deletion() });
+			await expect.element(bar()).toHaveTextContent('F8 Borrar');
+			await expect.element(bar()).not.toHaveTextContent('F6');
+			await expect.element(button('Ver borrados')).not.toBeInTheDocument();
+		});
+
+		it('the deleted ones have no F2 nor Enter', async () => {
+			const s = spies();
+			await render(ListHarness, { ...s, ...deletedList() });
+			await expect
+				.element(page.getByRole('heading', { level: 1, name: 'Clientes borrados' }))
+				.toBeVisible();
+			await expect.element(searchBox()).toHaveFocus();
+			await expect.element(bar()).toHaveTextContent('F8 Restaurar');
+			await expect.element(bar()).not.toHaveTextContent('Nuevo');
+			await expect.element(bar()).not.toHaveTextContent('Abrir');
+			await expect.element(button('Nuevo')).not.toBeInTheDocument();
+			await expect.element(button('Abrir')).not.toBeInTheDocument();
+			await expect.element(button('Borrar')).not.toBeInTheDocument();
+			await userEvent.keyboard('{F2}{Enter}');
+			await row(2).dblClick();
+			expect(s.onNew).not.toHaveBeenCalled();
+			expect(s.onOpen).not.toHaveBeenCalled();
+		});
+
+		it('F6 and Esc go back to the live ones with what is typed', async () => {
+			const s = spies();
+			const d = deletedList();
+			await render(ListHarness, { ...s, ...d });
+			await expect.element(bar()).toHaveTextContent('F6 Ver vivos');
+			await expect.element(bar()).toHaveTextContent('Esc Volver');
+			await userEvent.keyboard('{F6}');
+			expect(d.onToggleDeleted).toHaveBeenLastCalledWith('');
+			// Esc does not clear the search first: the live list keeps it.
+			await userEvent.keyboard('gar');
+			await expect.element(bar()).toHaveTextContent('Esc Volver');
+			await userEvent.keyboard('{Escape}');
+			expect(d.onToggleDeleted).toHaveBeenLastCalledWith('gar');
+			expect(d.onToggleDeleted).toHaveBeenCalledTimes(2);
+			expect(s.onExit).not.toHaveBeenCalled();
+			await wait(400);
+			expect(callsAfter(s.onSearch, d.onToggleDeleted)).toBe(0);
+			await button('Ver vivos').click();
+			expect(d.onToggleDeleted).toHaveBeenCalledTimes(3);
+		});
+
+		it('says when there are no deleted ones', async () => {
+			const { rerender } = await render(ListHarness, { ...spies(), ...deletedList(), rows: [] });
+			// Not the live list's hint: there is no F2 here.
+			await expect
+				.element(page.getByText('No hay clientes borrados.', { exact: true }))
+				.toBeVisible();
+			await rerender({ search: '7' });
+			await expect
+				.element(page.getByText('No existe ningún cliente borrado con el código 7.'))
+				.toBeVisible();
+		});
+
+		it('F8 restores the marked row after asking, and reloads', async () => {
+			const d = deletedList();
+			await render(ListHarness, { ...spies(), ...d });
+			await userEvent.keyboard('{ArrowDown}{F8}');
+			await expect.element(dialog()).toHaveTextContent('¿Restaurar el cliente 2?');
+			const lines = [...dialog().element().querySelectorAll('p')].map((p) => p.textContent?.trim());
+			expect(lines).toEqual(['Bar Pepe']);
+			await expect.element(dialog().getByRole('button', { name: /No restaurar/ })).toBeVisible();
+			expect(d.restoration.options.restore).not.toHaveBeenCalled();
+			await userEvent.keyboard('{F8}');
+			await vi.waitFor(() => expect(d.restoration.reload).toHaveBeenCalledOnce());
+			expect(d.restoration.options.restore).toHaveBeenCalledExactlyOnceWith(12);
+			expect(d.restoration.toast).toHaveBeenCalledExactlyOnceWith('Cliente 2 restaurado');
+			await expect.element(dialog()).not.toBeInTheDocument();
+		});
+
+		it('Restaurar asks like F8', async () => {
+			const d = deletedList();
+			const { rerender } = await render(ListHarness, { ...spies(), ...d });
+			await expect.element(button('Restaurar')).toBeEnabled();
+			await button('Restaurar').click();
+			await expect.element(dialog()).toHaveTextContent('¿Restaurar el cliente 1?');
+			await dialog()
+				.getByRole('button', { name: /^F8 Restaurar/ })
+				.click();
+			await vi.waitFor(() => expect(d.restoration.options.restore).toHaveBeenCalledWith(11));
+			await rerender({ rows: [] });
+			await expect.element(button('Restaurar')).toBeDisabled();
+			await expect.element(bar()).not.toHaveTextContent('F8');
+		});
+
+		it('a code a live one has taken is said, and the list reloads', async () => {
+			const d = deletedList();
+			d.restoration.options.restore.mockRejectedValue(
+				new ApiError(409, 'CLIENT_DUPLICATE_CODE', 'Duplicate code', {})
+			);
+			await render(ListHarness, { ...spies(), ...d });
+			await userEvent.keyboard('{F8}');
+			await expect.element(dialog()).toHaveTextContent('¿Restaurar el cliente 1?');
+			await userEvent.keyboard('{F8}');
+			await expect.element(dialog()).toHaveTextContent('Ya existe un cliente con ese código.');
+			await vi.waitFor(() => expect(d.restoration.reload).toHaveBeenCalledOnce());
+			expect(d.restoration.toast).not.toHaveBeenCalled();
+		});
+
+		it('Enter or Esc keeps it deleted', async () => {
+			const s = spies();
+			const d = deletedList();
+			await render(ListHarness, { ...s, ...d });
+			for (const key of ['{Enter}', '{Escape}']) {
+				await userEvent.keyboard('{F8}');
+				await expect.element(dialog()).toBeVisible();
+				await userEvent.keyboard(key);
+				await expect.element(dialog()).not.toBeInTheDocument();
+			}
+			expect(d.restoration.options.restore).not.toHaveBeenCalled();
+			expect(d.restoration.reload).not.toHaveBeenCalled();
+			// The Esc was the question's: the list is still the deleted ones.
+			expect(d.onToggleDeleted).not.toHaveBeenCalled();
+			expect(s.onOpen).not.toHaveBeenCalled();
+			await expect.element(searchBox()).toHaveFocus();
+		});
+
+		it('after a restore the mark stays in place, and F8 waits for the rows', async () => {
+			const d = deletedList();
+			const { rerender } = await render(ListHarness, { ...spies(), ...d, selectId: 11 });
+			await userEvent.keyboard('{ArrowDown}{F8}');
+			await expect.element(dialog()).toHaveTextContent('¿Restaurar el cliente 2?');
+			await userEvent.keyboard('{F8}');
+			await vi.waitFor(() => expect(d.restoration.reload).toHaveBeenCalledOnce());
+			// The restored row is still on screen until its rows come back: no question about it.
+			await userEvent.keyboard('{F8}');
+			await expect.element(dialog()).not.toBeInTheDocument();
+			await rerender({ rows: [rows[0], rows[2]] });
+			await expect.element(row(2)).toHaveAttribute('aria-selected', 'true');
+			await userEvent.keyboard('{F8}');
+			await expect.element(dialog()).toHaveTextContent('¿Restaurar el cliente 3?');
 		});
 	});
 });

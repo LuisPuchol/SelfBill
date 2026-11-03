@@ -174,6 +174,84 @@ test('deleting from the list warns with the number', async ({ page, request }) =
 	await expect(page.getByRole('row', { name: /Lista borrar e2e/ })).toBeHidden();
 });
 
+test('F6 shows the deleted clients, and F8 there restores one', async ({ page, request }) => {
+	await createClient(request, 9250, 'Restaurar e2e');
+	await openList(page);
+	await searchFor(page, 'Restaurar e2e');
+	await expect(page.getByRole('row', { name: /Restaurar e2e/ })).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('¿Borrar el cliente 9250?')).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('Cliente 9250 borrado')).toBeVisible();
+	await expect(page.getByRole('row', { name: /Restaurar e2e/ })).toBeHidden();
+
+	// The deleted ones, with the same search and the day each one was deleted.
+	await page.keyboard.press('F6');
+	await expect(page).toHaveURL(
+		(url) =>
+			url.searchParams.get('deleted') === '1' && url.searchParams.get('q') === 'Restaurar e2e'
+	);
+	await expect(page.getByRole('heading', { name: 'Clientes borrados' })).toBeVisible();
+	await ready(page, 'Restaurar');
+	await expect(page.locator('footer')).not.toContainText('Nuevo');
+	await expect(page.getByRole('columnheader', { name: 'Borrado' })).toBeVisible();
+	const today = new Date().toLocaleDateString('es-ES', {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric'
+	});
+	await expect(page.getByRole('row', { name: /Restaurar e2e/ })).toContainText(today);
+
+	// Enter opens nothing: the next F8 still asks here.
+	await page.keyboard.press('Enter');
+	await page.keyboard.press('F8');
+	await expect(page.getByText('¿Restaurar el cliente 9250?')).toBeVisible();
+	await expect(page.getByRole('dialog').getByText('Restaurar e2e')).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('Cliente 9250 restaurado')).toBeVisible();
+	await expect(
+		page.getByText('No hay ningún cliente borrado que coincida con «Restaurar e2e».')
+	).toBeVisible();
+
+	// Back to the live ones, where it is again.
+	await page.keyboard.press('F6');
+	await expect(page).toHaveURL(
+		(url) => !url.searchParams.has('deleted') && url.searchParams.get('q') === 'Restaurar e2e'
+	);
+	await expect(page.getByRole('heading', { name: 'Clientes', exact: true })).toBeVisible();
+	await ready(page, 'Nuevo');
+	await expect(page.getByRole('row', { name: /Restaurar e2e/ })).toBeVisible();
+});
+
+test('restoring a client whose code a live one has taken says so', async ({ page, request }) => {
+	const { id } = await createClient(request, 9251, 'Ocupado e2e borrado');
+	expect((await request.delete(`/api/clients/${id}`)).ok()).toBe(true);
+	await createClient(request, 9251, 'Ocupado e2e vivo');
+	await page.goto('/clients?deleted=1');
+	await expect(page.getByRole('heading', { name: 'Clientes borrados' })).toBeVisible();
+	await ready(page, 'Restaurar');
+	await searchFor(page, 'Ocupado e2e');
+	await expect(page.getByRole('row', { name: /Ocupado e2e borrado/ })).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('¿Restaurar el cliente 9251?')).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('Ya existe un cliente con ese código.')).toBeVisible();
+	await page.keyboard.press('Enter');
+	await expect(page.getByText('Ya existe un cliente con ese código.')).toBeHidden();
+	await expect(page.getByRole('row', { name: /Ocupado e2e borrado/ })).toBeVisible();
+
+	// Esc goes back to the live ones, with the search: only the live one has the code.
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL(
+		(url) => !url.searchParams.has('deleted') && url.searchParams.get('q') === 'Ocupado e2e'
+	);
+	await ready(page, 'Nuevo');
+	await expect(page.getByRole('row', { name: /Ocupado e2e vivo/ })).toBeVisible();
+	await expect(page.getByRole('row', { name: /Ocupado e2e borrado/ })).toBeHidden();
+	const live = await request.get('/api/clients?codeFrom=9251&codeTo=9251');
+	expect(((await live.json()) as { page: { totalElements: number } }).page.totalElements).toBe(1);
+});
+
 test('a missing client shows the not-found page', async ({ page }) => {
 	await page.goto('/clients/9999');
 	await expect(page.getByText('No se ha encontrado')).toBeVisible();
