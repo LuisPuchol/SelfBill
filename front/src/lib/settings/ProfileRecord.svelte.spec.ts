@@ -168,7 +168,7 @@ describe('ProfileRecord', () => {
 			.not.toBeInTheDocument();
 	});
 
-	it('says the stored password cannot be read when the stored password is from another machine', async () => {
+	it('says the stored password cannot be read', async () => {
 		await render(
 			ProfileRecordHarness,
 			props({ initial: { ...stored, mailPasswordUnreadable: true } })

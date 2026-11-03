@@ -130,6 +130,18 @@ class UserProfileServiceTest {
     }
 
     @Test
+    @DisplayName("A custom server keeps its port when the email changes, even if the port is a default one")
+    void customServerKeepsItsPortWhenTheEmailChanges() {
+        userProfileService.createUserProfile(requestFor("a@gmail.com", null, null));
+
+        UserProfileResponse updated = userProfileService.updateUserProfile(
+                requestFor("a@empresa.es", "mail.empresa.es", 587));
+
+        assertThat(updated.smtpHost()).isEqualTo("mail.empresa.es");
+        assertThat(updated.smtpPort()).isEqualTo(587);
+    }
+
+    @Test
     @DisplayName("An unreadable stored password is reported")
     void unreadablePasswordIsReported() {
         assertThat(userProfileService.createUserProfile(request(null)).mailPasswordUnreadable()).isFalse();

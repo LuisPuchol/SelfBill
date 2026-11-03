@@ -70,6 +70,7 @@ public class CredentialEncryptionService {
             decrypt(encoded);
             return true;
         } catch (RuntimeException e) {
+            // Any failure is intended to count: a credential that does not decrypt is just "unreadable"
             return false;
         }
     }

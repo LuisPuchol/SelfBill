@@ -135,27 +135,28 @@ public class UserProfileService {
 
     /**
      * Fills the server and port the request left empty from the email's provider. When the email moved to
-     * another provider, the previous provider's defaults that the form sent back count as left empty too:
-     * they are stale, not a choice. Anything else the user typed is kept.
+     * another provider and the form sent back the previous provider's server, that server is stale, not a
+     * choice: it takes the new provider's (none if unknown), and the port too if it is the old default as well.
+     * A custom server is kept with its port, whatever the port is.
      */
     private static void applySmtpDefaults(UserProfile profile, UserProfileRequest request, String previousEmail) {
         if (profile.getEmail() == null) {
             return;
         }
         boolean providerChanged = previousEmail != null && !SmtpProviderDefaults.sameProvider(previousEmail, profile.getEmail());
-        boolean hostGiven = request.smtpHost() != null
-                && !(providerChanged && request.smtpHost().equals(SmtpProviderDefaults.defaultHost(previousEmail)));
-        boolean portGiven = request.smtpPort() != null
-                && !(providerChanged && request.smtpPort().equals(SmtpProviderDefaults.defaultPort(previousEmail)));
-        if (!hostGiven) {
+        boolean hostIsStale = providerChanged && request.smtpHost() != null
+                && request.smtpHost().equals(SmtpProviderDefaults.defaultHost(previousEmail));
+        boolean portIsStale = hostIsStale && request.smtpPort() != null
+                && request.smtpPort().equals(SmtpProviderDefaults.defaultPort(previousEmail));
+        if (request.smtpHost() == null || hostIsStale) {
             String defaultHost = SmtpProviderDefaults.defaultHost(profile.getEmail());
-            if (defaultHost != null || providerChanged) {
+            if (defaultHost != null || hostIsStale) {
                 profile.setSmtpHost(defaultHost);
             }
         }
-        if (!portGiven) {
+        if (request.smtpPort() == null || portIsStale) {
             Integer defaultPort = SmtpProviderDefaults.defaultPort(profile.getEmail());
-            if (defaultPort != null || providerChanged) {
+            if (defaultPort != null || hostIsStale) {
                 profile.setSmtpPort(defaultPort);
             }
         }
