@@ -9,7 +9,7 @@ export const articleDeletion: DeleteOptions = {
 		await request(api.DELETE('/api/articles/{id}', { params: { path: { id: articleId } } }));
 	},
 	pendingForDelete: async (articleId) => {
-		const [notes, drafts] = await Promise.all([
+		const [notes, notesInDrafts] = await Promise.all([
 			request(
 				api.GET('/api/delivery-notes', {
 					params: { query: { articleId, invoiced: false, size: 1 } }
@@ -21,6 +21,9 @@ export const articleDeletion: DeleteOptions = {
 				})
 			)
 		]);
-		return articlePendingMessage(notes.page?.totalElements ?? 0, drafts.page?.totalElements ?? 0);
+		return articlePendingMessage(
+			notes.page?.totalElements ?? 0,
+			notesInDrafts.page?.totalElements ?? 0
+		);
 	}
 };

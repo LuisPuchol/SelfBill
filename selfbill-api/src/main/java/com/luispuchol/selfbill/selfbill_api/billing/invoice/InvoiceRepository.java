@@ -35,8 +35,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer>, JpaS
             FROM Invoice i JOIN i.client c
             WHERE i.status = com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceStatus.ISSUED
               AND i.date >= :from AND i.date < :to
-            GROUP BY c.id, c.code, c.name, CASE WHEN c.deletedAt IS NULL THEN false ELSE true END
-            ORDER BY c.code, CASE WHEN c.deletedAt IS NULL THEN false ELSE true END
+            GROUP BY c.id, c.code, c.name, c.deletedAt
+            ORDER BY c.code, c.deletedAt, c.id
             """)
     List<ClientSummaryResponse> summarizeByClient(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

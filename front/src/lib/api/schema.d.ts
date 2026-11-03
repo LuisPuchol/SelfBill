@@ -450,8 +450,7 @@ export interface paths {
         };
         /**
          * Sum the invoices of a filter
-         * @description Count and sums of the non-deleted invoices the same filters as the list match: all of them, not a
-         *                 page. Zeros when none match.
+         * @description Count and sums of the non-deleted invoices the same filters as the list match: all of them, not a page. Zeros when none match.
          */
         get: operations["getTotals"];
         put?: never;
@@ -588,8 +587,7 @@ export interface paths {
         };
         /**
          * List the clients with a name
-         * @description Exact match on `name`, ignoring case. Names are not unique: every live match, ordered by code,
-         *                 and an empty list when there is none.
+         * @description Exact match on `name`, ignoring case. Names are not unique: every live match, ordered by code, and an empty list when there is none.
          */
         get: operations["getClientsByName"];
         put?: never;
@@ -953,12 +951,12 @@ export interface components {
             /** @description Surcharge rate applied, already resolved with the client's regime: 0 when it has none */
             surchargePercentage?: number;
             /**
-             * @description VAT regime the rates were frozen under: the client's when the note was last saved
+             * @description VAT regime the rates were frozen under: the client's at the time, kept while the note is editable following its client's changes
              * @enum {string}
              */
             vatType?: "WITH_VAT" | "WITHOUT_VAT";
             /**
-             * @description Surcharge regime the rates were frozen under: the client's when the note was last saved
+             * @description Surcharge regime the rates were frozen under: the client's at the time, kept while the note is editable following its client's changes
              * @enum {string}
              */
             surchargeType?: "WITH_SURCHARGE" | "WITHOUT_SURCHARGE";

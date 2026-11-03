@@ -100,6 +100,22 @@ class InvoiceSummaryTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleted clients with the same code come in the order they were created")
+    void deletedClientsWithTheSameCodeAreOrderedById() throws Exception {
+        Integer first = createClient(2, DeliveryNoteFormat.VALUED);
+        issuedOn(first, "1", "1", LocalDateTime.of(2026, 4, 10, 9, 0));
+        clientService.deleteClient(first);
+        Integer second = createClient(2, DeliveryNoteFormat.VALUED);
+        issuedOn(second, "1", "1", LocalDateTime.of(2026, 4, 11, 9, 0));
+        clientService.deleteClient(second);
+
+        summary()
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].clientId").value(first))
+                .andExpect(jsonPath("$[1].clientId").value(second));
+    }
+
+    @Test
     @DisplayName("Counts both series")
     void bothSeries() throws Exception {
         Integer withoutVat = createClient(2, VatType.WITHOUT_VAT, SurchargeType.WITHOUT_SURCHARGE);

@@ -143,7 +143,8 @@ public class UserProfileService {
         if (profile.getEmail() == null) {
             return;
         }
-        boolean providerChanged = previousEmail != null && !SmtpProviderDefaults.sameProvider(previousEmail, profile.getEmail());
+        boolean providerChanged = previousEmail != null
+                && !SmtpProviderDefaults.sameProvider(previousEmail, profile.getEmail());
         boolean hostIsStale = providerChanged && request.smtpHost() != null
                 && request.smtpHost().equals(SmtpProviderDefaults.defaultHost(previousEmail));
         boolean portIsStale = hostIsStale && request.smtpPort() != null

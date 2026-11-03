@@ -40,10 +40,10 @@ public record DeliveryNoteResponse(
         @Schema(description = "Surcharge rate applied, already resolved with the client's regime: 0 when it has none")
         BigDecimal surchargePercentage,
 
-        @Schema(description = "VAT regime the rates were frozen under: the client's when the note was last saved")
+        @Schema(description = "VAT regime the rates were frozen under: the client's at the time, kept while the note is editable following its client's changes")
         VatType vatType,
 
-        @Schema(description = "Surcharge regime the rates were frozen under: the client's when the note was last saved")
+        @Schema(description = "Surcharge regime the rates were frozen under: the client's at the time, kept while the note is editable following its client's changes")
         SurchargeType surchargeType,
 
         Integer clientId,

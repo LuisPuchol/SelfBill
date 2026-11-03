@@ -67,7 +67,8 @@ public class ClientController {
     }
 
     @Operation(summary = "List the clients with a name", description = """
-            Exact match on `name`, ignoring case. Names are not unique: every live match, ordered by code, \n            and an empty list when there is none.""")
+            Exact match on `name`, ignoring case. Names are not unique: every live match, ordered by code, \
+            and an empty list when there is none.""")
     @GetMapping("/by-name/{name}")
     public List<ClientResponse> getClientsByName(@PathVariable @NotBlank String name) {
         return clientService.getClientsByName(name);

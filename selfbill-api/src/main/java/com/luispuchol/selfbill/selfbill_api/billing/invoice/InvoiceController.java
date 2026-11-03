@@ -72,7 +72,8 @@ public class InvoiceController {
     }
 
     @Operation(summary = "Sum the invoices of a filter", description = """
-            Count and sums of the non-deleted invoices the same filters as the list match: all of them, not a \n            page. Zeros when none match.""")
+            Count and sums of the non-deleted invoices the same filters as the list match: all of them, not a \
+            page. Zeros when none match.""")
     @GetMapping("/totals")
     public InvoiceTotalsResponse getTotals(@ParameterObject InvoiceFilter filter) {
         return invoiceService.getTotals(filter);

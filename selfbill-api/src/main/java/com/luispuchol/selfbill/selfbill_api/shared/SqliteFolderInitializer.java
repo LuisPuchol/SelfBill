@@ -32,7 +32,7 @@ public class SqliteFolderInitializer implements EnvironmentPostProcessor {
         if (options >= 0) {
             path = path.substring(0, options);
         }
-        // In-memory databases, and URIs (file:...?mode=memory), have no folder of their own
+        // In-memory databases are left alone, and so are URIs (file:...), which are left to the driver
         if (path.isEmpty() || path.startsWith(":memory:") || path.startsWith("file:")) {
             return;
         }
