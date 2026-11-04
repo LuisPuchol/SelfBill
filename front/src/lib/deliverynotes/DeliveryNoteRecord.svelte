@@ -266,7 +266,8 @@
 		if (printFailure && classifyError(printFailure.err).kind === 'connection') {
 			showError(printFailure.err);
 			// Nothing over the connection screen: why the invoice was not issued waits for it to go.
-			if (issueFailure) {
+			// Unless the issue too was lost with the connection: once back, that screen would return.
+			if (issueFailure && classifyError(issueFailure.err).kind !== 'connection') {
 				const { err } = issueFailure;
 				whenNoError(() => showIssueFailure(err));
 			}

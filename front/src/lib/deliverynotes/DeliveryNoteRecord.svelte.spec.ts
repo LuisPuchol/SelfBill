@@ -870,6 +870,26 @@ describe('DeliveryNoteRecord, on saving', () => {
 		await expect.element(cliente()).toHaveFocus();
 	});
 
+	it('issuing and printing both lost with the connection: the connection screen once, and once back the cursor in Cliente', async () => {
+		const p = props({ initial: written() });
+		p.issueInvoice.mockRejectedValue(networkError(new Error('Failed to fetch')));
+		p.fetchPdf.mockRejectedValue(networkError(new Error('Failed to fetch')));
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F3}{F9}{NumpadAdd}');
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado')
+		);
+		expect(errorState.connectionLost).toBe(true);
+
+		connectionRestored();
+		await expect.element(cliente()).toHaveFocus();
+		await wait(100);
+		expect(errorState.connectionLost).toBe(false);
+		expect(errorState.view).toBeNull();
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(cliente()).toHaveFocus();
+	});
+
 	it('the error dialog open, the connection lost and back: the cursor in Cliente', async () => {
 		const p = props({ initial: written() });
 		p.issueInvoice.mockRejectedValue(new ApiError(400, 'CLIENT_FISCAL_DATA_MISSING', 'x', {}));
