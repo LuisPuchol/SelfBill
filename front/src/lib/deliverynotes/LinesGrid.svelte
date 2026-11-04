@@ -149,6 +149,19 @@
 		}
 	}
 
+	/**
+	 * A client typed: its found one will bring its own prices, and until then none of the old one's
+	 * may be saved. The prices still as offered go empty, and stay the grid's to fill.
+	 */
+	export function clearOfferedPrices(): void {
+		for (const line of lines) {
+			const offer = untouchedOffer(line);
+			if (!offer) continue;
+			offer.price = null;
+			line.price = null;
+		}
+	}
+
 	function amount(line: LineValues): string {
 		if (line.quantity === null || line.price === null) return '';
 		return formatDecimal(lineTotalCents(line.quantity, line.price) / 100);

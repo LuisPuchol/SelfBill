@@ -400,6 +400,60 @@ describe('DeliveryNoteRecord, saving', () => {
 		expect(p.proposePrice).toHaveBeenLastCalledWith(pepe.id, 120);
 	});
 
+	it('typing a client empties the offered prices: a typed one stays, the new ones come in once found', async () => {
+		const prices: Record<number, Record<number, number>> = {
+			[garcia.id]: { 120: 1.2, 150: 0.8 },
+			[pepe.id]: { 120: 1.5, 150: 0.9 }
+		};
+		const p = props({
+			initial: { ...blankNote('2026-10-18'), lines: [emptyLine(), emptyLine()] },
+			proposePrice: vi.fn(
+				async (clientId: number, articleId: number) => prices[clientId][articleId]
+			)
+		});
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('3{Enter}');
+		await expect.element(fecha()).toHaveFocus();
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		await cell(1, 'Precio').click();
+		await userEvent.keyboard('3');
+		await cell(1, 'Código').click();
+		await userEvent.keyboard('15{Enter}');
+		await expect.element(cell(1, 'Lote')).toHaveFocus();
+		await cliente().click();
+		await userEvent.keyboard('4');
+		// Not found yet, and García's price is already gone.
+		await expect.element(cell(0, 'Precio')).toHaveValue('');
+		await expect.element(cell(1, 'Precio')).toHaveValue('3,00');
+		await userEvent.keyboard('{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,50');
+		await expect.element(cell(1, 'Precio')).toHaveValue('3,00');
+	});
+
+	it('plus right after typing a client does not send the old or empty prices', async () => {
+		let resolve!: (price: number | null) => void;
+		const pepePrice = new Promise<number | null>((r) => (resolve = r));
+		const p = props({
+			proposePrice: vi.fn(async (clientId: number) => (clientId === pepe.id ? pepePrice : 1.2))
+		});
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('3{Enter}{Enter}');
+		await expect.element(cell(0, 'Código')).toHaveFocus();
+		await userEvent.keyboard('12{Enter}01181026{Enter}25{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		await cliente().click();
+		// Another client typed, no Enter: García's price is gone, the new client's not here yet. Today
+		// the note is saved with the price empty, the API refusing every price.
+		await userEvent.keyboard('4{NumpadAdd}');
+		await expect.element(cell(0, 'Precio')).toHaveFocus();
+		await expect.element(cell(0, 'Precio')).toHaveAccessibleDescription('Este dato es obligatorio');
+		expect(p.create).not.toHaveBeenCalled();
+		resolve(1.5);
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,50');
+	});
+
 	it('an edit sends the number and the original time, then goes back to the list', async () => {
 		const p = props(editing());
 		await render(DeliveryNoteHarness, p);
@@ -469,6 +523,29 @@ describe('DeliveryNoteRecord, invoice state', () => {
 		await cell(1, 'Cantidad').click();
 		await userEvent.keyboard('4{NumpadAdd}');
 		await vi.waitFor(() => expect(p.update).toHaveBeenCalledOnce());
+	});
+
+	it('a note in a draft invoice keeps its client: read-only, and the notice says so', async () => {
+		const p = props(editing({ ...saved, invoiceId: 3, invoiceStatus: 'DRAFT' }));
+		await render(DeliveryNoteHarness, p);
+		await expect
+			.element(
+				page.getByText(
+					'Está en una factura en borrador: si lo cambias, la factura se recalcula. El cliente no se puede cambiar.'
+				)
+			)
+			.toBeVisible();
+		await expect.element(cliente()).toHaveAttribute('readonly');
+		await expect.element(fecha()).not.toHaveAttribute('readonly');
+		await cliente().click();
+		await userEvent.keyboard('4');
+		await expect.element(cliente()).toHaveValue('3');
+		await expect.element(page.getByText('Bar Pepe')).not.toBeInTheDocument();
+	});
+
+	it('a pending note keeps Cliente editable', async () => {
+		await render(DeliveryNoteHarness, props(editing()));
+		await expect.element(cliente()).not.toHaveAttribute('readonly');
 	});
 
 	it('in an issued invoice: a notice, and no key or field changes it', async () => {

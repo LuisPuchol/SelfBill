@@ -130,6 +130,9 @@
 	/** In an issued invoice nothing changes: no field, no key. */
 	const readOnly = $derived(saved?.invoiceStatus === 'ISSUED');
 
+	/** A note in a draft invoice keeps its client: the invoice is of one client only. */
+	const clientLocked = $derived(readOnly || saved?.invoiceStatus === 'DRAFT');
+
 	const regimeOf = (c: ClientResponse): Regime => ({
 		vatType: c.vatType!,
 		surchargeType: c.surchargeType!
@@ -258,6 +261,11 @@
 		return issued;
 	}
 
+	function onClientInput(): void {
+		clientTyped = true;
+		grid?.clearOfferedPrices();
+	}
+
 	let grid = $state<ReturnType<typeof LinesGrid>>();
 	const banner = 'mb-4 rounded border-2 bg-surface p-3';
 </script>
@@ -275,14 +283,15 @@
 		</p>
 	{:else if saved?.invoiceStatus === 'DRAFT'}
 		<p class="{banner} border-draft text-draft">
-			Está en una factura en borrador: si lo cambias, la factura se recalcula.
+			Está en una factura en borrador: si lo cambias, la factura se recalcula. El cliente no se
+			puede cambiar.
 		</p>
 	{/if}
 	<!-- The totals up here, beside the note's data: the lines below grow without moving them -->
 	<div class="mb-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
 		<div>
 			<div class="mb-2 flex flex-wrap items-start gap-x-6">
-				<div class="flex w-96 items-start gap-3" oninput={() => (clientTyped = true)}>
+				<div class="flex w-96 items-start gap-3" oninput={onClientInput}>
 					<div class="min-w-0 flex-1">
 						<!-- The field reads its code only when created: a chained new note brings a new one -->
 						{#key form.values}
@@ -293,9 +302,9 @@
 								bind:value={form.values.clientCode}
 								lookup={(code) => lookups.client(code).then((found) => found?.name ?? null)}
 								notFoundMessage="No existe ningún cliente con ese código"
-								required={!readOnly}
+								required={!clientLocked}
 								error={form.errorFor('clientCode')}
-								{readOnly}
+								readOnly={clientLocked}
 								onFound={() => grid?.reproposePrices()}
 							/>
 						{/key}

@@ -55,6 +55,8 @@
 </Form>
 <!-- What the editor does when another client is found -->
 <button type="button" onclick={() => grid?.reproposePrices()}>Otro cliente</button>
+<!-- What the editor does when a client is typed -->
+<button type="button" onclick={() => grid?.clearOfferedPrices()}>Cliente tecleado</button>
 <output data-testid="lines">{JSON.stringify(lines)}</output>
 <output data-testid="valid">{valid}</output>
 <KeyBar />
