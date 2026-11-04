@@ -4,7 +4,7 @@
 	import ActionButton from '../components/ActionButton.svelte';
 	import DataTable from '../components/DataTable.svelte';
 	import DateField from '../components/DateField.svelte';
-	import DeleteDialog from '../components/DeleteDialog.svelte';
+	import ConfirmDialog from '../components/ConfirmDialog.svelte';
 	import { DetailLoader } from '../components/detail-loader.svelte';
 	import { showError, showPrintError, whenNoError } from '../components/errors.svelte';
 	import { fillViewport } from '../components/fill-viewport';
@@ -298,4 +298,4 @@
 	</div>
 {/if}
 
-<DeleteDialog {flow} />
+<ConfirmDialog {flow} />

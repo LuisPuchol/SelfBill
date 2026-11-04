@@ -18,7 +18,7 @@ export interface RestoreFlowOptions extends RestoreOptions {
 }
 
 /**
- * The restore question, the delete one's twin: asks, restores and tells. `DeleteDialog` renders it
+ * The restore question, the delete one's twin: asks, restores and tells. `ConfirmDialog` renders it
  * with its own words.
  */
 export class RestoreFlow {

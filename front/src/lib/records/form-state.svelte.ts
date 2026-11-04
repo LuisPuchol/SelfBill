@@ -136,6 +136,11 @@ export class FormState<V extends object> {
 		});
 	}
 
+	/** A save is running. */
+	protected get saving(): boolean {
+		return this.#saving;
+	}
+
 	/**
 	 * Runs `step` unless a save is already running, holding the lock meanwhile. What it throws goes
 	 * to the error dialog. False when it did not run.

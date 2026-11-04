@@ -24,7 +24,7 @@ export interface DeleteFlowOptions extends DeleteOptions {
 
 /**
  * The delete question: counts what depends on the record, asks, removes and tells.
- * `DeleteDialog` renders it; the record screen and the list each own one.
+ * `ConfirmDialog` renders it; the record screen and the list each own one.
  */
 export class DeleteFlow {
 	dialog: { title: string; name: string; body: string | null } | null = $state(null);
@@ -35,6 +35,11 @@ export class DeleteFlow {
 
 	constructor(options: DeleteFlowOptions) {
 		this.#options = options;
+	}
+
+	/** Counting what depends on a record, or removing it. */
+	get busy(): boolean {
+		return this.#busy;
 	}
 
 	async ask(target: DeleteTarget): Promise<void> {

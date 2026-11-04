@@ -17,7 +17,7 @@ export const load: PageLoad = async ({ url }) => {
 						...(deleted ? { deleted: true } : {}),
 						page,
 						size: 20,
-						sort: ['code']
+						sort: ['code', 'id']
 					}
 				}
 			})

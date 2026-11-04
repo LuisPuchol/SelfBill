@@ -84,7 +84,8 @@ test('a minimal client saves and says what is missing for invoices', async ({ pa
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('heading', { name: 'Clientes' })).toBeVisible();
 	await ready(page, 'Nuevo');
-	await page.getByLabel('Buscar (código o nombre)').fill(String(code));
+	await searchFor(page, String(code));
+	await expect(page.getByRole('cell', { name: 'Bar Minimal e2e' })).toBeVisible();
 	await page.keyboard.press('Enter');
 	await expect(page.getByRole('heading', { name: `Cliente ${code}` })).toBeVisible();
 	await ready(page, 'Guardar');

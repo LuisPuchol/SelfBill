@@ -35,6 +35,7 @@ function deferred<T>() {
 	return { promise, resolve };
 }
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const code = () => page.getByLabelText('Código');
 const name = () => page.getByLabelText('Nombre');
 const dialog = () => page.getByRole('dialog');
@@ -269,6 +270,54 @@ describe('RecordScreen', () => {
 		await code().click();
 		await restore.click();
 		await expect.element(code()).toHaveFocus();
+	});
+
+	it('F8 does nothing while a save is in flight', async () => {
+		const o = options();
+		const saving = deferred<Saved>();
+		o.update.mockReturnValue(saving.promise);
+		await render(RecordHarness, { ...o, ...editing });
+		await name().click();
+		await userEvent.keyboard('x{NumpadAdd}');
+		await vi.waitFor(() => expect(o.update).toHaveBeenCalledOnce());
+		await userEvent.keyboard('{F8}');
+		await wait(50);
+		expect(o.pendingForDelete).not.toHaveBeenCalled();
+		await expect.element(dialog()).not.toBeInTheDocument();
+		saving.resolve({ id: 5, code: 101 });
+		await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledOnce());
+	});
+
+	it('"+" does nothing while a delete is in flight', async () => {
+		const o = options();
+		const removing = deferred<void>();
+		o.remove.mockReturnValue(removing.promise);
+		await render(RecordHarness, { ...o, ...editing });
+		await userEvent.keyboard('{F8}');
+		await expect.element(dialog()).toBeVisible();
+		await userEvent.keyboard('{F8}');
+		await vi.waitFor(() => expect(o.remove).toHaveBeenCalledOnce());
+		await userEvent.keyboard('{NumpadAdd}');
+		await wait(50);
+		expect(o.update).not.toHaveBeenCalled();
+		removing.resolve();
+		await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledOnce());
+	});
+
+	it('after a delete, F8 and "+" stay blocked until the list is shown', async () => {
+		const o = options();
+		const going = deferred<void>();
+		o.goToList.mockReturnValue(going.promise as unknown as void);
+		await render(RecordHarness, { ...o, ...editing });
+		await userEvent.keyboard('{F8}');
+		await expect.element(dialog()).toBeVisible();
+		await userEvent.keyboard('{F8}');
+		await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledOnce());
+		await userEvent.keyboard('{NumpadAdd}{F8}');
+		await wait(50);
+		expect(o.update).not.toHaveBeenCalled();
+		expect(o.pendingForDelete).toHaveBeenCalledOnce();
+		await expect.element(dialog()).not.toBeInTheDocument();
 	});
 
 	it('delete asks with the pending numbers', async () => {

@@ -4,7 +4,7 @@
 	import { useKeys } from '../keyboard/keymap.svelte';
 	import type { RecordForm } from '../records/record-form.svelte';
 	import ActionButton from './ActionButton.svelte';
-	import DeleteDialog from './DeleteDialog.svelte';
+	import ConfirmDialog from './ConfirmDialog.svelte';
 	import Dialog from './Dialog.svelte';
 	import Form from './Form.svelte';
 	import ScreenHeader from './ScreenHeader.svelte';
@@ -71,7 +71,7 @@
 	{@render children()}
 </Form>
 
-<DeleteDialog flow={form.deletion} />
+<ConfirmDialog flow={form.deletion} />
 
 <Dialog
 	bind:open={

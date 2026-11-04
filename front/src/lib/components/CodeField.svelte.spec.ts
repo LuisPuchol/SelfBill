@@ -33,6 +33,20 @@ describe('CodeField', () => {
 		await expect.element(articulo()).toHaveFocus();
 	});
 
+	it('an initial code that does not exist shows no error until Enter, and Enter does not move on', async () => {
+		const lookup = vi.fn(async () => null);
+		render(CodeHarness, { lookup, initial: 99 });
+		await vi.waitFor(() => expect(lookup).toHaveBeenCalledOnce());
+		await expect.element(page.getByTestId('articleId')).toHaveTextContent('null');
+		await expect
+			.element(page.getByText('No existe ningún artículo con ese código'))
+			.not.toBeInTheDocument();
+		await articulo().click();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(page.getByText('No existe ningún artículo con ese código')).toBeVisible();
+		await expect.element(articulo()).toHaveFocus();
+	});
+
 	it('keeps only digits', async () => {
 		render(CodeHarness, { lookup: async () => null });
 		await articulo().click();

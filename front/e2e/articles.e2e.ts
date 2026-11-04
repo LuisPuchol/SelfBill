@@ -61,8 +61,10 @@ test('search by name and by code', async ({ page, request }) => {
 	await searchFor(page, 'ZANAHORIA busqueda');
 	await expect(page.getByRole('cell', { name: 'Zanahoria búsqueda' })).toBeVisible();
 	await expect(page.getByRole('cell', { name: 'Zanahoria otra' })).toBeHidden();
-	// Digits are a code: Enter opens it, even before the search has come back.
-	await page.getByLabel('Buscar (código o nombre)').fill('9101');
+	// Digits are a code; Enter opens it once its rows are there.
+	await searchFor(page, '9101');
+	await expect(page.getByRole('cell', { name: 'Zanahoria búsqueda' })).toBeVisible();
+	await expect(page.getByRole('cell', { name: 'Zanahoria otra' })).toBeHidden();
 	await page.keyboard.press('Enter');
 	await expect(page).toHaveURL(`/articles/${id}`);
 	await expect(page.getByRole('heading', { name: 'Artículo 9101' })).toBeVisible();
