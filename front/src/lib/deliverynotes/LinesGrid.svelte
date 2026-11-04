@@ -157,7 +157,8 @@
 		for (const line of lines) {
 			const offer = untouchedOffer(line);
 			if (!offer) continue;
-			offer.price = null;
+			// A new offer, not the old one changed: a price still on its way is not this one's anymore.
+			offers.set(line, { code: offer.code, price: null });
 			line.price = null;
 		}
 	}

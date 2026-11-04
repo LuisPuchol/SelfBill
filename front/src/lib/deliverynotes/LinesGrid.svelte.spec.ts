@@ -241,6 +241,32 @@ describe('LinesGrid', () => {
 		await expect.element(cell(2, 'Precio')).toHaveValue('2,50');
 	});
 
+	it('a price still on its way when the client is typed again does not come back', async () => {
+		const first = deferred<number | null>();
+		const second = deferred<number | null>();
+		const proposePrice = vi
+			.fn<(code: number) => Promise<number | null>>()
+			.mockResolvedValueOnce(1.2)
+			.mockReturnValueOnce(first.promise)
+			.mockReturnValueOnce(second.promise);
+		await render(GridHarness, props({ proposePrice }));
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		// Client A found: its price is on its way. Then the client is typed over.
+		await page.getByRole('button', { name: 'Otro cliente' }).click();
+		await page.getByRole('button', { name: 'Cliente tecleado' }).click();
+		first.resolve(0.5);
+		await first.promise;
+		await expect.element(cell(0, 'Precio')).toHaveValue('');
+		expect(linesNow()[0].price).toBeNull();
+		// Client B found: its own price comes in.
+		await page.getByRole('button', { name: 'Otro cliente' }).click();
+		second.resolve(0.9);
+		await second.promise;
+		await expect.element(cell(0, 'Precio')).toHaveValue('0,90');
+	});
+
 	it("a proposal still on its way when the client changes gives way to the new client's", async () => {
 		const before = deferred<number | null>();
 		const after = deferred<number | null>();
