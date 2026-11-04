@@ -5,7 +5,7 @@ import LedgerHarness from '#lib/test/LedgerHarness.svelte';
 import { ApiError, networkError } from '#lib/api/errors.js';
 import { errorMessages } from '#lib/api/messages.js';
 import type { components } from '#lib/api/schema.js';
-import { connectionRestored, errorState } from '#lib/components/errors.svelte.js';
+import { connectionRestored, dismissError, errorState } from '#lib/components/errors.svelte.js';
 import { invoiceDeletion } from '#lib/invoices/deletion.js';
 
 type Invoice = components['schemas']['InvoiceResponse'];
@@ -101,8 +101,8 @@ async function loaded(p: ReturnType<typeof props>) {
 beforeEach(() => page.viewport(1280, 800));
 
 afterEach(() => {
-	errorState.connectionLost = false;
-	errorState.view = null;
+	connectionRestored();
+	dismissError();
 });
 
 function deferred<T>() {

@@ -122,12 +122,21 @@
 		if (line.price === null) void propose(line, code);
 	}
 
-	/** Puts in the last price for the article; the price stays empty meanwhile and if there is none. */
-	async function propose(line: LineValues, code: number): Promise<void> {
+	/**
+	 * Empties the line's price under a new offer for the article: an offer is replaced, never changed,
+	 * so a price still on its way for the old one is not taken.
+	 */
+	function withdraw(line: LineValues, code: number): Offer {
 		const offer: Offer = { code, price: null };
 		offers.set(line, offer);
-		// Another article's or client's price must not be saved while this one is on its way.
 		line.price = null;
+		return offer;
+	}
+
+	/** Puts in the last price for the article; the price stays empty meanwhile and if there is none. */
+	async function propose(line: LineValues, code: number): Promise<void> {
+		// Another article's or client's price must not be saved while this one is on its way.
+		const offer = withdraw(line, code);
 		let price: number | null;
 		try {
 			price = await proposePrice(code);
@@ -156,10 +165,7 @@
 	export function clearOfferedPrices(): void {
 		for (const line of lines) {
 			const offer = untouchedOffer(line);
-			if (!offer) continue;
-			// A new offer, not the old one changed: a price still on its way is not this one's anymore.
-			offers.set(line, { code: offer.code, price: null });
-			line.price = null;
+			if (offer) withdraw(line, offer.code);
 		}
 	}
 

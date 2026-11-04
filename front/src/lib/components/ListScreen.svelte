@@ -259,11 +259,10 @@
 	function open(): void {
 		const wanted = text.trim();
 		if (wanted !== searched) {
-			// A text search is not opened blind: Enter again once its rows are there.
-			if (!isCodeSearch(wanted)) return;
-			// Rows of an older search ("7" and Enter faster than the pause): search now, unless it is
-			// already on its way, and open when the rows for this text come.
-			pendingOpen = wanted;
+			// Rows of an older search ("7" and Enter faster than the pause): a code opens when the rows
+			// for this text come. A text search is not opened blind: Enter again once its rows are
+			// there. Either way search now, unless it is already on its way: the rows come sooner.
+			if (isCodeSearch(wanted)) pendingOpen = wanted;
 			if (timer !== undefined || sent.trim() !== wanted) searchNow(text);
 			return;
 		}

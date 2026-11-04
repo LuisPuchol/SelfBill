@@ -4,7 +4,7 @@ import { render } from 'vitest-browser-svelte';
 import BillingHarness from '#lib/test/BillingHarness.svelte';
 import { ApiError, networkError } from '#lib/api/errors.js';
 import { errorMessages } from '#lib/api/messages.js';
-import { connectionRestored, errorState } from '#lib/components/errors.svelte.js';
+import { connectionRestored, dismissError, errorState } from '#lib/components/errors.svelte.js';
 import type { PendingInvoice } from '#lib/invoices/billing.js';
 
 const note = (id: number, code: number, date: string, total: number) => ({
@@ -110,11 +110,12 @@ function selection(): [number | null, number | null] {
 beforeEach(() => page.viewport(1280, 800));
 
 afterEach(() => {
-	errorState.connectionLost = false;
-	errorState.view = null;
+	connectionRestored();
+	dismissError();
 });
 
 const lost = () => networkError(new Error('Failed to fetch'));
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** A promise the test settles when it wants. */
 function deferred<T>() {
@@ -435,7 +436,7 @@ describe('Billing, Facturar todos', () => {
 		await expect.element(dateField()).toHaveFocus();
 	});
 
-	it('a lost connection on the way back from the batch: no summary, and once back nothing stale', async () => {
+	it('a lost connection on the way back from the batch: the summary once back, and nothing stale', async () => {
 		const p = props();
 		p.loadPending
 			.mockResolvedValueOnce([a, b, c])
@@ -448,17 +449,40 @@ describe('Billing, Facturar todos', () => {
 		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
 		expect(p.issue).toHaveBeenCalledTimes(2);
 		expect(p.loadPending).toHaveBeenCalledTimes(2);
+		// Nothing over the connection screen.
 		await expect.element(dialog()).not.toBeInTheDocument();
 
 		connectionRestored();
-		await expect.element(dateField()).toHaveFocus();
-		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(dialog()).toHaveTextContent('2 facturas emitidas: 101 a 102');
+		await expect.element(dialog()).toHaveTextContent('VARIOS');
 		await expect.element(list()).not.toBeInTheDocument();
 		expect(p.toast).not.toHaveBeenCalled();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(dateField()).toHaveFocus();
 		// The list again, as it is now.
 		await userEvent.keyboard('{Enter}');
 		await expect.element(listRow(0)).toHaveTextContent('VARIOS');
 		await expect.element(listRow(1)).not.toBeInTheDocument();
+	});
+
+	it('a lost connection on the way back from the batch with nothing left out: the toast once back', async () => {
+		const p = props();
+		p.loadPending.mockResolvedValueOnce([a, b]).mockRejectedValueOnce(lost());
+		p.issue.mockResolvedValueOnce({ number: '101' }).mockResolvedValueOnce({ number: '102' });
+		await loaded(p);
+		await userEvent.keyboard('{NumpadAdd}{NumpadAdd}');
+
+		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
+		await wait(50);
+		expect(p.toast).not.toHaveBeenCalled();
+
+		connectionRestored();
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('2 facturas emitidas: 101 a 102')
+		);
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(dateField()).toHaveFocus();
 	});
 
 	it('ignores keys while issuing, and counts only the rows it issues', async () => {

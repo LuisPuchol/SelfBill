@@ -4,7 +4,7 @@ import { render } from 'vitest-browser-svelte';
 import ClientSummaryHarness from '#lib/test/ClientSummaryHarness.svelte';
 import { ApiError, networkError } from '#lib/api/errors.js';
 import type { components } from '#lib/api/schema.js';
-import { errorState } from '#lib/components/errors.svelte.js';
+import { connectionRestored, dismissError, errorState } from '#lib/components/errors.svelte.js';
 
 type ClientTotals = components['schemas']['ClientSummaryResponse'];
 type Invoice = components['schemas']['InvoiceResponse'];
@@ -105,8 +105,8 @@ const selection = (field: HTMLInputElement) => [field.selectionStart, field.sele
 beforeEach(() => page.viewport(1280, 800));
 
 afterEach(() => {
-	errorState.connectionLost = false;
-	errorState.view = null;
+	connectionRestored();
+	dismissError();
 });
 
 function deferred<T>() {

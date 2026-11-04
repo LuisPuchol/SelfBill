@@ -4,7 +4,7 @@ import { render } from 'vitest-browser-svelte';
 import TraceabilityHarness from '#lib/test/TraceabilityHarness.svelte';
 import { ApiError } from '#lib/api/errors.js';
 import type { components } from '#lib/api/schema.js';
-import { errorState } from '#lib/components/errors.svelte.js';
+import { connectionRestored, dismissError } from '#lib/components/errors.svelte.js';
 
 type Article = components['schemas']['TraceabilityArticleResponse'];
 type Lot = components['schemas']['TraceabilityLotResponse'];
@@ -72,8 +72,8 @@ const selection = (field: HTMLInputElement) => [field.selectionStart, field.sele
 beforeEach(() => page.viewport(1280, 800));
 
 afterEach(() => {
-	errorState.connectionLost = false;
-	errorState.view = null;
+	connectionRestored();
+	dismissError();
 });
 
 function deferred<T>() {

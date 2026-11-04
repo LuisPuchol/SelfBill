@@ -43,26 +43,29 @@ export class RestoreFlow {
 		};
 	}
 
+	/** Busy until `onRestored` or `onFailed` is done too, as a delete. */
 	async confirm(): Promise<void> {
 		const target = this.#target;
 		if (!target || !this.dialog || this.#busy) return;
 		this.#busy = true;
 		try {
-			await this.#options.restore(target.id);
-		} catch (err) {
+			try {
+				await this.#options.restore(target.id);
+			} catch (err) {
+				this.dialog = null;
+				showError(err);
+				await this.#options.onFailed?.(target);
+				return;
+			}
 			this.dialog = null;
-			showError(err);
-			await this.#options.onFailed?.(target);
-			return;
+			const { entity } = this.#options;
+			this.#options.toast(
+				`${entity.Label} ${target.code} ${entity.feminine ? 'restaurada' : 'restaurado'}`
+			);
+			await this.#options.onRestored(target);
 		} finally {
 			this.#busy = false;
 		}
-		this.dialog = null;
-		const { entity } = this.#options;
-		this.#options.toast(
-			`${entity.Label} ${target.code} ${entity.feminine ? 'restaurada' : 'restaurado'}`
-		);
-		await this.#options.onRestored(target);
 	}
 
 	cancel(): void {

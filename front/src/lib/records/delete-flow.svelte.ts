@@ -37,7 +37,7 @@ export class DeleteFlow {
 		this.#options = options;
 	}
 
-	/** Counting what depends on a record, or removing it. */
+	/** Counting what depends on a record, or removing it and what follows (`onDeleted`, `onFailed`). */
 	get busy(): boolean {
 		return this.#busy;
 	}
@@ -65,20 +65,22 @@ export class DeleteFlow {
 		if (!target || !this.dialog || this.#busy) return;
 		this.#busy = true;
 		try {
-			await this.#options.remove(target.id);
-		} catch (err) {
+			try {
+				await this.#options.remove(target.id);
+			} catch (err) {
+				this.dialog = null;
+				showError(err);
+				await this.#options.onFailed?.(target);
+				return;
+			}
 			this.dialog = null;
-			showError(err);
-			await this.#options.onFailed?.(target);
-			return;
+			this.#options.toast(
+				`${this.#options.entity.Label} ${target.code} ${this.#options.entity.feminine ? 'borrada' : 'borrado'}`
+			);
+			await this.#options.onDeleted(target);
 		} finally {
 			this.#busy = false;
 		}
-		this.dialog = null;
-		this.#options.toast(
-			`${this.#options.entity.Label} ${target.code} ${this.#options.entity.feminine ? 'borrada' : 'borrado'}`
-		);
-		await this.#options.onDeleted(target);
 	}
 
 	cancel(): void {

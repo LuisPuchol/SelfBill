@@ -1,3 +1,4 @@
+import { tick } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
@@ -153,6 +154,12 @@ function orphan(note: Note = saved) {
 	return { id: note.id, saved: note, initial: noteValues(note, codes) };
 }
 
+/** Only its client deleted since: its articles keep their codes. */
+function clientGone(note: Note = saved) {
+	const codes = { client: null, article: (articleId: number) => articleId / 10 };
+	return { id: note.id, saved: note, initial: noteValues(note, codes) };
+}
+
 const sentLine = (articleId: number, lot: string, quantity: number, price: number) => ({
 	articleId,
 	traceabilityCode1: lot,
@@ -172,6 +179,7 @@ const dialog = () => page.getByRole('dialog');
 const dirty = () => page.getByTestId('dirty');
 const printBox = () => page.getByRole('checkbox', { name: /Imprimir albarán/ });
 const issueBox = () => page.getByRole('checkbox', { name: /Emitir factura/ });
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /** Where an element sits in the page, whatever the scroll. */
 const pageTop = (el: Element) => el.getBoundingClientRect().top + window.scrollY;
 /** Each mock was first called after the one before it. */
@@ -333,6 +341,35 @@ describe('DeliveryNoteRecord, client and articles deleted since', () => {
 		await userEvent.keyboard('{Enter}');
 		await expect.element(cell(0, 'Lote')).toHaveFocus();
 		await expect.element(page.getByText('Este dato es obligatorio')).not.toBeInTheDocument();
+	});
+
+	it('a note in a draft invoice whose client is deleted is read-only until the client is restored', async () => {
+		const p = props(clientGone({ ...saved, invoiceId: 3, invoiceStatus: 'DRAFT' }));
+		await render(DeliveryNoteHarness, p);
+		await expect.element(page.getByText('Frutería García')).toBeVisible();
+		await cell(1, 'Cantidad').click();
+		await userEvent.keyboard('{NumpadAdd}');
+		await wait(100);
+		expect(errorState.view).toBeNull();
+		expect(p.update).not.toHaveBeenCalled();
+
+		await expect
+			.element(
+				page.getByText(
+					'Está en una factura en borrador y su cliente está borrado: para cambiar el albarán, restáuralo en Clientes (F6, Ver borrados).',
+					{ exact: true }
+				)
+			)
+			.toBeVisible();
+		await expect.element(page.getByText(/si lo cambias/)).not.toBeInTheDocument();
+		await expect.element(bar()).not.toHaveTextContent(/Guardar|Borrar|Lotes|Quitar línea/);
+		await expect.element(cliente()).toHaveAttribute('readonly');
+		await expect.element(fecha()).toHaveAttribute('readonly');
+		await userEvent.keyboard('9{F8}');
+		await expect.element(cell(1, 'Cantidad')).toHaveValue('3,00');
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(dirty()).toHaveTextContent('false');
+		expect(p.remove).not.toHaveBeenCalled();
 	});
 });
 
@@ -594,7 +631,9 @@ describe('DeliveryNoteRecord, on saving', () => {
 	// The error dialog is closed while its component is still there: one closing after the unmount
 	// would dismiss the next test's error.
 	afterEach(async () => {
-		errorState.connectionLost = false;
+		// What waited for the connection runs now, not in the next test.
+		connectionRestored();
+		await tick();
 		if (errorState.view === null) return;
 		await userEvent.keyboard('{Enter}');
 		await expect.element(dialog()).not.toBeInTheDocument();
@@ -804,7 +843,7 @@ describe('DeliveryNoteRecord, on saving', () => {
 		await expect.element(dialog()).not.toBeInTheDocument();
 	});
 
-	it('the PDF not coming for a lost connection while issuing fails too: the connection screen', async () => {
+	it('the PDF not coming for a lost connection while issuing fails too: the connection screen, and once back why it was not issued', async () => {
 		const p = props({ initial: written() });
 		p.issueInvoice.mockRejectedValue(new ApiError(400, 'CLIENT_FISCAL_DATA_MISSING', 'x', {}));
 		p.fetchPdf.mockRejectedValue(networkError(new Error('Failed to fetch')));
@@ -816,6 +855,19 @@ describe('DeliveryNoteRecord, on saving', () => {
 		expect(errorState.connectionLost).toBe(true);
 		expect(errorState.view).toBeNull();
 		await expect.element(dialog()).not.toBeInTheDocument();
+
+		connectionRestored();
+		await expect
+			.element(
+				dialog().getByText(
+					/^El albarán se ha guardado, pero no se ha podido emitir la factura: Al cliente le faltan datos para emitir la factura/
+				)
+			)
+			.toBeVisible();
+		await expect.element(dialog().getByText('No se ha podido imprimir el albarán.')).toBeVisible();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(cliente()).toHaveFocus();
 	});
 
 	it('the error dialog open, the connection lost and back: the cursor in Cliente', async () => {

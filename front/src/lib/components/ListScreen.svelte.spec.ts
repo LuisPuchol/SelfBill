@@ -204,10 +204,13 @@ describe('ListScreen', () => {
 		const { rerender } = await render(ListHarness, s);
 		await userEvent.keyboard('gar{Enter}');
 		expect(s.onOpen).not.toHaveBeenCalled();
+		// It opens nothing, but its rows come sooner: the search goes out without waiting for the pause.
+		expect(s.onSearch).toHaveBeenCalledExactlyOnceWith('gar');
 		await rerender({ search: 'gar', rows: [rows[0]] });
-		// The Enter that came before is not kept.
-		await wait(100);
+		// The Enter that came before is not kept, and the pause sends nothing more.
+		await wait(400);
 		expect(s.onOpen).not.toHaveBeenCalled();
+		expect(s.onSearch).toHaveBeenCalledOnce();
 		await userEvent.keyboard('{Enter}');
 		expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(rows[0]);
 	});

@@ -3,6 +3,7 @@ import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import ErrorHarness from '#lib/test/ErrorHarness.svelte';
 import {
+	connectionRestored,
 	dismissError,
 	errorState,
 	showError,
@@ -13,8 +14,8 @@ import { ApiError, networkError } from '#lib/api/errors.js';
 import { errorMessages } from '#lib/api/messages.js';
 
 beforeEach(() => {
-	errorState.view = null;
-	errorState.connectionLost = false;
+	connectionRestored();
+	dismissError();
 });
 
 describe('ErrorDialog', () => {

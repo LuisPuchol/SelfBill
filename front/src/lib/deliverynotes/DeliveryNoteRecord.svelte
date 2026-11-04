@@ -5,7 +5,7 @@
 	import CheckAction from '../components/CheckAction.svelte';
 	import CodeField from '../components/CodeField.svelte';
 	import DateField from '../components/DateField.svelte';
-	import { showError, showMessage } from '../components/errors.svelte';
+	import { showError, showMessage, whenNoError } from '../components/errors.svelte';
 	import RecordScreen from '../components/RecordScreen.svelte';
 	import { timeNow } from '../format/date';
 	import { useKeys } from '../keyboard/keymap.svelte';
@@ -127,8 +127,16 @@
 		toast
 	});
 
-	/** In an issued invoice nothing changes: no field, no key. */
-	const readOnly = $derived(saved?.invoiceStatus === 'ISSUED');
+	/**
+	 * In a draft invoice whose client was deleted since (its code left empty): the invoice cannot
+	 * change until the client is restored (CONCEPTO §7).
+	 */
+	const draftOfDeletedClient = $derived(
+		saved?.invoiceStatus === 'DRAFT' && form.saved.clientCode === null
+	);
+
+	/** In an issued invoice nothing changes: no field, no key. Nor in a draft of a deleted client. */
+	const readOnly = $derived(saved?.invoiceStatus === 'ISSUED' || draftOfDeletedClient);
 
 	/** A note in a draft invoice keeps its client: the invoice is of one client only. */
 	const clientLocked = $derived(readOnly || saved?.invoiceStatus === 'DRAFT');
@@ -250,14 +258,20 @@
 		// One dialog for all that went wrong: a second one would only replace the first. A lost
 		// connection takes the whole screen instead; the toast still says the note is saved.
 		const printMessage = 'No se ha podido imprimir el albarán.';
-		if (printFailure && classifyError(printFailure.err).kind === 'connection') {
-			showError(printFailure.err);
-		} else if (issueFailure) {
-			showError(issueFailure.err, {
+		const showIssueFailure = (err: unknown) =>
+			showError(err, {
 				lead: 'El albarán se ha guardado, pero no se ha podido emitir la factura:',
 				also: printFailure ? printMessage : undefined
 			});
-		} else if (printFailure) showMessage(printMessage);
+		if (printFailure && classifyError(printFailure.err).kind === 'connection') {
+			showError(printFailure.err);
+			// Nothing over the connection screen: why the invoice was not issued waits for it to go.
+			if (issueFailure) {
+				const { err } = issueFailure;
+				whenNoError(() => showIssueFailure(err));
+			}
+		} else if (issueFailure) showIssueFailure(issueFailure.err);
+		else if (printFailure) showMessage(printMessage);
 		return issued;
 	}
 
@@ -280,6 +294,11 @@
 	{#if saved?.invoiceStatus === 'ISSUED'}
 		<p class="{banner} border-issued text-issued">
 			Está en la factura nº {saved.invoiceNumber}, emitida: no se puede modificar.
+		</p>
+	{:else if draftOfDeletedClient}
+		<p class="{banner} border-draft text-draft">
+			Está en una factura en borrador y su cliente está borrado: para cambiar el albarán, restáuralo
+			en Clientes (F6, Ver borrados).
 		</p>
 	{:else if saved?.invoiceStatus === 'DRAFT'}
 		<p class="{banner} border-draft text-draft">
