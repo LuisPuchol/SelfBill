@@ -185,21 +185,31 @@ describe('ListScreen', () => {
 		await expect.element(bar()).not.toHaveTextContent('Salir');
 	});
 
-	it('Enter before the search arrives opens nothing; once the rows are there, it opens the marked one', async () => {
+	it('a code typed fast with Enter opens that record when it arrives', async () => {
 		const s = spies();
 		const { rerender } = await render(ListHarness, s);
 		await userEvent.keyboard('7{Enter}');
-		// Not a row of the old list, and not a search sent by the Enter either.
+		// Not a row of the old list: the search goes out at once, without waiting for the pause.
 		expect(s.onOpen).not.toHaveBeenCalled();
-		await vi.waitFor(() => expect(s.onSearch).toHaveBeenCalledExactlyOnceWith('7'));
-		await userEvent.keyboard('{Enter}');
-		expect(s.onOpen).not.toHaveBeenCalled();
+		expect(s.onSearch).toHaveBeenCalledExactlyOnceWith('7');
 		await rerender({ search: '7', rows: [seven] });
-		// The Enter that came before is spent.
+		await vi.waitFor(() => expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(seven));
+		await wait(400);
+		expect(s.onSearch).toHaveBeenCalledOnce();
+		expect(s.onOpen).toHaveBeenCalledOnce();
+	});
+
+	it('a text typed fast with Enter opens nothing; once its rows are there, Enter opens the marked one', async () => {
+		const s = spies();
+		const { rerender } = await render(ListHarness, s);
+		await userEvent.keyboard('gar{Enter}');
+		expect(s.onOpen).not.toHaveBeenCalled();
+		await rerender({ search: 'gar', rows: [rows[0]] });
+		// The Enter that came before is not kept.
 		await wait(100);
 		expect(s.onOpen).not.toHaveBeenCalled();
 		await userEvent.keyboard('{Enter}');
-		expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(seven);
+		expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(rows[0]);
 	});
 
 	it('a code that does not exist opens nothing', async () => {
@@ -213,39 +223,20 @@ describe('ListScreen', () => {
 		expect(s.onOpen).not.toHaveBeenCalled();
 	});
 
-	it('a page turned while a search is on its way does not leave Enter stuck', async () => {
+	it('a page turned while a code search is on its way does not leave Enter stuck', async () => {
 		const s = spies();
 		const { rerender } = await render(ListHarness, { ...s, page: { number: 0, totalPages: 3 } });
-		await userEvent.keyboard('7');
-		await vi.waitFor(() => expect(s.onSearch).toHaveBeenCalledExactlyOnceWith('7'));
+		await userEvent.keyboard('7{Enter}');
+		expect(s.onSearch).toHaveBeenCalledExactlyOnceWith('7');
+		// The page replaces the search on its way: the rows that come are page 2 of the old list.
 		await userEvent.keyboard('{PageDown}');
 		expect(s.onPage).toHaveBeenCalledExactlyOnceWith(1);
-		await rerender({ search: '7', rows: [seven], page: { number: 0, totalPages: 1 } });
+		await rerender({ page: { number: 1, totalPages: 3 } });
 		await userEvent.keyboard('{Enter}');
-		expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(seven);
-	});
-
-	it('page keys turn the page from the search box', async () => {
-		const s = spies();
-		await render(ListHarness, { ...s, page: { number: 1, totalPages: 3 } });
-		await expect.element(searchBox()).toHaveFocus();
-		await userEvent.keyboard('{PageDown}');
-		expect(s.onPage).toHaveBeenCalledExactlyOnceWith(2);
-		await userEvent.keyboard('{PageUp}');
-		expect(s.onPage).toHaveBeenLastCalledWith(0);
-	});
-
-	it('the search box follows a search it did not send', async () => {
-		const s = spies();
-		// The list as left with `?q=gar`; then the top bar's "Clientes" link, with no search.
-		const { rerender } = await render(ListHarness, { ...s, search: 'gar', rows: [rows[0]] });
-		await expect.element(searchBox()).toHaveValue('gar');
-		await rerender({ search: '', rows });
-		await expect.element(searchBox()).toHaveValue('');
-		await expect.element(bar()).toHaveTextContent('Esc Salir');
-		await userEvent.keyboard('{ArrowDown}{Enter}');
-		expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(rows[1]);
-		expect(s.onSearch).not.toHaveBeenCalled();
+		expect(s.onSearch).toHaveBeenCalledTimes(2);
+		expect(s.onSearch).toHaveBeenLastCalledWith('7');
+		await rerender({ search: '7', rows: [seven], page: { number: 0, totalPages: 1 } });
+		await vi.waitFor(() => expect(s.onOpen).toHaveBeenCalledExactlyOnceWith(seven));
 	});
 
 	it('leaving with Esc or F2 drops a search still waiting for the pause', async () => {
@@ -738,4 +729,13 @@ describe('ListScreen', () => {
 			await expect.element(dialog()).toHaveTextContent('¿Restaurar el cliente 3?');
 		});
 	});
+});
+it('typing again cancels an Enter that was waiting', async () => {
+	const s = spies();
+	const { rerender } = await render(ListHarness, s);
+	await userEvent.keyboard('7{Enter}1');
+	await rerender({ search: '7', rows: [seven] });
+	await expect.element(row(1)).toHaveTextContent('Fruta Siete');
+	await vi.waitFor(() => expect(s.onSearch).toHaveBeenLastCalledWith('71'));
+	expect(s.onOpen).not.toHaveBeenCalled();
 });

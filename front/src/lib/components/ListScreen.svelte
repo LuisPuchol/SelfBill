@@ -104,6 +104,8 @@
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	/** The last text handed to onSearch: on its way while `search` has not caught up with it. */
 	let sent = untrack(() => search);
+	/** An Enter pressed before its rows came: they open as soon as they answer exactly this text. */
+	let pendingOpen: string | null = null;
 	/**
 	 * Where the mark was on a delete or a restore, done or failed (either takes the row off this
 	 * list): the rows reloaded after it keep the mark there.
@@ -169,6 +171,7 @@
 		untrack(() => {
 			if (value.trim() === sent.trim()) return;
 			cancelTimer();
+			pendingOpen = null;
 			text = sent = value;
 		});
 	});
@@ -192,7 +195,22 @@
 		});
 	});
 
+	// After the selection above has settled: the rows an earlier Enter was waiting for.
+	$effect(() => {
+		void rows;
+		const answered = searched;
+		untrack(() => {
+			if (pendingOpen === null || pendingOpen !== answered) return;
+			pendingOpen = null;
+			// None (the code does not exist): the Enter is spent and the empty message says why.
+			const row = rows[selected];
+			if (row !== undefined) onOpen(row);
+		});
+	});
+
 	function schedule(): void {
+		// Typing again changes what the earlier Enter was meant for.
+		pendingOpen = null;
 		clearTimeout(timer);
 		timer = setTimeout(() => {
 			timer = undefined;
@@ -219,16 +237,19 @@
 
 	function openRow(row: T): void {
 		cancelTimer();
+		pendingOpen = null;
 		onOpen(row);
 	}
 
 	function turnPage(n: number): void {
+		pendingOpen = null;
 		// The page goes out with the search on screen, and replaces one still on its way.
 		sent = search;
 		onPage(n);
 	}
 
 	function move(delta: number): void {
+		pendingOpen = null;
 		selected = Math.min(rows.length - 1, Math.max(0, selected + delta));
 		void tick().then(() =>
 			tableBox.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
@@ -236,9 +257,16 @@
 	}
 
 	function open(): void {
-		// The rows on screen are those of an older search ("7" and Enter faster than the answer): they
-		// are not what was typed, so nothing opens. Enter again, once the rows for this text are there.
-		if (text.trim() !== searched) return;
+		const wanted = text.trim();
+		if (wanted !== searched) {
+			// A text search is not opened blind: Enter again once its rows are there.
+			if (!isCodeSearch(wanted)) return;
+			// Rows of an older search ("7" and Enter faster than the pause): search now, unless it is
+			// already on its way, and open when the rows for this text come.
+			pendingOpen = wanted;
+			if (timer !== undefined || sent.trim() !== wanted) searchNow(text);
+			return;
+		}
 		// The rows answer what is typed; a search still waiting would only repeat it.
 		cancelTimer();
 		const row = rows[selected];
@@ -250,6 +278,8 @@
 		// Until the rows come back from a delete, the marked one may be the row just deleted.
 		if (!deleting || !flow || row === undefined || afterRemoval !== null) return;
 		if (deleting.canDelete?.(row) === false) return;
+		// Rows an earlier Enter was waiting for must not open behind the question.
+		pendingOpen = null;
 		void flow.ask({ id: rowId(row), code: deleting.code(row), name: deleting.describe(row) });
 	}
 
@@ -263,6 +293,7 @@
 	/** To the other list, with what is typed: a search waiting for the pause would come back here. */
 	function toggleDeleted(): void {
 		cancelTimer();
+		pendingOpen = null;
 		onToggleDeleted?.(text);
 	}
 
@@ -286,6 +317,7 @@
 		label: 'Nuevo',
 		run: () => {
 			cancelTimer();
+			pendingOpen = null;
 			onNew();
 		}
 	};
@@ -348,6 +380,7 @@
 						label: 'Salir',
 						run: () => {
 							cancelTimer();
+							pendingOpen = null;
 							onExit();
 						}
 					}
@@ -355,6 +388,7 @@
 						key: 'Escape',
 						label: 'Borrar búsqueda',
 						run: () => {
+							pendingOpen = null;
 							text = '';
 							searchNow('');
 						}
