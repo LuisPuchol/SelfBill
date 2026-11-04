@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import LedgerHarness from '#lib/test/LedgerHarness.svelte';
-import { ApiError } from '#lib/api/errors.js';
+import { ApiError, networkError } from '#lib/api/errors.js';
 import { errorMessages } from '#lib/api/messages.js';
 import type { components } from '#lib/api/schema.js';
-import { errorState } from '#lib/components/errors.svelte.js';
+import { connectionRestored, errorState } from '#lib/components/errors.svelte.js';
 import { invoiceDeletion } from '#lib/invoices/deletion.js';
 
 type Invoice = components['schemas']['InvoiceResponse'];
@@ -172,6 +172,25 @@ describe('Ledger', () => {
 		await expect.element(listRow(1)).toHaveAttribute('aria-selected', 'true');
 	});
 
+	it('a lost connection while loading: once back, the cursor is in Hasta and Enter loads', async () => {
+		const p = props();
+		p.loadInvoices
+			.mockResolvedValueOnce({ invoices: [first, second], truncated: false })
+			.mockRejectedValueOnce(networkError(new Error('Failed to fetch')));
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}');
+		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
+		await expect.element(list()).not.toBeInTheDocument();
+		// The connection screen makes the page inert: the cursor is out of the date.
+		await expect.element(toField()).not.toHaveFocus();
+
+		connectionRestored();
+		await expect.element(toField()).toHaveFocus();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(listRow(0)).toBeVisible();
+		expect(p.loadInvoices).toHaveBeenCalledTimes(3);
+	});
+
 	it('the panel follows the marked row', async () => {
 		const p = props();
 		await loaded(p);
@@ -220,6 +239,17 @@ describe('Ledger', () => {
 		await loaded(p);
 		await userEvent.keyboard('{Enter}{Enter}{F9}');
 		await expect.element(dialog().getByText('No se ha podido imprimir la factura.')).toBeVisible();
+		expect(p.print).not.toHaveBeenCalled();
+	});
+
+	it('F9 with the connection lost shows the connection screen, not the print message', async () => {
+		const p = props();
+		p.fetchPdf.mockRejectedValue(networkError(new Error('Failed to fetch')));
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}{F9}');
+		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
+		expect(errorState.view).toBeNull();
+		await expect.element(dialog()).not.toBeInTheDocument();
 		expect(p.print).not.toHaveBeenCalled();
 	});
 

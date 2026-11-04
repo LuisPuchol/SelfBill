@@ -6,7 +6,7 @@
 	import DateField from '../components/DateField.svelte';
 	import DeleteDialog from '../components/DeleteDialog.svelte';
 	import { DetailLoader } from '../components/detail-loader.svelte';
-	import { showError, showMessage } from '../components/errors.svelte';
+	import { showError, showPrintError, whenNoError } from '../components/errors.svelte';
 	import { fillViewport } from '../components/fill-viewport';
 	import Form from '../components/Form.svelte';
 	import ScreenHeader from '../components/ScreenHeader.svelte';
@@ -138,6 +138,9 @@
 			rows = null;
 			totals = null;
 			showError(err);
+			// With the list gone, back to the date the cursor was in, for Enter to load again, once the
+			// dialog or the connection screen let it.
+			whenNoError(() => nav?.restoreFocus());
 			return false;
 		}
 		if (id !== loadId) return false;
@@ -187,8 +190,8 @@
 		busy = true;
 		try {
 			await print(await fetchPdf(row.id));
-		} catch {
-			showMessage('No se ha podido imprimir la factura.');
+		} catch (err) {
+			showPrintError(err, 'No se ha podido imprimir la factura.');
 		} finally {
 			busy = false;
 		}

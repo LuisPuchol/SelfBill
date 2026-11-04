@@ -128,6 +128,11 @@ export class FormNav {
 		this.#fields.find((f) => f.name === name)?.el.focus();
 	}
 
+	/** A field of that name is on screen. */
+	hasField(name: string): boolean {
+		return this.#fields.some((f) => f.name === name);
+	}
+
 	/** Focuses whichever of `names` comes first in the page, e.g. the first field with an error. */
 	focusFirst(names: readonly string[]): void {
 		this.#ordered()

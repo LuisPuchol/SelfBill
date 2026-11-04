@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import ClientSummaryHarness from '#lib/test/ClientSummaryHarness.svelte';
-import { ApiError } from '#lib/api/errors.js';
+import { ApiError, networkError } from '#lib/api/errors.js';
 import type { components } from '#lib/api/schema.js';
 import { errorState } from '#lib/components/errors.svelte.js';
 
@@ -385,5 +385,16 @@ describe('ClientSummary', () => {
 		await loaded(p);
 		await userEvent.keyboard('{Enter}{Enter}{F9}');
 		await expect.element(dialog().getByText('No se ha podido imprimir la factura.')).toBeVisible();
+	});
+
+	it('F9 with the connection lost shows the connection screen, not the print message', async () => {
+		const p = props();
+		p.fetchPdf.mockRejectedValue(networkError(new Error('Failed to fetch')));
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}{F9}');
+		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
+		expect(errorState.view).toBeNull();
+		await expect.element(dialog()).not.toBeInTheDocument();
+		expect(p.print).not.toHaveBeenCalled();
 	});
 });

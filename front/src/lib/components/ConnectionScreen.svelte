@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { useKeys } from '../keyboard/keymap.svelte';
-	import { errorState } from './errors.svelte';
+	import { connectionRestored } from './errors.svelte';
 
 	let {
 		ping = defaultPing,
@@ -35,7 +35,7 @@
 		try {
 			if (alive && (await ping())) {
 				alive = false;
-				errorState.connectionLost = false;
+				connectionRestored();
 				onRestored?.();
 			}
 		} finally {

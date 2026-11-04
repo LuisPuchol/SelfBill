@@ -5,14 +5,16 @@
 	import KeyboardRoot from '../keyboard/KeyboardRoot.svelte';
 	import ErrorDialog from '../components/ErrorDialog.svelte';
 	import KeyBar from '../components/KeyBar.svelte';
+	import { errorState } from '../components/errors.svelte';
 	import Billing from '../invoices/Billing.svelte';
 
 	let props: ComponentProps<typeof Billing> = $props();
 </script>
 
 <KeyboardRoot />
-<!-- The app's main: its bottom padding keeps the list clear of the key bar -->
-<main class="p-6 pb-16">
+<!-- The app's main: its bottom padding keeps the list clear of the key bar, and it is inert while
+	the connection screen is up -->
+<main class="p-6 pb-16" inert={errorState.connectionLost}>
 	<Billing {...props} />
 </main>
 <ErrorDialog />

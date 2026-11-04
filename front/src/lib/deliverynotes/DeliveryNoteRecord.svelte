@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { classifyError } from '../api/classify';
 	import type { components } from '../api/schema';
 	import CheckAction from '../components/CheckAction.svelte';
 	import CodeField from '../components/CodeField.svelte';
@@ -235,22 +236,25 @@
 				issueFailure = { err };
 			}
 		}
-		let printFailed = false;
+		let printFailure: { err: unknown } | undefined;
 		if (printNote) {
 			try {
 				await print(await fetchPdf(note.id));
-			} catch {
-				printFailed = true;
+			} catch (err) {
+				printFailure = { err };
 			}
 		}
-		// One dialog for all that went wrong: a second one would only replace the first.
+		// One dialog for all that went wrong: a second one would only replace the first. A lost
+		// connection takes the whole screen instead; the toast still says the note is saved.
 		const printMessage = 'No se ha podido imprimir el albarán.';
-		if (issueFailure) {
+		if (printFailure && classifyError(printFailure.err).kind === 'connection') {
+			showError(printFailure.err);
+		} else if (issueFailure) {
 			showError(issueFailure.err, {
 				lead: 'El albarán se ha guardado, pero no se ha podido emitir la factura:',
-				also: printFailed ? printMessage : undefined
+				also: printFailure ? printMessage : undefined
 			});
-		} else if (printFailed) showMessage(printMessage);
+		} else if (printFailure) showMessage(printMessage);
 		return issued;
 	}
 

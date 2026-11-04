@@ -7,7 +7,7 @@
 	import DataTable from '../components/DataTable.svelte';
 	import DateField from '../components/DateField.svelte';
 	import { DetailLoader } from '../components/detail-loader.svelte';
-	import { showError, showMessage } from '../components/errors.svelte';
+	import { showError, showPrintError } from '../components/errors.svelte';
 	import { fillViewport, fillViewportExact } from '../components/fill-viewport';
 	import Form from '../components/Form.svelte';
 	import ScreenHeader from '../components/ScreenHeader.svelte';
@@ -187,8 +187,8 @@
 		busy = true;
 		try {
 			await print(await fetchPdf(row.id));
-		} catch {
-			showMessage('No se ha podido imprimir la factura.');
+		} catch (err) {
+			showPrintError(err, 'No se ha podido imprimir la factura.');
 		} finally {
 			busy = false;
 		}

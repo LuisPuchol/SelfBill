@@ -3,8 +3,8 @@ import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import DeliveryNoteHarness from '#lib/test/DeliveryNoteHarness.svelte';
 import type { api } from '#lib/api/client.js';
-import { ApiError } from '#lib/api/errors.js';
-import { errorState } from '#lib/components/errors.svelte.js';
+import { ApiError, networkError } from '#lib/api/errors.js';
+import { connectionRestored, errorState, showError } from '#lib/components/errors.svelte.js';
 import type { components } from '../api/schema';
 import { blankNote, emptyLine, noteValues, type LineValues } from '#lib/deliverynotes/form.js';
 import { createLookups } from '#lib/deliverynotes/lookups.js';
@@ -517,6 +517,7 @@ describe('DeliveryNoteRecord, on saving', () => {
 	// The error dialog is closed while its component is still there: one closing after the unmount
 	// would dismiss the next test's error.
 	afterEach(async () => {
+		errorState.connectionLost = false;
 		if (errorState.view === null) return;
 		await userEvent.keyboard('{Enter}');
 		await expect.element(dialog()).not.toBeInTheDocument();
@@ -706,6 +707,61 @@ describe('DeliveryNoteRecord, on saving', () => {
 			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado')
 		);
 		expect(p.print).not.toHaveBeenCalled();
+	});
+
+	it('the PDF not coming for a lost connection: the connection screen, and once back the next note', async () => {
+		const p = props({ initial: written() });
+		p.fetchPdf.mockRejectedValue(networkError(new Error('Failed to fetch')));
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F9}{NumpadAdd}');
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado')
+		);
+		expect(errorState.connectionLost).toBe(true);
+		expect(errorState.view).toBeNull();
+		await expect.element(cliente()).toHaveValue('');
+		await expect.element(cliente()).not.toHaveFocus();
+
+		connectionRestored();
+		await expect.element(cliente()).toHaveFocus();
+		await expect.element(dialog()).not.toBeInTheDocument();
+	});
+
+	it('the PDF not coming for a lost connection while issuing fails too: the connection screen', async () => {
+		const p = props({ initial: written() });
+		p.issueInvoice.mockRejectedValue(new ApiError(400, 'CLIENT_FISCAL_DATA_MISSING', 'x', {}));
+		p.fetchPdf.mockRejectedValue(networkError(new Error('Failed to fetch')));
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F3}{F9}{NumpadAdd}');
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado')
+		);
+		expect(errorState.connectionLost).toBe(true);
+		expect(errorState.view).toBeNull();
+		await expect.element(dialog()).not.toBeInTheDocument();
+	});
+
+	it('the error dialog open, the connection lost and back: the cursor in Cliente', async () => {
+		const p = props({ initial: written() });
+		p.issueInvoice.mockRejectedValue(new ApiError(400, 'CLIENT_FISCAL_DATA_MISSING', 'x', {}));
+		await render(DeliveryNoteHarness, p);
+		await userEvent.keyboard('{F3}{NumpadAdd}');
+		await expect.element(dialog()).toBeVisible();
+		await vi.waitFor(() =>
+			expect(p.toast).toHaveBeenCalledExactlyOnceWith('Albarán 1045 guardado')
+		);
+		await expect.element(cliente()).toHaveValue('');
+
+		// Something else finds the API gone while the dialog is open.
+		showError(networkError(new Error('Failed to fetch')));
+		await expect.element(dialog()).not.toBeInTheDocument();
+		// Chromium fires `close` at the next frame: once the component is gone, it would dismiss the
+		// next test's error.
+		await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+		await expect.element(cliente()).not.toHaveFocus();
+
+		connectionRestored();
+		await expect.element(cliente()).toHaveFocus();
 	});
 
 	it('issuing and printing both failing: one dialog says both', async () => {

@@ -3,17 +3,21 @@
 	import KeyboardRoot from '../keyboard/KeyboardRoot.svelte';
 	import ErrorDialog from '../components/ErrorDialog.svelte';
 	import KeyBar from '../components/KeyBar.svelte';
+	import { errorState } from '../components/errors.svelte';
 	import DeliveryNoteRecord from '../deliverynotes/DeliveryNoteRecord.svelte';
 
 	let props: Omit<ComponentProps<typeof DeliveryNoteRecord>, 'guard'> = $props();
 </script>
 
 <KeyboardRoot />
-<DeliveryNoteRecord {...props}>
-	{#snippet guard(form)}
-		<!-- What the page's UnsavedGuard asks -->
-		<output data-testid="dirty">{String(form.isDirty)}</output>
-	{/snippet}
-</DeliveryNoteRecord>
+<!-- The app's main: inert while the connection screen is up -->
+<main inert={errorState.connectionLost}>
+	<DeliveryNoteRecord {...props}>
+		{#snippet guard(form)}
+			<!-- What the page's UnsavedGuard asks -->
+			<output data-testid="dirty">{String(form.isDirty)}</output>
+		{/snippet}
+	</DeliveryNoteRecord>
+</main>
 <ErrorDialog />
 <KeyBar />

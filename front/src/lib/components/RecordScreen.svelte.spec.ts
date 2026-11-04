@@ -3,6 +3,7 @@ import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import RecordHarness from '#lib/test/RecordHarness.svelte';
 import { ApiError } from '#lib/api/errors.js';
+import { errorMessages } from '#lib/api/messages.js';
 import { dismissError, errorState } from '#lib/components/errors.svelte.js';
 import type { Saved } from '#lib/records/record-form.svelte.js';
 
@@ -207,6 +208,35 @@ describe('RecordScreen', () => {
 		await expect.element(name()).toHaveFocus();
 		await userEvent.keyboard('s');
 		await expect.element(page.getByText('Pon un nombre')).not.toBeInTheDocument();
+	});
+
+	it('a validation error for a field on screen goes under it, without dialog', async () => {
+		const o = options();
+		o.create.mockRejectedValue(new ApiError(400, 'VALIDATION_ERROR', '', { name: 'x' }));
+		await render(RecordHarness, o);
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect.element(name()).toHaveAccessibleDescription('Revisa este dato');
+		expect(errorState.view).toBeNull();
+	});
+
+	it('a validation error for a field not on screen opens the dialog', async () => {
+		const o = options();
+		o.create.mockRejectedValue(
+			new ApiError(400, 'VALIDATION_ERROR', '', { name: 'x', 'lines[0].price': 'y' })
+		);
+		await render(RecordHarness, o);
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await vi.waitFor(() =>
+			expect(errorState.view).toEqual({
+				kind: 'business',
+				message: errorMessages.VALIDATION_ERROR
+			})
+		);
+		// The one with its field on screen still goes under it.
+		await expect.element(name()).toHaveAccessibleDescription('Revisa este dato');
+		dismissError();
 	});
 
 	it('a code that is not positive is explained under the code field', async () => {

@@ -17,7 +17,7 @@ export const errorState = $state<{
 	connectionLost: false
 });
 
-/** What waits for the error dialog to close: see `whenNoError`. */
+/** What waits for the error dialog to close and the connection to come back: see `whenNoError`. */
 let waiting: (() => void)[] = [];
 
 /**
@@ -28,9 +28,9 @@ export function showError(err: unknown, context: ErrorContext = {}): void {
 	const view = classifyError(err);
 	if (view.kind === 'connection') {
 		// The connection screen takes over: drop any open dialog so it can't resurface afterwards.
+		// What waited for the dialog waits for the connection now.
 		errorState.view = null;
 		errorState.connectionLost = true;
-		closed();
 	} else errorState.view = { ...view, ...context };
 }
 
@@ -39,23 +39,43 @@ export function showMessage(message: string): void {
 	errorState.view = { kind: 'business', message };
 }
 
+/** A print that failed: a lost connection raises its screen, anything else says `message`. */
+export function showPrintError(err: unknown, message: string): void {
+	if (classifyError(err).kind === 'connection') showError(err);
+	else showMessage(message);
+}
+
 export function dismissError(): void {
 	errorState.view = null;
 	closed();
 }
 
+/** The API answers again: the connection screen goes, and what waited for it runs. */
+export function connectionRestored(): void {
+	errorState.connectionLost = false;
+	closed();
+}
+
 /**
- * Runs `then` once no error dialog is open: straight away when none is. For moving the cursor,
- * which cannot get behind an open dialog.
+ * Runs `then` once no error dialog is open and the connection screen is gone: straight away when
+ * neither is up. For moving the cursor, which can get neither behind an open dialog nor into the
+ * page the connection screen makes inert. A connection lost while it waits keeps it waiting until
+ * the connection is back.
  */
 export function whenNoError(then: () => void): void {
-	if (errorState.view === null) then();
+	if (noError()) then();
 	else waiting.push(then);
 }
 
+function noError(): boolean {
+	return errorState.view === null && !errorState.connectionLost;
+}
+
 function closed(): void {
+	if (!noError()) return;
 	const run = waiting;
 	waiting = [];
-	// Once the dialog has really closed and given back the focus it took.
+	// Once the dialog has really closed and given back the focus it took, and the page is no
+	// longer inert.
 	if (run.length > 0) void tick().then(() => run.forEach((then) => then()));
 }

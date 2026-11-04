@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import BillingHarness from '#lib/test/BillingHarness.svelte';
-import { ApiError } from '#lib/api/errors.js';
+import { ApiError, networkError } from '#lib/api/errors.js';
 import { errorMessages } from '#lib/api/messages.js';
-import { errorState } from '#lib/components/errors.svelte.js';
+import { connectionRestored, errorState } from '#lib/components/errors.svelte.js';
 import type { PendingInvoice } from '#lib/invoices/billing.js';
 
 const note = (id: number, code: number, date: string, total: number) => ({
@@ -108,6 +108,13 @@ function selection(): [number | null, number | null] {
 
 // A desktop window, as the app's: two tables side by side do not fit the default phone width.
 beforeEach(() => page.viewport(1280, 800));
+
+afterEach(() => {
+	errorState.connectionLost = false;
+	errorState.view = null;
+});
+
+const lost = () => networkError(new Error('Failed to fetch'));
 
 /** A promise the test settles when it wants. */
 function deferred<T>() {
@@ -268,6 +275,23 @@ describe('Billing, the list', () => {
 			.not.toBeInTheDocument();
 	});
 
+	it('a lost connection while loading: once back, the cursor is in the date and Enter loads', async () => {
+		const p = props();
+		p.loadPending.mockRejectedValueOnce(lost());
+		await render(BillingHarness, p);
+		await expect.element(dateField()).toHaveFocus();
+		await userEvent.keyboard('{Enter}');
+		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
+		// The connection screen makes the page inert: the cursor is out of the date.
+		await expect.element(dateField()).not.toHaveFocus();
+
+		connectionRestored();
+		await expect.element(dateField()).toHaveFocus();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(listRow(0)).toBeVisible();
+		expect(p.loadPending).toHaveBeenCalledTimes(2);
+	});
+
 	it('a long list scrolls inside its box: the count stays in sight', async () => {
 		const many = Array.from({ length: 60 }, (_, i) => ({
 			...a,
@@ -281,11 +305,6 @@ describe('Billing, the list', () => {
 });
 
 describe('Billing, Facturar todos', () => {
-	afterEach(() => {
-		errorState.connectionLost = false;
-		errorState.view = null;
-	});
-
 	it('+ asks before issuing', async () => {
 		const p = props();
 		await loaded(p);
@@ -359,6 +378,7 @@ describe('Billing, Facturar todos', () => {
 	});
 
 	it('a failing row does not stop the rest', async () => {
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const p = props();
 		p.loadPending.mockResolvedValueOnce([a, b]).mockResolvedValueOnce([a]);
 		p.issue
@@ -373,20 +393,27 @@ describe('Billing, Facturar todos', () => {
 		await expect.element(dialog()).toHaveTextContent('Factura 102 emitida');
 		await expect.element(dialog()).toHaveTextContent('INDUS TIPICOS MALLORCA');
 		await expect.element(dialog()).toHaveTextContent(errorMessages.INVOICE_MIXED_TAX_RATES);
+		// A refusal with its own text is no fault of the program's: nothing for the console.
+		expect(logged).not.toHaveBeenCalled();
+		logged.mockRestore();
 		await userEvent.keyboard('{Enter}');
 		await expect.element(dialog()).not.toBeInTheDocument();
 	});
 
-	it('an unexpected error is named as such', async () => {
+	it('an unexpected error is named as such, and goes to the console', async () => {
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const boom = new ApiError(500, 'INTERNAL_ERROR', 'boom', {});
 		const p = props();
 		p.loadPending.mockResolvedValueOnce([a]).mockResolvedValueOnce([a]);
-		p.issue.mockRejectedValueOnce(new ApiError(500, 'INTERNAL_ERROR', 'boom', {}));
+		p.issue.mockRejectedValueOnce(boom);
 		await loaded(p);
 		await userEvent.keyboard('{NumpadAdd}{NumpadAdd}');
 
 		await expect.element(dialog()).toHaveTextContent('No se ha emitido ninguna factura');
 		await expect.element(dialog()).toHaveTextContent('INDUS TIPICOS MALLORCA');
 		await expect.element(dialog()).toHaveTextContent('Error inesperado');
+		expect(logged).toHaveBeenCalledExactlyOnceWith(boom);
+		logged.mockRestore();
 		await userEvent.keyboard('{Enter}');
 		await expect.element(dialog()).not.toBeInTheDocument();
 	});
@@ -403,6 +430,35 @@ describe('Billing, Facturar todos', () => {
 		await expect.element(list()).not.toBeInTheDocument();
 		await expect.element(dialog()).not.toBeInTheDocument();
 		expect(p.loadPending).toHaveBeenCalledOnce();
+
+		connectionRestored();
+		await expect.element(dateField()).toHaveFocus();
+	});
+
+	it('a lost connection on the way back from the batch: no summary, and once back nothing stale', async () => {
+		const p = props();
+		p.loadPending
+			.mockResolvedValueOnce([a, b, c])
+			.mockRejectedValueOnce(lost())
+			.mockResolvedValueOnce([c]);
+		p.issue.mockResolvedValueOnce({ number: '101' }).mockResolvedValueOnce({ number: '102' });
+		await loaded(p);
+		await userEvent.keyboard('{NumpadAdd}{NumpadAdd}');
+
+		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
+		expect(p.issue).toHaveBeenCalledTimes(2);
+		expect(p.loadPending).toHaveBeenCalledTimes(2);
+		await expect.element(dialog()).not.toBeInTheDocument();
+
+		connectionRestored();
+		await expect.element(dateField()).toHaveFocus();
+		await expect.element(dialog()).not.toBeInTheDocument();
+		await expect.element(list()).not.toBeInTheDocument();
+		expect(p.toast).not.toHaveBeenCalled();
+		// The list again, as it is now.
+		await userEvent.keyboard('{Enter}');
+		await expect.element(listRow(0)).toHaveTextContent('VARIOS');
+		await expect.element(listRow(1)).not.toBeInTheDocument();
 	});
 
 	it('ignores keys while issuing, and counts only the rows it issues', async () => {
