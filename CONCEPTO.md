@@ -223,12 +223,12 @@ borradas (ver abajo). Nada se elimina físicamente: el histórico es el producto
   una factura desvincula antes sus albaranes.
 - Una fila borrada libera su código: el índice único de `code` es parcial
   (`WHERE deleted_at IS NULL`), así que solo puede haber una fila viva por código.
-  Restaurar una fila cuyo código ya está vivo obliga a cambiárselo. Los números de factura
-  son la excepción: no se liberan nunca (§5).
+  Restaurar una fila cuyo código ya está vivo obliga a cambiar antes el código de la viva: la
+  API rechaza la restauración. Los números de factura son la excepción: no se liberan nunca
+  (§5).
 - Clientes y artículos se restauran desde su lista (F6, "Ver borrados"; F8, "Restaurar").
-  Si una fila viva tiene ya su código, la API lo rechaza: hay que cambiar antes el código de
-  la viva. Restaurar no toca nada más: sus albaranes pendientes y sus borradores vuelven a
-  poder facturarse y editarse.
+  Restaurar no toca nada más: sus albaranes pendientes y sus borradores vuelven a poder
+  facturarse y editarse.
 - El esquema lo gestiona Flyway (`db/migration`) y Hibernate solo lo valida. Las FKs están
   declaradas y activas (`foreign_keys=true`).
 - Hasta Verifactu, una factura se puede borrar en cualquier estado (§5).
