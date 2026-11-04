@@ -13,5 +13,6 @@ public record ArticleResponse(
         String name,
 
         LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
+        LocalDateTime updatedAt,
+        LocalDateTime deletedAt) {
 }

@@ -213,6 +213,59 @@ describe('LinesGrid', () => {
 		expect(linesNow().map((l) => l.price)).toEqual([1.5, 0.9, 1]);
 	});
 
+	it('clearing the offered prices empties the untouched ones only, and the next client fills them again', async () => {
+		let prices: Record<number, number> = { 12: 1.2, 15: 0.8 };
+		const proposePrice = async (code: number) => prices[code] ?? null;
+		await render(
+			GridHarness,
+			props({ initial: [emptyLine(), emptyLine(), line(12, '01181026', 25, 2.5)], proposePrice })
+		);
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		await cell(1, 'Código').click();
+		await userEvent.keyboard('15{Enter}');
+		await expect.element(cell(1, 'Precio')).toHaveValue('0,80');
+		await cell(1, 'Precio').click();
+		await userEvent.keyboard('3');
+		await page.getByRole('button', { name: 'Cliente tecleado' }).click();
+		await expect.element(cell(0, 'Precio')).toHaveValue('');
+		await expect.element(cell(1, 'Precio')).toHaveValue('3,00');
+		await expect.element(cell(2, 'Precio')).toHaveValue('2,50');
+		expect(linesNow().map((l) => l.price)).toEqual([null, 3, 2.5]);
+		prices = { 12: 1.5, 15: 0.9 };
+		await page.getByRole('button', { name: 'Otro cliente' }).click();
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,50');
+		await expect.element(cell(1, 'Precio')).toHaveValue('3,00');
+		await expect.element(cell(2, 'Precio')).toHaveValue('2,50');
+	});
+
+	it('a price still on its way when the client is typed again does not come back', async () => {
+		const first = deferred<number | null>();
+		const second = deferred<number | null>();
+		const proposePrice = vi
+			.fn<(code: number) => Promise<number | null>>()
+			.mockResolvedValueOnce(1.2)
+			.mockReturnValueOnce(first.promise)
+			.mockReturnValueOnce(second.promise);
+		await render(GridHarness, props({ proposePrice }));
+		await cell(0, 'Código').click();
+		await userEvent.keyboard('12{Enter}');
+		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
+		// Client A found: its price is on its way. Then the client is typed over.
+		await page.getByRole('button', { name: 'Otro cliente' }).click();
+		await page.getByRole('button', { name: 'Cliente tecleado' }).click();
+		first.resolve(0.5);
+		await first.promise;
+		await expect.element(cell(0, 'Precio')).toHaveValue('');
+		expect(linesNow()[0].price).toBeNull();
+		// Client B found: its own price comes in.
+		await page.getByRole('button', { name: 'Otro cliente' }).click();
+		second.resolve(0.9);
+		await second.promise;
+		await expect.element(cell(0, 'Precio')).toHaveValue('0,90');
+	});
+
 	it("a proposal still on its way when the client changes gives way to the new client's", async () => {
 		const before = deferred<number | null>();
 		const after = deferred<number | null>();

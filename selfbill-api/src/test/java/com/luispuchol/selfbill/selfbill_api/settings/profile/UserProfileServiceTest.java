@@ -89,6 +89,73 @@ class UserProfileServiceTest {
     }
 
     @Test
+    @DisplayName("Switching provider replaces its defaults")
+    void switchingProviderReplacesItsDefaults() {
+        userProfileService.createUserProfile(requestFor("a@gmail.com", null, null));
+        assertThat(userProfileService.getUserProfile().smtpHost()).isEqualTo("smtp.gmail.com");
+
+        UserProfileResponse updated = userProfileService.updateUserProfile(
+                requestFor("a@outlook.com", "smtp.gmail.com", 587));
+
+        assertThat(updated.smtpHost()).isEqualTo("smtp.office365.com");
+        assertThat(updated.smtpPort()).isEqualTo(587);
+    }
+
+    @Test
+    @DisplayName("Switching to an unknown provider empties the old defaults")
+    void switchingToUnknownProviderEmptiesTheOldDefaults() {
+        userProfileService.createUserProfile(requestFor("a@gmail.com", null, null));
+
+        UserProfileResponse updated = userProfileService.updateUserProfile(
+                requestFor("a@empresa.es", "smtp.gmail.com", 587));
+
+        assertThat(updated.smtpHost()).isNull();
+        assertThat(updated.smtpPort()).isNull();
+    }
+
+    @Test
+    @DisplayName("A custom server is kept when the email changes, and any server when it does not")
+    void customServerIsKept() {
+        userProfileService.createUserProfile(requestFor("a@gmail.com", "mail.empresa.es", 465));
+
+        UserProfileResponse switched = userProfileService.updateUserProfile(
+                requestFor("a@outlook.com", "mail.empresa.es", 465));
+        assertThat(switched.smtpHost()).isEqualTo("mail.empresa.es");
+        assertThat(switched.smtpPort()).isEqualTo(465);
+
+        UserProfileResponse same = userProfileService.updateUserProfile(
+                requestFor("a@outlook.com", "smtp.gmail.com", 25));
+        assertThat(same.smtpHost()).isEqualTo("smtp.gmail.com");
+        assertThat(same.smtpPort()).isEqualTo(25);
+    }
+
+    @Test
+    @DisplayName("A custom server keeps its port when the email changes, even if the port is a default one")
+    void customServerKeepsItsPortWhenTheEmailChanges() {
+        userProfileService.createUserProfile(requestFor("a@gmail.com", null, null));
+
+        UserProfileResponse updated = userProfileService.updateUserProfile(
+                requestFor("a@empresa.es", "mail.empresa.es", 587));
+
+        assertThat(updated.smtpHost()).isEqualTo("mail.empresa.es");
+        assertThat(updated.smtpPort()).isEqualTo(587);
+    }
+
+    @Test
+    @DisplayName("An unreadable stored password is reported")
+    void unreadablePasswordIsReported() {
+        assertThat(userProfileService.createUserProfile(request(null)).mailPasswordUnreadable()).isFalse();
+
+        assertThat(userProfileService.updateUserProfile(request("secret")).mailPasswordUnreadable()).isFalse();
+        assertThat(userProfileService.getUserProfile().mailPasswordUnreadable()).isFalse();
+
+        storeForeignPassword();
+        UserProfileResponse loaded = userProfileService.getUserProfile();
+        assertThat(loaded.hasMailPassword()).isTrue();
+        assertThat(loaded.mailPasswordUnreadable()).isTrue();
+    }
+
+    @Test
     @DisplayName("Tests keep the encryption key under target/, not in the user's home")
     void testsUseTheConfiguredKeyFile() {
         assertThat(credentialProperties.keyFile()).isEqualTo(Path.of("target/test-secret.key"));
@@ -109,12 +176,20 @@ class UserProfileServiceTest {
     }
 
     private static UserProfileRequest request(String mailPassword, String smtpHost, Integer smtpPort) {
+        return requestFor("luis@example.com", mailPassword, smtpHost, smtpPort);
+    }
+
+    private static UserProfileRequest requestFor(String email, String smtpHost, Integer smtpPort) {
+        return requestFor(email, null, smtpHost, smtpPort);
+    }
+
+    private static UserProfileRequest requestFor(String email, String mailPassword, String smtpHost, Integer smtpPort) {
         return UserProfileRequest.builder()
                 .fullName("Luis")
                 .fiscalName("Luis SL")
                 .nif("B00000001")
                 .address("Calle Mayor 1")
-                .email("luis@example.com")
+                .email(email)
                 .smtpHost(smtpHost)
                 .smtpPort(smtpPort)
                 .mailPassword(mailPassword)

@@ -10,15 +10,24 @@ describe('count', () => {
 
 describe('articlePendingMessage', () => {
 	it('is null when no delivery note is waiting', () => {
-		expect(articlePendingMessage(0)).toBeNull();
+		expect(articlePendingMessage(0, 0)).toBeNull();
 	});
 
 	it('warns about the uninvoiced delivery notes', () => {
-		expect(articlePendingMessage(1)).toBe(
+		expect(articlePendingMessage(1, 0)).toBe(
 			'Está en 1 albarán sin facturar. Si lo borras no se podrán volver a guardar.'
 		);
-		expect(articlePendingMessage(3)).toBe(
+		expect(articlePendingMessage(3, 0)).toBe(
 			'Está en 3 albaranes sin facturar. Si lo borras no se podrán volver a guardar.'
+		);
+	});
+
+	it('adds the ones in draft invoices', () => {
+		expect(articlePendingMessage(3, 1)).toBe(
+			'Está en 3 albaranes sin facturar y 1 en facturas en borrador. Si lo borras no se podrán volver a guardar.'
+		);
+		expect(articlePendingMessage(0, 2)).toBe(
+			'Está en 2 albaranes en facturas en borrador. Si lo borras no se podrán volver a guardar.'
 		);
 	});
 });

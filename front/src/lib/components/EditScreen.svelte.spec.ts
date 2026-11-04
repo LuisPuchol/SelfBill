@@ -116,6 +116,23 @@ describe('EditScreen', () => {
 		await expect.element(page.getByText('Nombre no válido')).not.toBeInTheDocument();
 	});
 
+	it('an API field error with no field on screen is left to the page, the others still shown', async () => {
+		const s = spies();
+		const shown: boolean[] = [];
+		s.persist.mockImplementation(async (form) => {
+			shown.push(
+				form.showFieldErrors(
+					new ApiError(400, 'VALIDATION_ERROR', '', { name: 'x', 'lines[0].price': 'y' })
+				)
+			);
+			return false;
+		});
+		await render(EditHarness, s);
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect.element(name()).toHaveAccessibleDescription('Revisa este dato');
+		expect(shown).toEqual([false]);
+	});
+
 	it('isDirty follows the values and markSaved clears it', async () => {
 		const s = spies();
 		s.persist.mockImplementation(async (form) => {

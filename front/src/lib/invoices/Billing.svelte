@@ -5,7 +5,7 @@
 	import DataTable from '../components/DataTable.svelte';
 	import DateField from '../components/DateField.svelte';
 	import Dialog from '../components/Dialog.svelte';
-	import { showError } from '../components/errors.svelte';
+	import { showError, whenNoError } from '../components/errors.svelte';
 	import { fillViewport } from '../components/fill-viewport';
 	import Form from '../components/Form.svelte';
 	import ScreenHeader from '../components/ScreenHeader.svelte';
@@ -130,6 +130,7 @@
 			// The list on screen may be out of date by now.
 			pending = null;
 			showError(err);
+			toTheDate();
 			return false;
 		}
 		if (id !== loadId) return false;
@@ -161,12 +162,21 @@
 		if (pending !== null) await load(shownFor, keep);
 	}
 
+	/**
+	 * With the list gone, the cursor goes back to the date for Enter to load it again, once the
+	 * dialog or the connection screen let it.
+	 */
+	function toTheDate(): void {
+		whenNoError(() => nav?.focus('dateTo'));
+	}
+
 	/** What was issued may be on screen still: the list waits for the next Enter. */
-	function connectionLost(err: unknown): void {
+	function onConnectionLost(err: unknown): void {
 		loadId++;
 		pending = null;
 		busy = false;
 		showError(err);
+		toTheDate();
 	}
 
 	const issueRow = (row: PendingInvoice) =>
@@ -218,22 +228,31 @@
 					lost = { err };
 					break;
 				}
-				reasons[i] = view.kind === 'business' ? view.message : 'Error inesperado';
+				if (view.kind === 'business') reasons[i] = view.message;
+				else {
+					// The summary only names it: the details are for the console.
+					console.error(err);
+					reasons[i] = 'Error inesperado';
+				}
 			}
 		}
 		progress = null;
-		if (lost) return connectionLost(lost.err);
+		if (lost) return onConnectionLost(lost.err);
 		await reload();
 		busy = false;
-		const notIssued = rows.flatMap((row, i) => {
-			const reason = reasons[i];
-			return reason === null
-				? []
-				: [{ name: row.clientName ?? '', month: monthShort(row.month ?? ''), reason }];
+		// Lost on the way back: nothing opens over the connection screen, and the list waits for the
+		// next Enter, as when it is lost halfway. What was issued is said once it is back.
+		whenNoError(() => {
+			const notIssued = rows.flatMap((row, i) => {
+				const reason = reasons[i];
+				return reason === null
+					? []
+					: [{ name: row.clientName ?? '', month: monthShort(row.month ?? ''), reason }];
+			});
+			const issued = issuedSummary(numbers);
+			if (notIssued.length === 0) toast(issued);
+			else report = { issued, notIssued };
 		});
-		const issued = issuedSummary(numbers);
-		if (notIssued.length === 0) toast(issued);
-		else report = { issued, notIssued };
 	}
 
 	function askOne(): void {
@@ -263,7 +282,7 @@
 		try {
 			toast(`Factura ${(await issueRow(row)).number} emitida`);
 		} catch (err) {
-			if (classifyError(err).kind === 'connection') return connectionLost(err);
+			if (classifyError(err).kind === 'connection') return onConnectionLost(err);
 			showError(err);
 		}
 		// Also after a refusal: the row may have changed meanwhile, in another tab.

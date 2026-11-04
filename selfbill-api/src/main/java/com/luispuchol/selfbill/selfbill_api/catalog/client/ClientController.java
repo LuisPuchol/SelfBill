@@ -2,6 +2,9 @@ package com.luispuchol.selfbill.selfbill_api.catalog.client;
 
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_DUPLICATE_CODE;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_NOT_FOUND;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DATA_CONFLICT;
+
+import java.util.List;
 
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -36,7 +39,7 @@ public class ClientController {
 
     private final ClientService clientService;
 
-    @Operation(summary = "Get all clients", description = "Returns paginated and filtered list of non-deleted clients")
+    @Operation(summary = "Get all clients", description = "Returns paginated and filtered list of clients: the live ones, or the deleted ones with deleted=true")
     @GetMapping
     public Page<ClientResponse> getAllClients(@ParameterObject ClientFilter filter,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
@@ -63,22 +66,23 @@ public class ClientController {
         return clientService.getClientByCode(code);
     }
 
-    @Operation(summary = "Get a client by name", description = "Exact match on `name`, ignoring case")
-    @ApiErrors(CLIENT_NOT_FOUND)
+    @Operation(summary = "List the clients with a name", description = """
+            Exact match on `name`, ignoring case. Names are not unique: every live match, ordered by code, \
+            and an empty list when there is none.""")
     @GetMapping("/by-name/{name}")
-    public ClientResponse getClientByName(@PathVariable @NotBlank String name) {
-        return clientService.getClientByName(name);
+    public List<ClientResponse> getClientsByName(@PathVariable @NotBlank String name) {
+        return clientService.getClientsByName(name);
     }
 
-    @Operation(summary = "Get a client by NIF")
-    @ApiErrors(CLIENT_NOT_FOUND)
+    @Operation(summary = "List the clients with a NIF", description = """
+            NIFs are not unique: every live match, ordered by code, and an empty list when there is none.""")
     @GetMapping("/by-nif/{nif}")
-    public ClientResponse getClientByNif(@PathVariable @NotBlank String nif) {
-        return clientService.getClientByNif(nif);
+    public List<ClientResponse> getClientsByNif(@PathVariable @NotBlank String nif) {
+        return clientService.getClientsByNif(nif);
     }
 
     @Operation(summary = "Create a client")
-    @ApiErrors(CLIENT_DUPLICATE_CODE)
+    @ApiErrors({ CLIENT_DUPLICATE_CODE, DATA_CONFLICT })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ClientResponse createClient(@RequestBody @Valid ClientRequest request) {
@@ -89,7 +93,7 @@ public class ClientController {
             Issued invoices keep the fiscal data they were issued with.
             Changing the VAT or surcharge type reapplies it to the client's delivery notes that are not in an \
             issued invoice, and recalculates the client's draft invoices.""")
-    @ApiErrors({ CLIENT_NOT_FOUND, CLIENT_DUPLICATE_CODE })
+    @ApiErrors({ CLIENT_NOT_FOUND, CLIENT_DUPLICATE_CODE, DATA_CONFLICT })
     @PutMapping("/{id}")
     public ClientResponse updateClient(@PathVariable @Positive Integer id,
             @RequestBody @Valid ClientRequest request) {
@@ -104,5 +108,14 @@ public class ClientController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteClient(@PathVariable @Positive Integer id) {
         clientService.deleteClient(id);
+    }
+
+    @Operation(summary = "Restore a client", description = """
+            Undoes the logical deletion, with the same id and code. Restoring a live client changes nothing.
+            Refused when a live client has its code now.""")
+    @ApiErrors({ CLIENT_NOT_FOUND, CLIENT_DUPLICATE_CODE })
+    @PostMapping("/{id}/restore")
+    public ClientResponse restoreClient(@PathVariable @Positive Integer id) {
+        return clientService.restoreClient(id);
     }
 }

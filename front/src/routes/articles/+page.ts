@@ -6,12 +6,21 @@ import type { PageLoad } from './$types';
 export const load: PageLoad = async ({ url }) => {
 	const q = url.searchParams.get('q') ?? '';
 	const page = Math.max(0, Number(url.searchParams.get('page')) || 0);
+	const deleted = url.searchParams.get('deleted') === '1';
 	const result = await loaded(
 		request(
 			api.GET('/api/articles', {
-				params: { query: { ...listQuery(q, 'name'), page, size: 20, sort: ['code'] } }
+				params: {
+					query: {
+						...listQuery(q, 'name'),
+						...(deleted ? { deleted: true } : {}),
+						page,
+						size: 20,
+						sort: ['code', 'id']
+					}
+				}
 			})
 		)
 	);
-	return { q, result };
+	return { q, deleted, result };
 };

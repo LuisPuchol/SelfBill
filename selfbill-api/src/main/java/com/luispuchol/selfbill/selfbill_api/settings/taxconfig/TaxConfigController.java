@@ -1,5 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.settings.taxconfig;
 
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DATA_CONFLICT;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.TAX_CONFIG_ALREADY_EXISTS;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.TAX_CONFIG_NOT_FOUND;
 
@@ -47,7 +48,7 @@ public class TaxConfigController {
     @Operation(summary = "Add a tax configuration from a date", description = """
             Delivery notes take the rates in force on their own date. Existing delivery notes and invoices keep \
             the rates they were valued with.""")
-    @ApiErrors(TAX_CONFIG_ALREADY_EXISTS)
+    @ApiErrors({ TAX_CONFIG_ALREADY_EXISTS, DATA_CONFLICT })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TaxConfigResponse createTaxConfig(@RequestBody @Valid TaxConfigRequest request) {

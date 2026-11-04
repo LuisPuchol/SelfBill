@@ -170,7 +170,8 @@ describe('dispatch', () => {
 	});
 
 	it('blocks browser F keys even without an action', () => {
-		for (const k of ['F1', 'F3', 'F7']) {
+		// F6 too: in a dialog over the list that uses it, Edge would take the cursor to its address bar.
+		for (const k of ['F1', 'F3', 'F6', 'F7']) {
 			const e = ev({ key: k, code: k });
 			expect(dispatch([], e)).toBe(false);
 			expect(e.preventDefault).toHaveBeenCalled();
@@ -220,6 +221,11 @@ describe('visibleActions', () => {
 			'Guardar',
 			'Salir'
 		]);
+	});
+
+	it('puts F6 between F2 and F8', () => {
+		const list = layer([act('F8', 'Borrar'), act('F6', 'Ver borrados'), act('F2', 'Nuevo')]);
+		expect(visibleActions([list]).map((a) => a.key)).toEqual(['F2', 'F6', 'F8']);
 	});
 
 	it('stops visible actions at the modal layer', () => {

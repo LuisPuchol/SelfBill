@@ -24,7 +24,7 @@ export interface DeleteFlowOptions extends DeleteOptions {
 
 /**
  * The delete question: counts what depends on the record, asks, removes and tells.
- * `DeleteDialog` renders it; the record screen and the list each own one.
+ * `ConfirmDialog` renders it; the record screen and the list each own one.
  */
 export class DeleteFlow {
 	dialog: { title: string; name: string; body: string | null } | null = $state(null);
@@ -35,6 +35,11 @@ export class DeleteFlow {
 
 	constructor(options: DeleteFlowOptions) {
 		this.#options = options;
+	}
+
+	/** Counting what depends on a record, or removing it and what follows (`onDeleted`, `onFailed`). */
+	get busy(): boolean {
+		return this.#busy;
 	}
 
 	async ask(target: DeleteTarget): Promise<void> {
@@ -60,20 +65,22 @@ export class DeleteFlow {
 		if (!target || !this.dialog || this.#busy) return;
 		this.#busy = true;
 		try {
-			await this.#options.remove(target.id);
-		} catch (err) {
+			try {
+				await this.#options.remove(target.id);
+			} catch (err) {
+				this.dialog = null;
+				showError(err);
+				await this.#options.onFailed?.(target);
+				return;
+			}
 			this.dialog = null;
-			showError(err);
-			await this.#options.onFailed?.(target);
-			return;
+			this.#options.toast(
+				`${this.#options.entity.Label} ${target.code} ${this.#options.entity.feminine ? 'borrada' : 'borrado'}`
+			);
+			await this.#options.onDeleted(target);
 		} finally {
 			this.#busy = false;
 		}
-		this.dialog = null;
-		this.#options.toast(
-			`${this.#options.entity.Label} ${target.code} ${this.#options.entity.feminine ? 'borrada' : 'borrado'}`
-		);
-		await this.#options.onDeleted(target);
 	}
 
 	cancel(): void {

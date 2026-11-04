@@ -28,3 +28,11 @@ describe('listQuery', () => {
 		expect(listQuery('', 'name')).toEqual({});
 	});
 });
+
+describe('listQuery past the largest code', () => {
+	it('a code the API cannot bind asks for a range that matches nothing', () => {
+		expect(listQuery('2147483647', 'q')).toEqual({ codeFrom: 2147483647, codeTo: 2147483647 });
+		expect(listQuery('2147483648', 'q')).toEqual({ codeFrom: 2147483647, codeTo: 0 });
+		expect(listQuery('99999999999', 'name')).toEqual({ codeFrom: 2147483647, codeTo: 0 });
+	});
+});

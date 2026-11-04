@@ -236,7 +236,8 @@ albaranes abrirá una línea nueva.
 
 Cerrar la ventana o pulsar F5 con cambios dispara el aviso nativo (`beforeunload`).
 
-**Teclas del navegador.** Solo se usan F2, F3, F4, F8 y F9, y se anula su acción en Edge. No se
+**Teclas del navegador.** Solo se usan F2, F3, F4, F6, F8 y F9, y se anula su acción en Edge
+(F6, "Ver borrados" del catálogo, desde la Fase 1). No se
 usan F5, F11 ni F12. Antes de dar la pieza por buena se comprueba a mano en Edge en modo
 aplicación.
 

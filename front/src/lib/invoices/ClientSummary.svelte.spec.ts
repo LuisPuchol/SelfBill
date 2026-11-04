@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import ClientSummaryHarness from '#lib/test/ClientSummaryHarness.svelte';
-import { ApiError } from '#lib/api/errors.js';
+import { ApiError, networkError } from '#lib/api/errors.js';
 import type { components } from '#lib/api/schema.js';
-import { errorState } from '#lib/components/errors.svelte.js';
+import { connectionRestored, dismissError, errorState } from '#lib/components/errors.svelte.js';
 
 type ClientTotals = components['schemas']['ClientSummaryResponse'];
 type Invoice = components['schemas']['InvoiceResponse'];
@@ -17,7 +17,8 @@ const indus: ClientTotals = {
 	subtotal: 300,
 	vatAmount: 12,
 	surchargeAmount: 0,
-	total: 312
+	total: 312,
+	clientDeleted: false
 };
 const ferrer: ClientTotals = {
 	clientId: 2,
@@ -27,7 +28,8 @@ const ferrer: ClientTotals = {
 	subtotal: 100,
 	vatAmount: 4,
 	surchargeAmount: 0,
-	total: 104
+	total: 104,
+	clientDeleted: false
 };
 const invoice = (id: number, number: string, total: number, clientCode = 5): Invoice => ({
 	id,
@@ -103,8 +105,8 @@ const selection = (field: HTMLInputElement) => [field.selectionStart, field.sele
 beforeEach(() => page.viewport(1280, 800));
 
 afterEach(() => {
-	errorState.connectionLost = false;
-	errorState.view = null;
+	connectionRestored();
+	dismissError();
 });
 
 function deferred<T>() {
@@ -126,6 +128,14 @@ describe('ClientSummary', () => {
 		await expect.element(row(invoicesTable(), 1)).toHaveTextContent('3720');
 		expect(p.loadInvoice).toHaveBeenCalledWith(11);
 		await expect.element(row(notesTable(), 0)).toHaveTextContent('10,07');
+	});
+
+	it('marks a deleted client in its row', async () => {
+		const garcia: ClientTotals = { ...ferrer, clientName: 'García', clientDeleted: true };
+		await loaded(props({ loadSummary: vi.fn().mockResolvedValue([indus, garcia]) }));
+		await expect.element(row(clientsTable(), 0)).toHaveTextContent('INDUS TIPICOS');
+		await expect.element(row(clientsTable(), 0)).not.toHaveTextContent('(borrado)');
+		await expect.element(row(clientsTable(), 1)).toHaveTextContent('García (borrado)');
 	});
 
 	it('Enter, Enter loads and goes to the clients', async () => {
@@ -375,5 +385,16 @@ describe('ClientSummary', () => {
 		await loaded(p);
 		await userEvent.keyboard('{Enter}{Enter}{F9}');
 		await expect.element(dialog().getByText('No se ha podido imprimir la factura.')).toBeVisible();
+	});
+
+	it('F9 with the connection lost shows the connection screen, not the print message', async () => {
+		const p = props();
+		p.fetchPdf.mockRejectedValue(networkError(new Error('Failed to fetch')));
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}{F9}');
+		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
+		expect(errorState.view).toBeNull();
+		await expect.element(dialog()).not.toBeInTheDocument();
+		expect(p.print).not.toHaveBeenCalled();
 	});
 });

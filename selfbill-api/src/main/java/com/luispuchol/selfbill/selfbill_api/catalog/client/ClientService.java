@@ -1,5 +1,7 @@
 package com.luispuchol.selfbill.selfbill_api.catalog.client;
 
+import java.util.List;
+
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,16 +38,16 @@ public class ClientService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, code));
     }
 
-    public ClientResponse getClientByName(String name) {
-        return clientRepository.findByNameIgnoreCaseAndDeletedAtIsNull(name)
+    public List<ClientResponse> getClientsByName(String name) {
+        return clientRepository.findByNameIgnoreCaseAndDeletedAtIsNullOrderByCode(name).stream()
                 .map(clientMapper::toResponse)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, name));
+                .toList();
     }
 
-    public ClientResponse getClientByNif(String nif) {
-        return clientRepository.findByNifAndDeletedAtIsNull(nif)
+    public List<ClientResponse> getClientsByNif(String nif) {
+        return clientRepository.findByNifAndDeletedAtIsNullOrderByCode(nif).stream()
                 .map(clientMapper::toResponse)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, nif));
+                .toList();
     }
 
     @Transactional
@@ -77,6 +79,17 @@ public class ClientService {
     @Transactional
     public void deleteClient(Integer id) {
         clientRepository.delete(findClient(id));
+    }
+
+    @Transactional
+    public ClientResponse restoreClient(Integer id) {
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLIENT_NOT_FOUND, id));
+        if (client.getDeletedAt() != null) {
+            requireUnusedCode(client.getCode());
+            client.restore();
+        }
+        return clientMapper.toResponse(clientRepository.save(client));
     }
 
     private Client findClient(Integer id) {

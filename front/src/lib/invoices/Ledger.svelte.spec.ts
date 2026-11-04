@@ -2,13 +2,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import LedgerHarness from '#lib/test/LedgerHarness.svelte';
-import { ApiError } from '#lib/api/errors.js';
+import { ApiError, networkError } from '#lib/api/errors.js';
 import { errorMessages } from '#lib/api/messages.js';
 import type { components } from '#lib/api/schema.js';
-import { errorState } from '#lib/components/errors.svelte.js';
+import { connectionRestored, dismissError, errorState } from '#lib/components/errors.svelte.js';
 import { invoiceDeletion } from '#lib/invoices/deletion.js';
 
 type Invoice = components['schemas']['InvoiceResponse'];
+type Totals = components['schemas']['InvoiceTotalsResponse'];
+
+const bothTotals: Totals = {
+	count: 2,
+	subtotal: 832.23,
+	vatAmount: 29.29,
+	surchargeAmount: 0,
+	total: 861.52
+};
 
 const first: Invoice = {
 	id: 1,
@@ -50,6 +59,9 @@ function props(overrides: Record<string, unknown> = {}) {
 		loadInvoices: vi
 			.fn<(from: string, to: string) => Promise<{ invoices: Invoice[]; truncated: boolean }>>()
 			.mockResolvedValue({ invoices: [first, second], truncated: false }),
+		loadTotals: vi
+			.fn<(from: string, to: string) => Promise<Totals>>()
+			.mockResolvedValue(bothTotals),
 		loadInvoice: vi
 			.fn<(id: number) => Promise<Invoice>>()
 			.mockImplementation(async (id) =>
@@ -89,8 +101,8 @@ async function loaded(p: ReturnType<typeof props>) {
 beforeEach(() => page.viewport(1280, 800));
 
 afterEach(() => {
-	errorState.connectionLost = false;
-	errorState.view = null;
+	connectionRestored();
+	dismissError();
 });
 
 function deferred<T>() {
@@ -160,6 +172,25 @@ describe('Ledger', () => {
 		await expect.element(listRow(1)).toHaveAttribute('aria-selected', 'true');
 	});
 
+	it('a lost connection while loading: once back, the cursor is in Hasta and Enter loads', async () => {
+		const p = props();
+		p.loadInvoices
+			.mockResolvedValueOnce({ invoices: [first, second], truncated: false })
+			.mockRejectedValueOnce(networkError(new Error('Failed to fetch')));
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}');
+		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
+		await expect.element(list()).not.toBeInTheDocument();
+		// The connection screen makes the page inert: the cursor is out of the date.
+		await expect.element(toField()).not.toHaveFocus();
+
+		connectionRestored();
+		await expect.element(toField()).toHaveFocus();
+		await userEvent.keyboard('{Enter}');
+		await expect.element(listRow(0)).toBeVisible();
+		expect(p.loadInvoices).toHaveBeenCalledTimes(3);
+	});
+
 	it('the panel follows the marked row', async () => {
 		const p = props();
 		await loaded(p);
@@ -208,6 +239,17 @@ describe('Ledger', () => {
 		await loaded(p);
 		await userEvent.keyboard('{Enter}{Enter}{F9}');
 		await expect.element(dialog().getByText('No se ha podido imprimir la factura.')).toBeVisible();
+		expect(p.print).not.toHaveBeenCalled();
+	});
+
+	it('F9 with the connection lost shows the connection screen, not the print message', async () => {
+		const p = props();
+		p.fetchPdf.mockRejectedValue(networkError(new Error('Failed to fetch')));
+		await loaded(p);
+		await userEvent.keyboard('{Enter}{Enter}{F9}');
+		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
+		expect(errorState.view).toBeNull();
+		await expect.element(dialog()).not.toBeInTheDocument();
 		expect(p.print).not.toHaveBeenCalled();
 	});
 
@@ -269,6 +311,46 @@ describe('Ledger', () => {
 		await expect
 			.element(page.getByText('Solo se muestran las 2000 primeras: acorta las fechas'))
 			.toBeVisible();
+	});
+
+	it("totals line shows the API's totals", async () => {
+		const p = props({
+			loadInvoices: vi.fn().mockResolvedValue({ invoices: [first, second], truncated: true }),
+			loadTotals: vi.fn().mockResolvedValue({
+				count: 2500,
+				subtotal: 10000.5,
+				vatAmount: 400.02,
+				surchargeAmount: 12.5,
+				total: 10413.02
+			})
+		});
+		await loaded(p);
+		await expect
+			.element(page.getByText(/^2500 facturas · /))
+			.toHaveTextContent(
+				'2500 facturas · Base 10.000,50 € · IVA 400,02 € · Recargo 12,50 € · Total 10.413,02 €'
+			);
+		await expect
+			.element(page.getByText('Solo se muestran las 2000 primeras: acorta las fechas'))
+			.toBeVisible();
+		expect(p.loadTotals).toHaveBeenCalledExactlyOnceWith('2026-09-23', '2026-10-23');
+	});
+
+	it('totals of an older load are dropped', async () => {
+		const old = deferred<Totals>();
+		const p = props();
+		p.loadTotals.mockReset();
+		p.loadTotals
+			.mockReturnValueOnce(old.promise)
+			.mockResolvedValueOnce({ ...bothTotals, count: 7, subtotal: 700 });
+		await render(LedgerHarness, p);
+		await expect.element(fromField()).toHaveFocus();
+		await userEvent.keyboard('01102026{Enter}311026{Enter}');
+		await expect.element(page.getByText(/^7 facturas · /)).toBeVisible();
+		old.resolve({ ...bothTotals, count: 99, subtotal: 9900 });
+		await new Promise((r) => setTimeout(r, 50));
+		await expect.element(page.getByText(/^7 facturas · /)).toBeVisible();
+		await expect.element(page.getByText(/^99 facturas/)).not.toBeInTheDocument();
 	});
 
 	it('empty period: text, and the keys greyed', async () => {

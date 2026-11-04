@@ -24,6 +24,8 @@
 	];
 
 	let {
+		title = 'Clientes',
+		entity = { one: 'cliente', many: 'clientes' },
 		rows = all,
 		search = '',
 		selectId,
@@ -33,9 +35,13 @@
 		onNew,
 		onExit,
 		onPage = () => {},
+		onToggleDeleted,
 		deletion,
+		restoration,
 		extraActions
 	}: {
+		title?: string;
+		entity?: { one: string; many: string };
 		rows?: Row[];
 		search?: string;
 		selectId?: number;
@@ -45,15 +51,17 @@
 		onNew: () => void;
 		onExit: () => void;
 		onPage?: (n: number) => void;
+		onToggleDeleted?: (search: string) => void;
 		deletion?: ComponentProps<typeof ListScreen<Row>>['deletion'];
+		restoration?: ComponentProps<typeof ListScreen<Row>>['restoration'];
 		extraActions?: ComponentProps<typeof ListScreen<Row>>['extraActions'];
 	} = $props();
 </script>
 
 <KeyboardRoot />
 <ListScreen
-	title="Clientes"
-	entity={{ one: 'cliente', many: 'clientes' }}
+	{title}
+	{entity}
 	{columns}
 	{rows}
 	{page}
@@ -65,7 +73,9 @@
 	{onOpen}
 	{onNew}
 	{onExit}
+	{onToggleDeleted}
 	{deletion}
+	{restoration}
 	{extraActions}
 />
 <ErrorDialog />

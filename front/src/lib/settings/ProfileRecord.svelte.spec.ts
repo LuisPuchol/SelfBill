@@ -167,4 +167,30 @@ describe('ProfileRecord', () => {
 			.element(page.getByText('Guardada. Déjalo vacío para conservarla.'))
 			.not.toBeInTheDocument();
 	});
+
+	it('says the stored password cannot be read', async () => {
+		await render(
+			ProfileRecordHarness,
+			props({ initial: { ...stored, mailPasswordUnreadable: true } })
+		);
+		await expect
+			.element(
+				page.getByText(
+					'No se puede leer la contraseña guardada (se guardó en otro equipo). Escríbela de nuevo.'
+				)
+			)
+			.toBeVisible();
+		await expect
+			.element(page.getByText('Guardada. Déjalo vacío para conservarla.'))
+			.not.toBeInTheDocument();
+	});
+
+	it('opens on the server and port the API returned', async () => {
+		await render(
+			ProfileRecordHarness,
+			props({ initial: { ...stored, smtpHost: 'smtp.office365.com', smtpPort: 587 } })
+		);
+		await expect.element(page.getByLabelText('Servidor')).toHaveValue('smtp.office365.com');
+		await expect.element(page.getByLabelText('Puerto')).toHaveValue('587');
+	});
 });

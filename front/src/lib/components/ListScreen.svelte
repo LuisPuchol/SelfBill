@@ -5,10 +5,11 @@
 	import type { KeyAction } from '../keyboard/keys';
 	import { useKeys } from '../keyboard/keymap.svelte';
 	import { DeleteFlow, type DeleteOptions } from '../records/delete-flow.svelte';
+	import { RestoreFlow, type RestoreOptions } from '../records/restore-flow.svelte';
 	import { isCodeSearch } from '../records/search';
 	import ActionButton from './ActionButton.svelte';
 	import DataTable from './DataTable.svelte';
-	import DeleteDialog from './DeleteDialog.svelte';
+	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { inputClass } from './field-style';
 	import ScreenHeader from './ScreenHeader.svelte';
 	import { selectOnFocus } from './select-on-focus';
@@ -24,13 +25,15 @@
 		selectId,
 		rowId,
 		deletion,
+		restoration,
 		extraActions = [],
 		emptyHint,
 		onSearch,
 		onPage,
 		onOpen,
 		onNew,
-		onExit
+		onExit,
+		onToggleDeleted
 	}: {
 		title: string;
 		/** e.g. `{ one: 'cliente', many: 'clientes' }` */
@@ -61,6 +64,20 @@
 			/** Rows that cannot be deleted: F8 and "Borrar" ignore them. All can be, by default. */
 			canDelete?(row: T): boolean;
 		};
+		/**
+		 * Restoring the marked row: the list is one of deleted rows, and this goes instead of
+		 * `deletion`. F8 is "Restaurar", and there is no F2 nor Enter, so `onNew` and `onOpen` go
+		 * unused. Read once, on entry.
+		 */
+		restoration?: {
+			options: RestoreOptions;
+			/** The row's name in the question, and its code in the title and the toast */
+			describe(row: T): string;
+			code(row: T): number;
+			toast(message: string): void;
+			/** After a restore, done or failed: as `deletion.reload` */
+			reload(): void | Promise<void>;
+		};
 		/** More keys and buttons for the header, after "Borrar" */
 		extraActions?: { action: KeyAction; variant?: 'normal' | 'primary' | 'danger' }[];
 		/** Replaces the message of a list with nothing in it and no search */
@@ -70,6 +87,12 @@
 		onOpen: (row: T) => void;
 		onNew: () => void;
 		onExit: () => void;
+		/**
+		 * F6: the deleted rows instead of the live ones, or back; with `restoration` Esc goes back
+		 * too. It gets what is typed in the search box, for the other list to keep. Without it there
+		 * is no F6.
+		 */
+		onToggleDeleted?: (search: string) => void;
 	} = $props();
 
 	const PAUSE_MS = 300;
@@ -83,31 +106,53 @@
 	let sent = untrack(() => search);
 	/** An Enter pressed before its rows came: they open as soon as they answer exactly this text. */
 	let pendingOpen: string | null = null;
-	/** Where the mark was on a delete, done or failed: the rows reloaded after it keep the mark there. */
-	let afterDelete: number | null = null;
+	/**
+	 * Where the mark was on a delete or a restore, done or failed (either takes the row off this
+	 * list): the rows reloaded after it keep the mark there.
+	 */
+	let afterRemoval: number | null = null;
 
-	const deleting = untrack(() => deletion);
+	const restoring = untrack(() => restoration);
+	const deleting = restoring ? undefined : untrack(() => deletion);
 	const flow =
 		deleting &&
 		new DeleteFlow({
 			...deleting.options,
 			toast: deleting.toast,
 			onDeleted: async ({ id }) => {
-				afterDelete = selected;
+				afterRemoval = selected;
 				deleting.onDeleted?.(id);
 				await deleting.reload();
 			},
 			// It may be gone already (deleted elsewhere): the list shows what is left.
 			onFailed: async () => {
-				afterDelete = selected;
+				afterRemoval = selected;
 				await deleting.reload();
+			}
+		});
+	const restoreFlow =
+		restoring &&
+		new RestoreFlow({
+			...restoring.options,
+			toast: restoring.toast,
+			onRestored: async () => {
+				afterRemoval = selected;
+				await restoring.reload();
+			},
+			// Its code taken by a live one, or gone: the list shows what is left.
+			onFailed: async () => {
+				afterRemoval = selected;
+				await restoring.reload();
 			}
 		});
 
 	const searched = $derived(search.trim());
 	const emptyText = $derived(
 		searched === ''
-			? (emptyHint ?? `Todavía no hay ${entity.many}. Pulsa F2 para dar de alta el primero.`)
+			? (emptyHint ??
+					(restoring
+						? `No hay ${entity.many}.`
+						: `Todavía no hay ${entity.many}. Pulsa F2 para dar de alta el primero.`))
 			: isCodeSearch(searched)
 				? `No existe ningún ${entity.one} con el código ${searched}.`
 				: `No hay ningún ${entity.one} que coincida con «${searched}».`
@@ -132,14 +177,14 @@
 	});
 
 	// DataTable goes back to the first row when the rows change (its effect runs first): then
-	// the remembered row, if it is on this page. The rows reloaded after a delete keep the mark
-	// in its place instead.
+	// the remembered row, if it is on this page. The rows reloaded after a delete or a restore
+	// keep the mark in its place instead.
 	$effect(() => {
 		void rows;
 		untrack(() => {
-			if (afterDelete !== null) {
-				const index = afterDelete;
-				afterDelete = null;
+			if (afterRemoval !== null) {
+				const index = afterRemoval;
+				afterRemoval = null;
 				if (rows.length > 0) selected = Math.min(index, rows.length - 1);
 				// Its only row is gone: the previous page rather than an empty one.
 				else if (page.number > 0) turnPage(page.number - 1);
@@ -214,9 +259,10 @@
 	function open(): void {
 		const wanted = text.trim();
 		if (wanted !== searched) {
-			// Rows of an older search ("7" and Enter faster than the pause): search now, unless it is
-			// already on its way, and open when the rows for this text come.
-			pendingOpen = wanted;
+			// Rows of an older search ("7" and Enter faster than the pause): a code opens when the rows
+			// for this text come. A text search is not opened blind: Enter again once its rows are
+			// there. Either way search now, unless it is already on its way: the rows come sooner.
+			if (isCodeSearch(wanted)) pendingOpen = wanted;
 			if (timer !== undefined || sent.trim() !== wanted) searchNow(text);
 			return;
 		}
@@ -229,11 +275,25 @@
 	function askDelete(): void {
 		const row = rows[selected];
 		// Until the rows come back from a delete, the marked one may be the row just deleted.
-		if (!deleting || !flow || row === undefined || afterDelete !== null) return;
+		if (!deleting || !flow || row === undefined || afterRemoval !== null) return;
 		if (deleting.canDelete?.(row) === false) return;
 		// Rows an earlier Enter was waiting for must not open behind the question.
 		pendingOpen = null;
 		void flow.ask({ id: rowId(row), code: deleting.code(row), name: deleting.describe(row) });
+	}
+
+	function askRestore(): void {
+		const row = rows[selected];
+		// As with a delete: until the rows come back, the marked one may be the row just restored.
+		if (!restoring || !restoreFlow || row === undefined || afterRemoval !== null) return;
+		restoreFlow.ask({ id: rowId(row), code: restoring.code(row), name: restoring.describe(row) });
+	}
+
+	/** To the other list, with what is typed: a search waiting for the pause would come back here. */
+	function toggleDeleted(): void {
+		cancelTimer();
+		pendingOpen = null;
+		onToggleDeleted?.(text);
 	}
 
 	// `when` runs inside a $derived in the key bar: re-evaluate it as the focus moves.
@@ -275,6 +335,19 @@
 		},
 		run: askDelete
 	};
+	const restoreSelected: KeyAction = {
+		key: 'F8',
+		label: 'Restaurar',
+		when: () => rows[selected] !== undefined,
+		run: askRestore
+	};
+	// The deleted rows are only there to be restored: nothing new to make, nothing to open.
+	const rowActions = restoring ? [restoreSelected] : [openSelected, create, deleteSelected];
+	const switchList: KeyAction = {
+		key: 'F6',
+		label: restoring ? 'Ver vivos' : 'Ver borrados',
+		run: toggleDeleted
+	};
 	const nextPage: KeyAction = {
 		key: 'PageDown',
 		label: 'Página siguiente',
@@ -291,43 +364,53 @@
 	useKeys(() => [
 		{ key: 'ArrowUp', label: 'Anterior', hidden: true, when: hasRows, run: () => move(-1) },
 		{ key: 'ArrowDown', label: 'Siguiente', hidden: true, when: hasRows, run: () => move(1) },
-		openSelected,
+		...rowActions,
 		nextPage,
 		previousPage,
-		create,
-		deleteSelected,
+		...(onToggleDeleted ? [switchList] : []),
 		...extraActions.map((extra) => extra.action),
-		text === ''
-			? {
-					key: 'Escape',
-					label: 'Salir',
-					run: () => {
-						cancelTimer();
-						pendingOpen = null;
-						onExit();
+		// Up a level: from the deleted rows to the live ones, the search kept; from the live ones,
+		// clearing the search, then out.
+		restoring && onToggleDeleted
+			? { key: 'Escape', label: 'Volver', run: toggleDeleted }
+			: text === ''
+				? {
+						key: 'Escape',
+						label: 'Salir',
+						run: () => {
+							cancelTimer();
+							pendingOpen = null;
+							onExit();
+						}
 					}
-				}
-			: {
-					key: 'Escape',
-					label: 'Borrar búsqueda',
-					run: () => {
-						pendingOpen = null;
-						text = '';
-						searchNow('');
+				: {
+						key: 'Escape',
+						label: 'Borrar búsqueda',
+						run: () => {
+							pendingOpen = null;
+							text = '';
+							searchNow('');
+						}
 					}
-				}
 	]);
 </script>
 
 <ScreenHeader {title}>
-	<ActionButton action={create} />
-	<ActionButton action={openSelected} enabled={openable} />
-	{#if flow}
-		<ActionButton action={deleteSelected} variant="danger" />
+	{#if restoring}
+		<ActionButton action={restoreSelected} />
+	{:else}
+		<ActionButton action={create} />
+		<ActionButton action={openSelected} enabled={openable} />
+		{#if flow}
+			<ActionButton action={deleteSelected} variant="danger" />
+		{/if}
 	{/if}
 	{#each extraActions as extra (extra.action.key)}
 		<ActionButton action={extra.action} variant={extra.variant} />
 	{/each}
+	{#if onToggleDeleted}
+		<ActionButton action={switchList} />
+	{/if}
 </ScreenHeader>
 <div class="mb-4 flex max-w-xl flex-col gap-1">
 	<label for="list-search" class="font-medium">Buscar (código o nombre)</label>
@@ -343,7 +426,7 @@
 	/>
 </div>
 <div bind:this={tableBox}>
-	<DataTable {columns} {rows} onOpen={openRow} {emptyText} bind:selected />
+	<DataTable {columns} {rows} onOpen={restoring ? undefined : openRow} {emptyText} bind:selected />
 </div>
 {#if page.totalPages > 1}
 	<div class="mt-4 flex flex-wrap items-center gap-4">
@@ -353,5 +436,8 @@
 	</div>
 {/if}
 {#if flow}
-	<DeleteDialog {flow} />
+	<ConfirmDialog {flow} />
+{/if}
+{#if restoreFlow}
+	<ConfirmDialog flow={restoreFlow} act="Restaurar" keep="No restaurar" />
 {/if}

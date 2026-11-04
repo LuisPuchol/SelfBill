@@ -314,12 +314,33 @@ export interface paths {
         };
         /**
          * Get all clients
-         * @description Returns paginated and filtered list of non-deleted clients
+         * @description Returns paginated and filtered list of clients: the live ones, or the deleted ones with deleted=true
          */
         get: operations["getAllClients"];
         put?: never;
         /** Create a client */
         post: operations["createClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clients/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a client
+         * @description Undoes the logical deletion, with the same id and code. Restoring a live client changes nothing.
+         *     Refused when a live client has its code now.
+         */
+        post: operations["restoreClient"];
         delete?: never;
         options?: never;
         head?: never;
@@ -335,12 +356,33 @@ export interface paths {
         };
         /**
          * Get all articles
-         * @description Returns paginated and filtered list of non-deleted articles
+         * @description Returns paginated and filtered list of articles: the live ones, or the deleted ones with deleted=true
          */
         get: operations["getAllArticles"];
         put?: never;
         /** Create an article */
         post: operations["createArticle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an article
+         * @description Undoes the logical deletion, with the same id and code. Restoring a live article changes nothing.
+         *     Refused when a live article has its code now.
+         */
+        post: operations["restoreArticle"];
         delete?: never;
         options?: never;
         head?: never;
@@ -433,6 +475,26 @@ export interface paths {
         };
         /** Export an issued invoice as PDF */
         get: operations["exportInvoicePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invoices/totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sum the invoices of a filter
+         * @description Count and sums of the non-deleted invoices the same filters as the list match: all of them, not a page. Zeros when none match.
+         */
+        get: operations["getTotals"];
         put?: never;
         post?: never;
         delete?: never;
@@ -545,8 +607,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a client by NIF */
-        get: operations["getClientByNif"];
+        /**
+         * List the clients with a NIF
+         * @description NIFs are not unique: every live match, ordered by code, and an empty list when there is none.
+         */
+        get: operations["getClientsByNif"];
         put?: never;
         post?: never;
         delete?: never;
@@ -563,10 +628,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get a client by name
-         * @description Exact match on `name`, ignoring case
+         * List the clients with a name
+         * @description Exact match on `name`, ignoring case. Names are not unique: every live match, ordered by code, and an empty list when there is none.
          */
-        get: operations["getClientByName"];
+        get: operations["getClientsByName"];
         put?: never;
         post?: never;
         delete?: never;
@@ -697,6 +762,8 @@ export interface components {
             smtpPort?: number;
             /** @description Whether a mail password is stored; the password itself is never returned */
             hasMailPassword?: boolean;
+            /** @description Whether the stored mail password cannot be read with this machine's key (it was saved on another machine); the user must type it again */
+            mailPasswordUnreadable?: boolean;
             /** @description Whether a logo has been uploaded */
             hasLogo?: boolean;
             /** Format: date-time */
@@ -925,6 +992,16 @@ export interface components {
             vatPercentage?: number;
             /** @description Surcharge rate applied, already resolved with the client's regime: 0 when it has none */
             surchargePercentage?: number;
+            /**
+             * @description VAT regime the rates were frozen under: the client's at the time, kept while the note is editable following its client's changes
+             * @enum {string}
+             */
+            vatType?: "WITH_VAT" | "WITHOUT_VAT";
+            /**
+             * @description Surcharge regime the rates were frozen under: the client's at the time, kept while the note is editable following its client's changes
+             * @enum {string}
+             */
+            surchargeType?: "WITH_SURCHARGE" | "WITHOUT_SURCHARGE";
             /** Format: int32 */
             clientId?: number;
             /** @description Trade name of the client */
@@ -1020,6 +1097,8 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: date-time */
+            deletedAt?: string;
         };
         ArticleRequest: {
             /**
@@ -1041,6 +1120,8 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: date-time */
+            deletedAt?: string;
         };
         /** @description A lot of an article and the quantity delivered of it in the period */
         TraceabilityLotResponse: {
@@ -1088,6 +1169,15 @@ export interface components {
             content?: components["schemas"]["InvoiceResponse"][];
             page?: components["schemas"]["PageMetadata"];
         };
+        /** @description The sum of all the invoices a filter matches, however many a list would page */
+        InvoiceTotalsResponse: {
+            /** Format: int32 */
+            count?: number;
+            subtotal?: number;
+            vatAmount?: number;
+            surchargeAmount?: number;
+            total?: number;
+        };
         /** @description What was invoiced to a client in a period: the sum of its issued invoices */
         ClientSummaryResponse: {
             /** Format: int32 */
@@ -1102,6 +1192,8 @@ export interface components {
             vatAmount?: number;
             surchargeAmount?: number;
             total?: number;
+            /** @description The client was deleted since: its row stays, as its invoices do */
+            clientDeleted?: boolean;
         };
         PendingDeliveryNoteResponse: {
             /** Format: int32 */
@@ -1171,7 +1263,7 @@ export interface components {
             /** @example /api/clients/7 */
             instance?: string;
             /** @enum {string} */
-            errorCode?: "CLIENT_NOT_FOUND" | "CLIENT_DUPLICATE_CODE" | "CLIENT_EMAIL_NOT_CONFIGURED" | "CLIENT_FISCAL_DATA_MISSING" | "ARTICLE_NOT_FOUND" | "ARTICLE_DUPLICATE_CODE" | "DELIVERY_NOTE_NOT_FOUND" | "DELIVERY_NOTE_DUPLICATE_CODE" | "DELIVERY_NOTE_ALREADY_INVOICED" | "INVOICE_NOT_FOUND" | "INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED" | "INVOICE_MIXED_CLIENTS" | "INVOICE_MIXED_TAX_RATES" | "INVOICE_MIXED_MONTHS" | "INVOICE_ALREADY_ISSUED" | "INVOICE_NOT_ISSUED" | "TAX_CONFIG_NOT_FOUND" | "TAX_CONFIG_ALREADY_EXISTS" | "USER_PROFILE_NOT_FOUND" | "USER_PROFILE_ALREADY_EXISTS" | "USER_PROFILE_LOGO_NOT_FOUND" | "USER_PROFILE_INVALID_LOGO_FORMAT" | "USER_PROFILE_LOGO_TOO_LARGE" | "MAIL_NOT_CONFIGURED" | "EMAIL_SEND_FAILED" | "VALIDATION_ERROR" | "INTERNAL_ERROR";
+            errorCode?: "CLIENT_NOT_FOUND" | "CLIENT_DUPLICATE_CODE" | "CLIENT_EMAIL_NOT_CONFIGURED" | "CLIENT_FISCAL_DATA_MISSING" | "ARTICLE_NOT_FOUND" | "ARTICLE_DUPLICATE_CODE" | "DELIVERY_NOTE_NOT_FOUND" | "DELIVERY_NOTE_DUPLICATE_CODE" | "DELIVERY_NOTE_ALREADY_INVOICED" | "INVOICE_NOT_FOUND" | "INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED" | "INVOICE_MIXED_CLIENTS" | "INVOICE_MIXED_TAX_RATES" | "INVOICE_MIXED_MONTHS" | "INVOICE_ALREADY_ISSUED" | "INVOICE_NOT_ISSUED" | "TAX_CONFIG_NOT_FOUND" | "TAX_CONFIG_ALREADY_EXISTS" | "USER_PROFILE_NOT_FOUND" | "USER_PROFILE_ALREADY_EXISTS" | "USER_PROFILE_LOGO_NOT_FOUND" | "USER_PROFILE_INVALID_LOGO_FORMAT" | "USER_PROFILE_LOGO_TOO_LARGE" | "MAIL_NOT_CONFIGURED" | "EMAIL_SEND_FAILED" | "DATA_CONFLICT" | "VALIDATION_ERROR" | "INTERNAL_ERROR";
             errors?: {
                 [key: string]: string;
             };
@@ -1440,6 +1532,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `TAX_CONFIG_ALREADY_EXISTS`: A tax configuration from {0} already exists
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -1724,6 +1817,7 @@ export interface operations {
              *     - `INVOICE_MIXED_CLIENTS`: All delivery notes must belong to the same client
              *     - `INVOICE_MIXED_MONTHS`: All delivery notes of an invoice must be from the same month
              *     - `DELIVERY_NOTE_DUPLICATE_CODE`: Already exists a delivery note with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -1896,6 +1990,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `CLIENT_DUPLICATE_CODE`: Already exists a client with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2055,6 +2150,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `ARTICLE_DUPLICATE_CODE`: Already exists an article with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2379,6 +2475,7 @@ export interface operations {
              *     - `INVOICE_ALREADY_ISSUED`: Invoice {0} is already issued and cannot be modified
              *     - `INVOICE_MIXED_MONTHS`: All delivery notes of an invoice must be from the same month
              *     - `INVOICE_MIXED_TAX_RATES`: All delivery notes of an invoice must have the same VAT and surcharge rates
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2528,6 +2625,7 @@ export interface operations {
              *     - `INVOICE_DELIVERY_NOTE_ALREADY_ASSOCIATED`: Delivery note {0} already has an associated invoice
              *     - `INVOICE_MIXED_MONTHS`: All delivery notes of an invoice must be from the same month
              *     - `INVOICE_MIXED_TAX_RATES`: All delivery notes of an invoice must have the same VAT and surcharge rates
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2564,6 +2662,8 @@ export interface operations {
                 q?: string;
                 /** @description true: only delivery notes in an invoice. false: only pending ones */
                 invoiced?: boolean;
+                /** @description Only delivery notes in an invoice with this status */
+                invoiceStatus?: "DRAFT" | "ISSUED";
                 /** @description Only delivery notes with a line of this article */
                 articleId?: number;
                 /**
@@ -2662,6 +2762,7 @@ export interface operations {
              * @description Conflict
              *
              *     - `DELIVERY_NOTE_DUPLICATE_CODE`: Already exists a delivery note with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
              */
             409: {
                 headers: {
@@ -2753,6 +2854,8 @@ export interface operations {
                 codeFrom?: number;
                 /** @description Highest code, inclusive */
                 codeTo?: number;
+                /** @description true lists only the deleted ones; absent or false, only the live ones */
+                deleted?: boolean;
                 /** @description Zero-based page index (0..N) */
                 page?: number;
                 /** @description The size of the page to be returned */
@@ -2816,6 +2919,68 @@ export interface operations {
              * @description Conflict
              *
              *     - `CLIENT_DUPLICATE_CODE`: Already exists a client with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    restoreClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientResponse"];
+                };
+            };
+            /**
+             * @description Bad Request
+             *
+             *     - `VALIDATION_ERROR`: Validation error
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Not Found
+             *
+             *     - `CLIENT_NOT_FOUND`: Client not found: {0}
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Conflict
+             *
+             *     - `CLIENT_DUPLICATE_CODE`: Already exists a client with code: {0}
              */
             409: {
                 headers: {
@@ -2836,6 +3001,8 @@ export interface operations {
                 codeFrom?: number;
                 /** @description Highest code, inclusive */
                 codeTo?: number;
+                /** @description true lists only the deleted ones; absent or false, only the live ones */
+                deleted?: boolean;
                 /** @description Zero-based page index (0..N) */
                 page?: number;
                 /** @description The size of the page to be returned */
@@ -2888,6 +3055,68 @@ export interface operations {
              *     - `VALIDATION_ERROR`: Validation error
              */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Conflict
+             *
+             *     - `ARTICLE_DUPLICATE_CODE`: Already exists an article with code: {0}
+             *     - `DATA_CONFLICT`: Conflicting change made at the same time
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    restoreArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleResponse"];
+                };
+            };
+            /**
+             * @description Bad Request
+             *
+             *     - `VALIDATION_ERROR`: Validation error
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Not Found
+             *
+             *     - `ARTICLE_NOT_FOUND`: Article not found: {0}
+             */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3102,6 +3331,46 @@ export interface operations {
             };
         };
     };
+    getTotals: {
+        parameters: {
+            query?: {
+                series?: "GENERAL" | "WITHOUT_VAT";
+                /** @description Lowest number within the series, inclusive */
+                codeFrom?: number;
+                /** @description Highest number within the series, inclusive */
+                codeTo?: number;
+                clientId?: number;
+                /** @description Only the invoice that contains this delivery note */
+                deliveryNoteId?: number;
+                status?: "DRAFT" | "ISSUED";
+                /**
+                 * @description Earliest issue date, inclusive. Drafts have no date
+                 * @example 2026-10-01
+                 */
+                dateFrom?: string;
+                /**
+                 * @description Latest issue date, inclusive. Drafts have no date
+                 * @example 2026-10-31
+                 */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceTotalsResponse"];
+                };
+            };
+        };
+    };
     getClientSummary: {
         parameters: {
             query: {
@@ -3274,7 +3543,7 @@ export interface operations {
             };
         };
     };
-    getClientByNif: {
+    getClientsByNif: {
         parameters: {
             query?: never;
             header?: never;
@@ -3291,7 +3560,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientResponse"];
+                    "application/json": components["schemas"]["ClientResponse"][];
                 };
             };
             /**
@@ -3307,22 +3576,9 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /**
-             * @description Not Found
-             *
-             *     - `CLIENT_NOT_FOUND`: Client not found: {0}
-             */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
         };
     };
-    getClientByName: {
+    getClientsByName: {
         parameters: {
             query?: never;
             header?: never;
@@ -3339,7 +3595,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientResponse"];
+                    "application/json": components["schemas"]["ClientResponse"][];
                 };
             };
             /**
@@ -3348,19 +3604,6 @@ export interface operations {
              *     - `VALIDATION_ERROR`: Validation error
              */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /**
-             * @description Not Found
-             *
-             *     - `CLIENT_NOT_FOUND`: Client not found: {0}
-             */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };

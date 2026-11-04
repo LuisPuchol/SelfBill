@@ -172,6 +172,71 @@ test('delete asks and removes', async ({ page, request }) => {
 	await expect(page.getByText('No existe ningún artículo con el código 9104.')).toBeVisible();
 });
 
+test('F6 shows the deleted articles, and F8 there restores one', async ({ page, request }) => {
+	await createArticle(request, 9150, 'Nabo restaurar');
+	await openList(page);
+	await searchFor(page, 'Nabo restaurar');
+	await expect(page.getByRole('row', { name: /Nabo restaurar/ })).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('¿Borrar el artículo 9150?')).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('Artículo 9150 borrado')).toBeVisible();
+	await expect(page.getByRole('row', { name: /Nabo restaurar/ })).toBeHidden();
+
+	await page.keyboard.press('F6');
+	await expect(page).toHaveURL(
+		(url) =>
+			url.searchParams.get('deleted') === '1' && url.searchParams.get('q') === 'Nabo restaurar'
+	);
+	await expect(page.getByRole('heading', { name: 'Artículos borrados' })).toBeVisible();
+	await ready(page, 'Restaurar');
+	await expect(page.getByRole('columnheader', { name: 'Borrado' })).toBeVisible();
+	const today = new Date().toLocaleDateString('es-ES', {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric'
+	});
+	await expect(page.getByRole('row', { name: /Nabo restaurar/ })).toContainText(today);
+	await page.keyboard.press('F8');
+	await expect(page.getByText('¿Restaurar el artículo 9150?')).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('Artículo 9150 restaurado')).toBeVisible();
+	await expect(page.getByRole('row', { name: /Nabo restaurar/ })).toBeHidden();
+
+	await page.keyboard.press('F6');
+	await expect(page).toHaveURL(
+		(url) => !url.searchParams.has('deleted') && url.searchParams.get('q') === 'Nabo restaurar'
+	);
+	await expect(page.getByRole('heading', { name: 'Artículos', exact: true })).toBeVisible();
+	await ready(page, 'Nuevo');
+	await expect(page.getByRole('row', { name: /Nabo restaurar/ })).toBeVisible();
+});
+
+test('restoring an article whose code a live one has taken says so', async ({ page, request }) => {
+	const { id } = await createArticle(request, 9151, 'Chirivía borrada');
+	expect((await request.delete(`/api/articles/${id}`)).ok()).toBe(true);
+	await createArticle(request, 9151, 'Chirivía viva');
+	await page.goto('/articles?deleted=1');
+	await expect(page.getByRole('heading', { name: 'Artículos borrados' })).toBeVisible();
+	await ready(page, 'Restaurar');
+	await searchFor(page, 'Chirivía');
+	await expect(page.getByRole('row', { name: /Chirivía borrada/ })).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('¿Restaurar el artículo 9151?')).toBeVisible();
+	await page.keyboard.press('F8');
+	await expect(page.getByText('Ya existe un artículo con ese código.')).toBeVisible();
+	await page.keyboard.press('Enter');
+	await expect(page.getByRole('row', { name: /Chirivía borrada/ })).toBeVisible();
+
+	await page.keyboard.press('Escape');
+	await expect(page).toHaveURL(
+		(url) => !url.searchParams.has('deleted') && url.searchParams.get('q') === 'Chirivía'
+	);
+	await ready(page, 'Nuevo');
+	await expect(page.getByRole('row', { name: /Chirivía viva/ })).toBeVisible();
+	await expect(page.getByRole('row', { name: /Chirivía borrada/ })).toBeHidden();
+});
+
 test('unsaved changes', async ({ page, request }) => {
 	const { id } = await createArticle(request, 9105, 'Calabacín cambios');
 	await page.goto(`/articles/${id}`);

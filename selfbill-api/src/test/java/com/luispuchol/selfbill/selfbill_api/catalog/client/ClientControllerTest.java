@@ -169,17 +169,28 @@ class ClientControllerTest {
         }
 
         @Test
-        @DisplayName("GET /api/clients/by-name/{name} - Debe retornar un cliente por nombre")
-        void getClientByName_ShouldReturnClient() throws Exception {
-                when(clientService.getClientByName("Acme Corporation SA")).thenReturn(clientResponse1);
+        @DisplayName("GET /api/clients/by-name/{name} - Debe retornar todos los clientes con ese nombre")
+        void getClientsByName_ShouldReturnList() throws Exception {
+                when(clientService.getClientsByName("Acme Corporation SA")).thenReturn(List.of(clientResponse1));
 
                 mockMvc.perform(get("/api/clients/by-name/Acme Corporation SA")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.businessName", is("Acme Corporation SA")))
-                                .andExpect(jsonPath("$.id", is(1)));
+                                .andExpect(jsonPath("$", hasSize(1)))
+                                .andExpect(jsonPath("$[0].businessName", is("Acme Corporation SA")))
+                                .andExpect(jsonPath("$[0].id", is(1)));
 
-                verify(clientService, times(1)).getClientByName("Acme Corporation SA");
+                verify(clientService, times(1)).getClientsByName("Acme Corporation SA");
+        }
+
+        @Test
+        @DisplayName("GET /api/clients/by-nif/{nif} - Sin coincidencias retorna lista vacia")
+        void getClientsByNif_ShouldReturnEmptyList() throws Exception {
+                when(clientService.getClientsByNif("B0")).thenReturn(List.of());
+
+                mockMvc.perform(get("/api/clients/by-nif/B0"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$", hasSize(0)));
         }
 
         @Test

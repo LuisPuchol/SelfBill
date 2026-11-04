@@ -16,5 +16,8 @@ public record ClientSummaryResponse(
         BigDecimal subtotal,
         BigDecimal vatAmount,
         BigDecimal surchargeAmount,
-        BigDecimal total) {
+        BigDecimal total,
+
+        @Schema(description = "The client was deleted since: its row stays, as its invoices do")
+        Boolean clientDeleted) {
 }

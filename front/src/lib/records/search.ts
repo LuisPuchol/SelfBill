@@ -3,7 +3,13 @@ export function isCodeSearch(text: string): boolean {
 	return /^\d+$/.test(text.trim());
 }
 
-/** Query parameters for a list search; `textParam` is the entity's text filter (`name` or `q`). */
+/** The largest code the API binds (a Java `Integer`). */
+const MAX_CODE = 2147483647;
+
+/**
+ * Query parameters for a list search; `textParam` is the entity's text filter (`name` or `q`).
+ * A code above what the API binds cannot exist: it asks for an empty range instead of a 400.
+ */
 export function listQuery(
 	text: string,
 	textParam: 'name' | 'q'
@@ -12,6 +18,7 @@ export function listQuery(
 	if (trimmed === '') return {};
 	if (isCodeSearch(trimmed)) {
 		const code = Number(trimmed);
+		if (code > MAX_CODE) return { codeFrom: MAX_CODE, codeTo: 0 };
 		return { codeFrom: code, codeTo: code };
 	}
 	return { [textParam]: trimmed };

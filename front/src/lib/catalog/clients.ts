@@ -1,5 +1,6 @@
 import { api, request } from '../api/client';
 import type { DeleteOptions } from '../records/delete-flow.svelte';
+import type { RestoreOptions } from '../records/restore-flow.svelte';
 import { clientPendingMessage } from './pending';
 
 /** What still waits on the client: unbilled delivery notes and draft invoices. */
@@ -24,5 +25,12 @@ export const clientDeletion: DeleteOptions = {
 	pendingForDelete: async (clientId) => {
 		const [notes, drafts] = await clientPending(clientId);
 		return clientPendingMessage(notes, drafts);
+	}
+};
+
+export const clientRestoration: RestoreOptions = {
+	entity: clientDeletion.entity,
+	restore: async (clientId) => {
+		await request(api.POST('/api/clients/{id}/restore', { params: { path: { id: clientId } } }));
 	}
 };

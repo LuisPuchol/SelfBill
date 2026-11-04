@@ -64,6 +64,17 @@ public class CredentialEncryptionService {
         }
     }
 
+    /** Whether this machine's key reads the value: a password saved on another machine does not. */
+    public boolean canDecrypt(String encoded) {
+        try {
+            decrypt(encoded);
+            return true;
+        } catch (RuntimeException e) {
+            // Any failure is intended to count: a credential that does not decrypt is just "unreadable"
+            return false;
+        }
+    }
+
     private static SecretKey loadOrCreateKey(Path keyPath) {
         try {
             if (Files.exists(keyPath)) {

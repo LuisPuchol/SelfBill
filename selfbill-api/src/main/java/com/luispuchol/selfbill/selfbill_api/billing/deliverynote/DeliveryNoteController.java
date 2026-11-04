@@ -3,6 +3,7 @@ package com.luispuchol.selfbill.selfbill_api.billing.deliverynote;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.ARTICLE_NOT_FOUND;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_EMAIL_NOT_CONFIGURED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.CLIENT_NOT_FOUND;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DATA_CONFLICT;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DELIVERY_NOTE_ALREADY_INVOICED;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DELIVERY_NOTE_DUPLICATE_CODE;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DELIVERY_NOTE_NOT_FOUND;
@@ -70,7 +71,8 @@ public class DeliveryNoteController {
     @Operation(summary = "Create a delivery note", description = """
             Takes the print format from the client's default, and the VAT and surcharge rates from the client's \
             regime and the tax configuration in force on its date.""")
-    @ApiErrors({ DELIVERY_NOTE_DUPLICATE_CODE, CLIENT_NOT_FOUND, ARTICLE_NOT_FOUND, TAX_CONFIG_NOT_FOUND })
+    @ApiErrors({ DELIVERY_NOTE_DUPLICATE_CODE, CLIENT_NOT_FOUND, ARTICLE_NOT_FOUND, TAX_CONFIG_NOT_FOUND,
+            DATA_CONFLICT })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public DeliveryNoteResponse createDeliveryNote(@RequestBody @Valid DeliveryNoteRequest request) {
@@ -83,7 +85,7 @@ public class DeliveryNoteController {
             Changing the client takes the new client's print format and tax regime.""")
     @ApiErrors({ DELIVERY_NOTE_NOT_FOUND, DELIVERY_NOTE_ALREADY_INVOICED, INVOICE_MIXED_CLIENTS,
             INVOICE_MIXED_MONTHS, DELIVERY_NOTE_DUPLICATE_CODE, CLIENT_NOT_FOUND, ARTICLE_NOT_FOUND,
-            TAX_CONFIG_NOT_FOUND })
+            TAX_CONFIG_NOT_FOUND, DATA_CONFLICT })
     @PutMapping("/{id}")
     public DeliveryNoteResponse updateDeliveryNote(@PathVariable @Positive Integer id,
             @RequestBody @Valid DeliveryNoteRequest request) {

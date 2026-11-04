@@ -2,6 +2,7 @@ package com.luispuchol.selfbill.selfbill_api.catalog.article;
 
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.ARTICLE_DUPLICATE_CODE;
 import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.ARTICLE_NOT_FOUND;
+import static com.luispuchol.selfbill.selfbill_api.shared.ErrorCode.DATA_CONFLICT;
 
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -36,7 +37,7 @@ public class ArticleController {
 
     private final ArticleService articleService;
 
-    @Operation(summary = "Get all articles", description = "Returns paginated and filtered list of non-deleted articles")
+    @Operation(summary = "Get all articles", description = "Returns paginated and filtered list of articles: the live ones, or the deleted ones with deleted=true")
     @GetMapping
     public Page<ArticleResponse> getAllArticles(@ParameterObject ArticleFilter filter,
             @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
@@ -71,7 +72,7 @@ public class ArticleController {
     }
 
     @Operation(summary = "Create an article")
-    @ApiErrors(ARTICLE_DUPLICATE_CODE)
+    @ApiErrors({ ARTICLE_DUPLICATE_CODE, DATA_CONFLICT })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ArticleResponse createArticle(@RequestBody @Valid ArticleRequest request) {
@@ -79,7 +80,7 @@ public class ArticleController {
     }
 
     @Operation(summary = "Update an article", description = "Issued invoices keep the code and name they were issued with")
-    @ApiErrors({ ARTICLE_NOT_FOUND, ARTICLE_DUPLICATE_CODE })
+    @ApiErrors({ ARTICLE_NOT_FOUND, ARTICLE_DUPLICATE_CODE, DATA_CONFLICT })
     @PutMapping("/{id}")
     public ArticleResponse updateArticle(@PathVariable @Positive Integer id,
             @RequestBody @Valid ArticleRequest request) {
@@ -94,5 +95,14 @@ public class ArticleController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteArticle(@PathVariable @Positive Integer id) {
         articleService.deleteArticle(id);
+    }
+
+    @Operation(summary = "Restore an article", description = """
+            Undoes the logical deletion, with the same id and code. Restoring a live article changes nothing.
+            Refused when a live article has its code now.""")
+    @ApiErrors({ ARTICLE_NOT_FOUND, ARTICLE_DUPLICATE_CODE })
+    @PostMapping("/{id}/restore")
+    public ArticleResponse restoreArticle(@PathVariable @Positive Integer id) {
+        return articleService.restoreArticle(id);
     }
 }

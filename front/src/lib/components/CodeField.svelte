@@ -43,15 +43,22 @@
 	let text = $state(value === null ? '' : String(value));
 	/** Bumped on every edit and every lookup, so an older answer can be told apart. */
 	let generation = 0;
+	/** The code passed in has not been looked up yet: it is not known to exist. */
+	let unchecked = untrack(() => value !== null);
 
-	/** Looks the code up; false when it does not exist or the text changed meanwhile. */
-	async function find(code: number): Promise<boolean> {
+	/**
+	 * Looks the code up; false when it does not exist or the text changed meanwhile. `quiet`: the
+	 * code was not typed (it came in), so a miss only empties the value and waits for the user.
+	 */
+	async function find(code: number, quiet = false): Promise<boolean> {
 		const mine = ++generation;
 		const found = await lookup(code);
 		if (mine !== generation) return false;
+		unchecked = false;
 		if (found === null) {
 			foundName = undefined;
-			ownError = notFoundMessage;
+			value = null;
+			if (!quiet) ownError = notFoundMessage;
 			return false;
 		}
 		foundName = found;
@@ -77,7 +84,7 @@
 			return ownError === undefined;
 		}
 		const code = Number(text);
-		if (value === code) return true;
+		if (value === code && !unchecked) return true;
 		return find(code);
 	}
 
@@ -85,7 +92,7 @@
 	$effect(() => {
 		const initial = untrack(() => value);
 		if (initial === null) return;
-		untrack(() => void find(initial));
+		untrack(() => void find(initial, true));
 	});
 
 	$effect(() => nav?.register({ name, el: input, commit }));

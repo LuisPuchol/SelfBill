@@ -112,6 +112,26 @@ class TraceabilityTest extends DomainIntegrationTest {
     }
 
     @Test
+    @DisplayName("Orders the notes of a lot by day, then by number")
+    void notesOfALotGoByDayThenNumber() throws Exception {
+        DeliveryNoteResponse second = noteNumbered(2, LocalDateTime.of(2026, 4, 3, 10, 0));
+        DeliveryNoteResponse first = noteNumbered(1, LocalDateTime.of(2026, 4, 3, 18, 0));
+        DeliveryNoteResponse third = noteNumbered(3, LocalDateTime.of(2026, 4, 2, 20, 0));
+
+        deliveries(articleId, LOT_A)
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].deliveryNoteId").value(third.id()))
+                .andExpect(jsonPath("$[1].deliveryNoteId").value(first.id()))
+                .andExpect(jsonPath("$[2].deliveryNoteId").value(second.id()));
+    }
+
+    private DeliveryNoteResponse noteNumbered(int code, LocalDateTime date) {
+        return deliveryNoteService.createDeliveryNote(DeliveryNoteRequest.builder()
+                .code(code).date(date).clientId(clientId)
+                .lines(List.of(line(articleId, LOT_A, null, null, "1"))).build());
+    }
+
+    @Test
     @DisplayName("Leaves out deleted notes and lines removed by editing")
     void leavesOutDeletedLinesAndNotes() throws Exception {
         Integer other = articleService.createArticle(article(2, "Pera")).id();

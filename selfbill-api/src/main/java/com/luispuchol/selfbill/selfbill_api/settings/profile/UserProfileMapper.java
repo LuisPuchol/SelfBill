@@ -1,5 +1,6 @@
 package com.luispuchol.selfbill.selfbill_api.settings.profile;
 
+import org.mapstruct.Context;
 import org.mapstruct.InheritConfiguration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -10,7 +11,8 @@ public interface UserProfileMapper {
 
     @Mapping(target = "hasLogo", expression = "java(userProfile != null && userProfile.getLogoData() != null)")
     @Mapping(target = "hasMailPassword", expression = "java(userProfile != null && userProfile.getMailPasswordEncrypted() != null)")
-    UserProfileResponse toResponse(UserProfile userProfile);
+    @Mapping(target = "mailPasswordUnreadable", expression = "java(userProfile != null && userProfile.getMailPasswordEncrypted() != null && !encryption.canDecrypt(userProfile.getMailPasswordEncrypted()))")
+    UserProfileResponse toResponse(UserProfile userProfile, @Context CredentialEncryptionService encryption);
 
     @Mapping(target = "logoData", ignore = true)
     @Mapping(target = "logoContentType", ignore = true)

@@ -7,7 +7,7 @@
 	import DataTable from '../components/DataTable.svelte';
 	import DateField from '../components/DateField.svelte';
 	import { DetailLoader } from '../components/detail-loader.svelte';
-	import { showError, showMessage } from '../components/errors.svelte';
+	import { showError, showPrintError } from '../components/errors.svelte';
 	import { fillViewport, fillViewportExact } from '../components/fill-viewport';
 	import Form from '../components/Form.svelte';
 	import ScreenHeader from '../components/ScreenHeader.svelte';
@@ -71,7 +71,10 @@
 		formatMoney(pick(c) ?? 0);
 	const clientColumns: Column<ClientTotals>[] = [
 		{ label: 'Cód.', value: (c) => String(c.clientCode ?? ''), align: 'right' },
-		{ label: 'Cliente', value: (c) => c.clientName ?? '' },
+		{
+			label: 'Cliente',
+			value: (c) => (c.clientName ?? '') + (c.clientDeleted ? ' (borrado)' : '')
+		},
 		{ label: 'Fact.', value: (c) => String(c.invoiceCount ?? 0), align: 'right' },
 		{ label: 'Base', value: money((c) => c.subtotal), align: 'right' },
 		{ label: 'IVA', value: money((c) => c.vatAmount), align: 'right' },
@@ -184,8 +187,8 @@
 		busy = true;
 		try {
 			await print(await fetchPdf(row.id));
-		} catch {
-			showMessage('No se ha podido imprimir la factura.');
+		} catch (err) {
+			showPrintError(err, 'No se ha podido imprimir la factura.');
 		} finally {
 			busy = false;
 		}

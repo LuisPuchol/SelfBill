@@ -28,11 +28,18 @@
 		const invoices = result.content ?? [];
 		return { invoices, truncated: (result.page?.totalElements ?? 0) > invoices.length };
 	}
+
+	function loadTotals(dateFrom: string, dateTo: string) {
+		return request(
+			api.GET('/api/invoices/totals', { params: { query: { status: 'ISSUED', dateFrom, dateTo } } })
+		);
+	}
 </script>
 
 <Ledger
 	today={data.today}
 	{loadInvoices}
+	{loadTotals}
 	loadInvoice={(id) => request(api.GET('/api/invoices/{id}', { params: { path: { id } } }))}
 	fetchPdf={(id) =>
 		request(api.GET('/api/invoices/{id}/pdf', { params: { path: { id } }, parseAs: 'blob' }))}

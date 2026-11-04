@@ -122,12 +122,21 @@
 		if (line.price === null) void propose(line, code);
 	}
 
-	/** Puts in the last price for the article; the price stays empty meanwhile and if there is none. */
-	async function propose(line: LineValues, code: number): Promise<void> {
+	/**
+	 * Empties the line's price under a new offer for the article: an offer is replaced, never changed,
+	 * so a price still on its way for the old one is not taken.
+	 */
+	function withdraw(line: LineValues, code: number): Offer {
 		const offer: Offer = { code, price: null };
 		offers.set(line, offer);
-		// Another article's or client's price must not be saved while this one is on its way.
 		line.price = null;
+		return offer;
+	}
+
+	/** Puts in the last price for the article; the price stays empty meanwhile and if there is none. */
+	async function propose(line: LineValues, code: number): Promise<void> {
+		// Another article's or client's price must not be saved while this one is on its way.
+		const offer = withdraw(line, code);
 		let price: number | null;
 		try {
 			price = await proposePrice(code);
@@ -146,6 +155,17 @@
 		for (const line of lines) {
 			const offer = untouchedOffer(line);
 			if (offer) void propose(line, offer.code);
+		}
+	}
+
+	/**
+	 * A client typed: its found one will bring its own prices, and until then none of the old one's
+	 * may be saved. The prices still as offered go empty, and stay the grid's to fill.
+	 */
+	export function clearOfferedPrices(): void {
+		for (const line of lines) {
+			const offer = untouchedOffer(line);
+			if (offer) withdraw(line, offer.code);
 		}
 	}
 

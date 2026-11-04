@@ -4,6 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -18,6 +22,9 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import org.sqlite.SQLiteErrorCode;
+import org.sqlite.SQLiteException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -71,10 +78,53 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 errorCode.getHttpStatus(), request);
     }
 
+    // Sorting by a property the entity lacks reaches here as the repository's own exception, usually wrapped
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ProblemDetail handleUnknownProperty(PropertyReferenceException ex) {
+        return validationProblem(Map.of("sort", String.valueOf(ex.getMessage())));
+    }
+
+    @ExceptionHandler(InvalidDataAccessApiUsageException.class)
+    public ProblemDetail handleInvalidDataAccessApiUsage(InvalidDataAccessApiUsageException ex,
+            HttpServletRequest request) {
+        for (Throwable cause = ex.getCause(); cause != null; cause = cause.getCause()) {
+            if (cause instanceof PropertyReferenceException unknownProperty) {
+                return handleUnknownProperty(unknownProperty);
+            }
+        }
+        return handleUnexpected(ex, request);
+    }
+
+    // A unique index lost a race (two requests took the same code or number): the user can just retry.
+    // Any other database error is a bug and stays a 500.
+    @ExceptionHandler(DataAccessException.class)
+    public ProblemDetail handleDataAccess(DataAccessException ex, HttpServletRequest request) {
+        if (isUniqueViolation(ex)) {
+            ErrorCode errorCode = ErrorCode.DATA_CONFLICT;
+            log.warn("[{}] {}", errorCode, ex.getMessage());
+            return problem(errorCode.getHttpStatus(), errorCode, errorCode.format());
+        }
+        return handleUnexpected(ex, request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception ex, HttpServletRequest request) {
         log.error("Unexpected error at {}", request.getRequestURI(), ex);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR, ErrorCode.INTERNAL_ERROR.format());
+    }
+
+    private static boolean isUniqueViolation(Throwable ex) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SQLiteException sqlite
+                    && sqlite.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
+                return true;
+            }
+            if (cause instanceof ConstraintViolationException violation
+                    && violation.getKind() == ConstraintViolationException.ConstraintKind.UNIQUE) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static ProblemDetail validationProblem(Map<String, String> errors) {

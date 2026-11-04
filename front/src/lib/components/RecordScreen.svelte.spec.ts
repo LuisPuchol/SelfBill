@@ -3,6 +3,7 @@ import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import RecordHarness from '#lib/test/RecordHarness.svelte';
 import { ApiError } from '#lib/api/errors.js';
+import { errorMessages } from '#lib/api/messages.js';
 import { dismissError, errorState } from '#lib/components/errors.svelte.js';
 import type { Saved } from '#lib/records/record-form.svelte.js';
 
@@ -34,6 +35,7 @@ function deferred<T>() {
 	return { promise, resolve };
 }
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const code = () => page.getByLabelText('Código');
 const name = () => page.getByLabelText('Nombre');
 const dialog = () => page.getByRole('dialog');
@@ -209,6 +211,35 @@ describe('RecordScreen', () => {
 		await expect.element(page.getByText('Pon un nombre')).not.toBeInTheDocument();
 	});
 
+	it('a validation error for a field on screen goes under it, without dialog', async () => {
+		const o = options();
+		o.create.mockRejectedValue(new ApiError(400, 'VALIDATION_ERROR', '', { name: 'x' }));
+		await render(RecordHarness, o);
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await expect.element(name()).toHaveAccessibleDescription('Revisa este dato');
+		expect(errorState.view).toBeNull();
+	});
+
+	it('a validation error for a field not on screen opens the dialog', async () => {
+		const o = options();
+		o.create.mockRejectedValue(
+			new ApiError(400, 'VALIDATION_ERROR', '', { name: 'x', 'lines[0].price': 'y' })
+		);
+		await render(RecordHarness, o);
+		await name().click();
+		await userEvent.keyboard('Tomate{NumpadAdd}');
+		await vi.waitFor(() =>
+			expect(errorState.view).toEqual({
+				kind: 'business',
+				message: errorMessages.VALIDATION_ERROR
+			})
+		);
+		// The one with its field on screen still goes under it.
+		await expect.element(name()).toHaveAccessibleDescription('Revisa este dato');
+		dismissError();
+	});
+
 	it('a code that is not positive is explained under the code field', async () => {
 		const o = options();
 		o.create.mockRejectedValue(
@@ -239,6 +270,54 @@ describe('RecordScreen', () => {
 		await code().click();
 		await restore.click();
 		await expect.element(code()).toHaveFocus();
+	});
+
+	it('F8 does nothing while a save is in flight', async () => {
+		const o = options();
+		const saving = deferred<Saved>();
+		o.update.mockReturnValue(saving.promise);
+		await render(RecordHarness, { ...o, ...editing });
+		await name().click();
+		await userEvent.keyboard('x{NumpadAdd}');
+		await vi.waitFor(() => expect(o.update).toHaveBeenCalledOnce());
+		await userEvent.keyboard('{F8}');
+		await wait(50);
+		expect(o.pendingForDelete).not.toHaveBeenCalled();
+		await expect.element(dialog()).not.toBeInTheDocument();
+		saving.resolve({ id: 5, code: 101 });
+		await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledOnce());
+	});
+
+	it('"+" does nothing while a delete is in flight', async () => {
+		const o = options();
+		const removing = deferred<void>();
+		o.remove.mockReturnValue(removing.promise);
+		await render(RecordHarness, { ...o, ...editing });
+		await userEvent.keyboard('{F8}');
+		await expect.element(dialog()).toBeVisible();
+		await userEvent.keyboard('{F8}');
+		await vi.waitFor(() => expect(o.remove).toHaveBeenCalledOnce());
+		await userEvent.keyboard('{NumpadAdd}');
+		await wait(50);
+		expect(o.update).not.toHaveBeenCalled();
+		removing.resolve();
+		await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledOnce());
+	});
+
+	it('after a delete, F8 and "+" stay blocked until the list is shown', async () => {
+		const o = options();
+		const going = deferred<void>();
+		o.goToList.mockReturnValue(going.promise as unknown as void);
+		await render(RecordHarness, { ...o, ...editing });
+		await userEvent.keyboard('{F8}');
+		await expect.element(dialog()).toBeVisible();
+		await userEvent.keyboard('{F8}');
+		await vi.waitFor(() => expect(o.goToList).toHaveBeenCalledOnce());
+		await userEvent.keyboard('{NumpadAdd}{F8}');
+		await wait(50);
+		expect(o.update).not.toHaveBeenCalled();
+		expect(o.pendingForDelete).toHaveBeenCalledOnce();
+		await expect.element(dialog()).not.toBeInTheDocument();
 	});
 
 	it('delete asks with the pending numbers', async () => {

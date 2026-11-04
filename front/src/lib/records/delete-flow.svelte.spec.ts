@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '#lib/api/errors.js';
-import { errorState } from '#lib/components/errors.svelte.js';
+import { connectionRestored, dismissError, errorState } from '#lib/components/errors.svelte.js';
 import { DeleteFlow, type DeleteTarget } from '#lib/records/delete-flow.svelte.js';
 
 const target: DeleteTarget = { id: 5, code: 101, name: 'Tomate' };
@@ -30,8 +30,8 @@ function setup(
 const failure = () => new ApiError(409, 'INVOICE_MIXED_MONTHS', 'Detail EN', {});
 
 beforeEach(() => {
-	errorState.view = null;
-	errorState.connectionLost = false;
+	connectionRestored();
+	dismissError();
 });
 
 describe('DeleteFlow', () => {

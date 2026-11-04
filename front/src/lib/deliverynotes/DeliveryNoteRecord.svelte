@@ -1,10 +1,11 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { classifyError } from '../api/classify';
 	import type { components } from '../api/schema';
 	import CheckAction from '../components/CheckAction.svelte';
 	import CodeField from '../components/CodeField.svelte';
 	import DateField from '../components/DateField.svelte';
-	import { showError, showMessage } from '../components/errors.svelte';
+	import { showError, showMessage, whenNoError } from '../components/errors.svelte';
 	import RecordScreen from '../components/RecordScreen.svelte';
 	import { timeNow } from '../format/date';
 	import { useKeys } from '../keyboard/keymap.svelte';
@@ -126,8 +127,19 @@
 		toast
 	});
 
-	/** In an issued invoice nothing changes: no field, no key. */
-	const readOnly = $derived(saved?.invoiceStatus === 'ISSUED');
+	/**
+	 * In a draft invoice whose client was deleted since (its code left empty): the invoice cannot
+	 * change until the client is restored (CONCEPTO §7).
+	 */
+	const draftOfDeletedClient = $derived(
+		saved?.invoiceStatus === 'DRAFT' && form.saved.clientCode === null
+	);
+
+	/** In an issued invoice nothing changes: no field, no key. Nor in a draft of a deleted client. */
+	const readOnly = $derived(saved?.invoiceStatus === 'ISSUED' || draftOfDeletedClient);
+
+	/** A note in a draft invoice keeps its client: the invoice is of one client only. */
+	const clientLocked = $derived(readOnly || saved?.invoiceStatus === 'DRAFT');
 
 	const regimeOf = (c: ClientResponse): Regime => ({
 		vatType: c.vatType!,
@@ -139,13 +151,6 @@
 		form.values.clientCode === null ? null : lookups.cachedClient(form.values.clientCode)
 	);
 	const sameClient = $derived(form.values.clientCode === form.saved.clientCode);
-	/**
-	 * The saved note's client, which the page fetched by id: its regime is the note's, as the API
-	 * keeps an editable note's in step with its client. Null when it was deleted since.
-	 */
-	const savedClient = $derived(
-		form.saved.clientCode === null ? null : lookups.cachedClient(form.saved.clientCode)
-	);
 	/** Something typed in Cliente: a deleted client's name no longer applies. */
 	let clientTyped = $state(false);
 	/** A client deleted since leaves its code empty: its name as the note has it. */
@@ -155,6 +160,12 @@
 	const format = $derived(saved && sameClient ? saved.format : client?.defaultDeliveryNoteFormat);
 
 	const period = $derived(periodOn(form.values.date, periods));
+	/** The regime the saved note's rates were frozen under, which its response carries: known too once its client was deleted. */
+	const savedRegime = $derived<Regime | null>(
+		saved?.vatType && saved.surchargeType
+			? { vatType: saved.vatType, surchargeType: saved.surchargeType }
+			: null
+	);
 	const savedRates = $derived(
 		saved && { vat: saved.vatPercentage ?? 0, surcharge: saved.surchargePercentage ?? 0 }
 	);
@@ -170,7 +181,7 @@
 			: noteRates(
 					regimeOf(client),
 					period,
-					savedRates && { regime: savedClient && regimeOf(savedClient), rates: savedRates }
+					savedRates && { regime: savedRegime, rates: savedRates }
 				)
 	);
 	const rates = $derived(asSaved ? savedRates! : (preview?.rates ?? null));
@@ -236,23 +247,38 @@
 				issueFailure = { err };
 			}
 		}
-		let printFailed = false;
+		let printFailure: { err: unknown } | undefined;
 		if (printNote) {
 			try {
 				await print(await fetchPdf(note.id));
-			} catch {
-				printFailed = true;
+			} catch (err) {
+				printFailure = { err };
 			}
 		}
-		// One dialog for all that went wrong: a second one would only replace the first.
+		// One dialog for all that went wrong: a second one would only replace the first. A lost
+		// connection takes the whole screen instead; the toast still says the note is saved.
 		const printMessage = 'No se ha podido imprimir el albarán.';
-		if (issueFailure) {
-			showError(issueFailure.err, {
+		const showIssueFailure = (err: unknown) =>
+			showError(err, {
 				lead: 'El albarán se ha guardado, pero no se ha podido emitir la factura:',
-				also: printFailed ? printMessage : undefined
+				also: printFailure ? printMessage : undefined
 			});
-		} else if (printFailed) showMessage(printMessage);
+		if (printFailure && classifyError(printFailure.err).kind === 'connection') {
+			showError(printFailure.err);
+			// Nothing over the connection screen: why the invoice was not issued waits for it to go.
+			// Unless the issue too was lost with the connection: once back, that screen would return.
+			if (issueFailure && classifyError(issueFailure.err).kind !== 'connection') {
+				const { err } = issueFailure;
+				whenNoError(() => showIssueFailure(err));
+			}
+		} else if (issueFailure) showIssueFailure(issueFailure.err);
+		else if (printFailure) showMessage(printMessage);
 		return issued;
+	}
+
+	function onClientInput(): void {
+		clientTyped = true;
+		grid?.clearOfferedPrices();
 	}
 
 	let grid = $state<ReturnType<typeof LinesGrid>>();
@@ -270,16 +296,22 @@
 		<p class="{banner} border-issued text-issued">
 			Está en la factura nº {saved.invoiceNumber}, emitida: no se puede modificar.
 		</p>
+	{:else if draftOfDeletedClient}
+		<p class="{banner} border-draft text-draft">
+			Está en una factura en borrador y su cliente está borrado: para cambiar el albarán, restáuralo
+			en Clientes (F6, Ver borrados).
+		</p>
 	{:else if saved?.invoiceStatus === 'DRAFT'}
 		<p class="{banner} border-draft text-draft">
-			Está en una factura en borrador: si lo cambias, la factura se recalcula.
+			Está en una factura en borrador: si lo cambias, la factura se recalcula. El cliente no se
+			puede cambiar.
 		</p>
 	{/if}
 	<!-- The totals up here, beside the note's data: the lines below grow without moving them -->
 	<div class="mb-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
 		<div>
 			<div class="mb-2 flex flex-wrap items-start gap-x-6">
-				<div class="flex w-96 items-start gap-3" oninput={() => (clientTyped = true)}>
+				<div class="flex w-96 items-start gap-3" oninput={onClientInput}>
 					<div class="min-w-0 flex-1">
 						<!-- The field reads its code only when created: a chained new note brings a new one -->
 						{#key form.values}
@@ -290,9 +322,9 @@
 								bind:value={form.values.clientCode}
 								lookup={(code) => lookups.client(code).then((found) => found?.name ?? null)}
 								notFoundMessage="No existe ningún cliente con ese código"
-								required={!readOnly}
+								required={!clientLocked}
 								error={form.errorFor('clientCode')}
-								{readOnly}
+								readOnly={clientLocked}
 								onFound={() => grid?.reproposePrices()}
 							/>
 						{/key}

@@ -33,13 +33,13 @@ export type KeyEventLike = Pick<
 	| 'preventDefault'
 >;
 
-// Browser shortcuts (help, search, ...) that must never fire in the app.
-export const ALWAYS_PREVENTED: readonly string[] = ['F1', 'F2', 'F3', 'F4', 'F7', 'F8', 'F9'];
+// Browser shortcuts (help, search, the address bar, ...) that must never fire in the app.
+export const ALWAYS_PREVENTED: readonly string[] = ['F1', 'F2', 'F3', 'F4', 'F6', 'F7', 'F8', 'F9'];
 
 // Holding these keys keeps moving; any other held key must not fire its action again.
 const REPEATABLE: readonly string[] = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'];
 
-const BAR_ORDER = ['Enter', 'NumpadAdd', 'Escape', 'F2', 'F3', 'F4', 'F8', 'F9'];
+const BAR_ORDER = ['Enter', 'NumpadAdd', 'Escape', 'F2', 'F3', 'F4', 'F6', 'F8', 'F9'];
 
 const NAMES: Record<string, string> = {
 	NumpadAdd: '+',

@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import com.luispuchol.selfbill.selfbill_api.billing.invoice.InvoiceStatus;
+import com.luispuchol.selfbill.selfbill_api.billing.invoice.Invoice_;
 import com.luispuchol.selfbill.selfbill_api.catalog.client.Client_;
 import com.luispuchol.selfbill.selfbill_api.shared.BaseEntity_;
 import com.luispuchol.selfbill.selfbill_api.shared.SearchText;
@@ -28,6 +30,7 @@ public final class DeliveryNoteSpecification {
                 .and(dateFrom(filter.dateFrom()))
                 .and(dateTo(filter.dateTo()))
                 .and(invoiced(filter.invoiced()))
+                .and(invoiceStatus(filter.invoiceStatus()))
                 .and(withLine(filter.articleId(), filter.traceabilityCode()));
     }
 
@@ -65,6 +68,11 @@ public final class DeliveryNoteSpecification {
         return (root, query, cb) -> invoiced == null ? null
                 : invoiced ? cb.isNotNull(root.get(DeliveryNote_.invoice))
                         : cb.isNull(root.get(DeliveryNote_.invoice));
+    }
+
+    private static Specification<DeliveryNote> invoiceStatus(InvoiceStatus status) {
+        return (root, query, cb) -> status == null ? null
+                : cb.equal(root.get(DeliveryNote_.invoice).get(Invoice_.status), status);
     }
 
     // Delivery notes with at least one line that matches the article and the code at once (CONCEPTO.md §10)

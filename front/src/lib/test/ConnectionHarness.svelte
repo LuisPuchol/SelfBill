@@ -2,6 +2,7 @@
 	import KeyboardRoot from '../keyboard/KeyboardRoot.svelte';
 	import KeyBar from '../components/KeyBar.svelte';
 	import ConnectionScreen from '../components/ConnectionScreen.svelte';
+	import ErrorDialog from '../components/ErrorDialog.svelte';
 
 	let {
 		ping,
@@ -18,4 +19,5 @@
 
 <KeyboardRoot />
 <ConnectionScreen {ping} {onRestored} {intervalMs} {onBack} />
+<ErrorDialog />
 <KeyBar />

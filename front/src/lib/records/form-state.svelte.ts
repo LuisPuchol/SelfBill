@@ -77,8 +77,10 @@ export class FormState<V extends object> {
 
 	/**
 	 * A VALIDATION_ERROR with field errors goes under its fields, in Spanish: `messages` by field
-	 * path, "Revisa este dato" for the rest. False for anything else, which is left to the caller.
-	 * `fieldPath` turns the API's path into the form's when they differ.
+	 * path, "Revisa este dato" for the rest. True when every error found its field on screen; false
+	 * for anything else, which is left to the caller. So an error with no field to show it still
+	 * reaches the dialog, while the others stay under their fields. `fieldPath` turns the API's path
+	 * into the form's when they differ.
 	 */
 	showFieldErrors(
 		err: unknown,
@@ -92,11 +94,12 @@ export class FormState<V extends object> {
 		) {
 			return false;
 		}
-		const shown = fieldErrorMessages(err.fieldErrors, messages);
-		this.setFieldErrors(
-			Object.fromEntries(Object.entries(shown).map(([path, message]) => [fieldPath(path), message]))
+		const errors = Object.entries(fieldErrorMessages(err.fieldErrors, messages)).map(
+			([path, message]) => [fieldPath(path), message] as const
 		);
-		return true;
+		const placed = errors.filter(([name]) => this.nav?.hasField(name));
+		this.setFieldErrors(Object.fromEntries(placed));
+		return placed.length === errors.length;
 	}
 
 	/** Nothing left to save: the current values become the saved ones. */
@@ -131,6 +134,10 @@ export class FormState<V extends object> {
 			if (!(await this.nav?.validateAll())) return false;
 			return persist();
 		});
+	}
+
+	protected get saving(): boolean {
+		return this.#saving;
 	}
 
 	/**

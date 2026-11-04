@@ -70,6 +70,7 @@ export class RecordForm<V extends { code: number | null }> extends FormState<V> 
 			remove: options.remove,
 			pendingForDelete: options.pendingForDelete,
 			toast: options.toast,
+			// The deletion stays busy until the list is shown: nothing else starts on the way out.
 			onDeleted: async () => {
 				// Nothing left to save: the unsaved-changes question must not stop the way out.
 				this.markSaved();
@@ -94,6 +95,12 @@ export class RecordForm<V extends { code: number | null }> extends FormState<V> 
 		});
 	}
 
+	/** Saving and deleting exclude each other, and neither starts once a delete is done. */
+	protected override exclusively(step: () => Promise<boolean>): Promise<boolean> {
+		if (this.deletion.busy) return Promise.resolve(false);
+		return super.exclusively(step);
+	}
+
 	/** "Guardar igualmente": saves without asking again. */
 	async confirmSave(): Promise<void> {
 		await this.exclusively(() => {
@@ -109,7 +116,7 @@ export class RecordForm<V extends { code: number | null }> extends FormState<V> 
 	/** Asks to delete the saved record; nothing for a new one. */
 	async askDelete(): Promise<void> {
 		const id = this.id;
-		if (id === null) return;
+		if (id === null || this.saving) return;
 		// Like the code: the saved record's, not what the form holds now.
 		await this.deletion.ask({ id, code: this.#code, name: this.#options.describe(this.saved) });
 	}

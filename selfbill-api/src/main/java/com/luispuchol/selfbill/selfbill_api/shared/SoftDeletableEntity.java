@@ -12,4 +12,8 @@ public abstract class SoftDeletableEntity extends BaseEntity {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public void restore() {
+        deletedAt = null;
+    }
 }

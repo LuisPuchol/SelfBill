@@ -29,7 +29,7 @@ public class UserProfileService {
     private final CredentialEncryptionService credentialEncryptionService;
 
     public UserProfileResponse getUserProfile() {
-        return userProfileMapper.toResponse(findProfile());
+        return toResponse(findProfile());
     }
 
     @Transactional
@@ -39,18 +39,19 @@ public class UserProfileService {
         }
 
         UserProfile profile = userProfileMapper.toEntity(request);
-        applySmtpDefaults(profile, request);
+        applySmtpDefaults(profile, request, null);
         applyMailPassword(profile, request.mailPassword());
-        return userProfileMapper.toResponse(userProfileRepository.save(profile));
+        return toResponse(userProfileRepository.save(profile));
     }
 
     @Transactional
     public UserProfileResponse updateUserProfile(UserProfileRequest request) {
         UserProfile profile = findProfile();
+        String previousEmail = profile.getEmail();
         userProfileMapper.updateEntity(profile, request);
-        applySmtpDefaults(profile, request);
+        applySmtpDefaults(profile, request, previousEmail);
         applyMailPassword(profile, request.mailPassword());
-        return userProfileMapper.toResponse(userProfileRepository.save(profile));
+        return toResponse(userProfileRepository.save(profile));
     }
 
     @Transactional
@@ -128,19 +129,35 @@ public class UserProfileService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_PROFILE_NOT_FOUND));
     }
 
-    private static void applySmtpDefaults(UserProfile profile, UserProfileRequest request) {
+    private UserProfileResponse toResponse(UserProfile profile) {
+        return userProfileMapper.toResponse(profile, credentialEncryptionService);
+    }
+
+    /**
+     * Fills the server and port the request left empty from the email's provider. When the email moved to
+     * another provider and the form sent back the previous provider's server, that server is stale, not a
+     * choice: it takes the new provider's (none if unknown), and the port too if it is the old default as well.
+     * A custom server is kept with its port, whatever the port is.
+     */
+    private static void applySmtpDefaults(UserProfile profile, UserProfileRequest request, String previousEmail) {
         if (profile.getEmail() == null) {
             return;
         }
-        if (request.smtpHost() == null) {
+        boolean providerChanged = previousEmail != null
+                && !SmtpProviderDefaults.sameProvider(previousEmail, profile.getEmail());
+        boolean hostIsStale = providerChanged && request.smtpHost() != null
+                && request.smtpHost().equals(SmtpProviderDefaults.defaultHost(previousEmail));
+        boolean portIsStale = hostIsStale && request.smtpPort() != null
+                && request.smtpPort().equals(SmtpProviderDefaults.defaultPort(previousEmail));
+        if (request.smtpHost() == null || hostIsStale) {
             String defaultHost = SmtpProviderDefaults.defaultHost(profile.getEmail());
-            if (defaultHost != null) {
+            if (defaultHost != null || hostIsStale) {
                 profile.setSmtpHost(defaultHost);
             }
         }
-        if (request.smtpPort() == null) {
+        if (request.smtpPort() == null || portIsStale) {
             Integer defaultPort = SmtpProviderDefaults.defaultPort(profile.getEmail());
-            if (defaultPort != null) {
+            if (defaultPort != null || hostIsStale) {
                 profile.setSmtpPort(defaultPort);
             }
         }

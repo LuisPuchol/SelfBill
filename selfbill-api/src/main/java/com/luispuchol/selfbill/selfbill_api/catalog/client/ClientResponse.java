@@ -26,5 +26,6 @@ public record ClientResponse(
         DeliveryNoteFormat defaultDeliveryNoteFormat,
 
         LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
+        LocalDateTime updatedAt,
+        LocalDateTime deletedAt) {
 }
