@@ -47,7 +47,6 @@
 		...columns,
 		{ label: 'Borrado', value: (r) => formatDate(r.deletedAt) }
 	];
-	// The deleted ones, or back to the live ones, with what is typed in the search box.
 	function toggleDeleted(text: string) {
 		const href = withParams(new URL(page.url.href), {
 			deleted: data.deleted ? null : 1,

@@ -229,7 +229,6 @@ describe('LinesGrid', () => {
 		await cell(1, 'Precio').click();
 		await userEvent.keyboard('3');
 		await page.getByRole('button', { name: 'Cliente tecleado' }).click();
-		// The offered one is gone at once; the typed and the saved ones stay.
 		await expect.element(cell(0, 'Precio')).toHaveValue('');
 		await expect.element(cell(1, 'Precio')).toHaveValue('3,00');
 		await expect.element(cell(2, 'Precio')).toHaveValue('2,50');

@@ -29,7 +29,6 @@ export const articleDeletion: DeleteOptions = {
 	}
 };
 
-/** Restoring a deleted article: its list of deleted ones. */
 export const articleRestoration: RestoreOptions = {
 	entity: articleDeletion.entity,
 	restore: async (articleId) => {

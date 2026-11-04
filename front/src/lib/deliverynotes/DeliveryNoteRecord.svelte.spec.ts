@@ -461,7 +461,6 @@ describe('DeliveryNoteRecord, saving', () => {
 		await expect.element(cell(1, 'Lote')).toHaveFocus();
 		await cliente().click();
 		await userEvent.keyboard('4');
-		// Not found yet, and García's price is already gone.
 		await expect.element(cell(0, 'Precio')).toHaveValue('');
 		await expect.element(cell(1, 'Precio')).toHaveValue('3,00');
 		await userEvent.keyboard('{Enter}');
@@ -481,8 +480,7 @@ describe('DeliveryNoteRecord, saving', () => {
 		await userEvent.keyboard('12{Enter}01181026{Enter}25{Enter}');
 		await expect.element(cell(0, 'Precio')).toHaveValue('1,20');
 		await cliente().click();
-		// Another client typed, no Enter: García's price is gone, the new client's not here yet. Today
-		// the note is saved with the price empty, the API refusing every price.
+		// Another client typed, no Enter: García's price is gone, the new client's not here yet.
 		await userEvent.keyboard('4{NumpadAdd}');
 		await expect.element(cell(0, 'Precio')).toHaveFocus();
 		await expect.element(cell(0, 'Precio')).toHaveAccessibleDescription('Este dato es obligatorio');

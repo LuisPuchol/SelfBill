@@ -449,7 +449,6 @@ describe('Billing, Facturar todos', () => {
 		await vi.waitFor(() => expect(errorState.connectionLost).toBe(true));
 		expect(p.issue).toHaveBeenCalledTimes(2);
 		expect(p.loadPending).toHaveBeenCalledTimes(2);
-		// Nothing over the connection screen.
 		await expect.element(dialog()).not.toBeInTheDocument();
 
 		connectionRestored();
@@ -460,7 +459,6 @@ describe('Billing, Facturar todos', () => {
 		await userEvent.keyboard('{Enter}');
 		await expect.element(dialog()).not.toBeInTheDocument();
 		await expect.element(dateField()).toHaveFocus();
-		// The list again, as it is now.
 		await userEvent.keyboard('{Enter}');
 		await expect.element(listRow(0)).toHaveTextContent('VARIOS');
 		await expect.element(listRow(1)).not.toBeInTheDocument();

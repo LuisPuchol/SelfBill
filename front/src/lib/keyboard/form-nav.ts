@@ -128,7 +128,6 @@ export class FormNav {
 		this.#fields.find((f) => f.name === name)?.el.focus();
 	}
 
-	/** A field of that name is on screen. */
 	hasField(name: string): boolean {
 		return this.#fields.some((f) => f.name === name);
 	}

@@ -28,7 +28,6 @@ export const clientDeletion: DeleteOptions = {
 	}
 };
 
-/** Restoring a deleted client: its list of deleted ones. */
 export const clientRestoration: RestoreOptions = {
 	entity: clientDeletion.entity,
 	restore: async (clientId) => {

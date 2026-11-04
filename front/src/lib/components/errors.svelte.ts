@@ -39,7 +39,6 @@ export function showMessage(message: string): void {
 	errorState.view = { kind: 'business', message };
 }
 
-/** A print that failed: a lost connection raises its screen, anything else says `message`. */
 export function showPrintError(err: unknown, message: string): void {
 	if (classifyError(err).kind === 'connection') showError(err);
 	else showMessage(message);

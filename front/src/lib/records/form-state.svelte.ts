@@ -136,7 +136,6 @@ export class FormState<V extends object> {
 		});
 	}
 
-	/** A save is running. */
 	protected get saving(): boolean {
 		return this.#saving;
 	}

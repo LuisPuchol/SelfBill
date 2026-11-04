@@ -185,7 +185,6 @@ test('F6 shows the deleted clients, and F8 there restores one', async ({ page, r
 	await expect(page.getByText('Cliente 9250 borrado')).toBeVisible();
 	await expect(page.getByRole('row', { name: /Restaurar e2e/ })).toBeHidden();
 
-	// The deleted ones, with the same search and the day each one was deleted.
 	await page.keyboard.press('F6');
 	await expect(page).toHaveURL(
 		(url) =>
@@ -213,7 +212,6 @@ test('F6 shows the deleted clients, and F8 there restores one', async ({ page, r
 		page.getByText('No hay ningún cliente borrado que coincida con «Restaurar e2e».')
 	).toBeVisible();
 
-	// Back to the live ones, where it is again.
 	await page.keyboard.press('F6');
 	await expect(page).toHaveURL(
 		(url) => !url.searchParams.has('deleted') && url.searchParams.get('q') === 'Restaurar e2e'
@@ -240,7 +238,6 @@ test('restoring a client whose code a live one has taken says so', async ({ page
 	await expect(page.getByText('Ya existe un cliente con ese código.')).toBeHidden();
 	await expect(page.getByRole('row', { name: /Ocupado e2e borrado/ })).toBeVisible();
 
-	// Esc goes back to the live ones, with the search: only the live one has the code.
 	await page.keyboard.press('Escape');
 	await expect(page).toHaveURL(
 		(url) => !url.searchParams.has('deleted') && url.searchParams.get('q') === 'Ocupado e2e'
